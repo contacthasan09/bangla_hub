@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>137876250697-tgp1kf8rvbmpi3etioo6ng30tineac82.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.137876250697-tgp1kf8rvbmpi3etioo6ng30tineac82</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDfGQHs7gmdG8HCOYsR4eWXdwbZWIW6_7A</string>
+	<key>GCM_SENDER_ID</key>
+	<string>137876250697</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.banglaHub</string>
+	<key>PROJECT_ID</key>
+	<string>banglahub-430ec</string>
+	<key>STORAGE_BUCKET</key>
+	<string>banglahub-430ec.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:137876250697:ios:f620da898e83fde22fdf98</string>
+</dict>
+</plist>

@@ -1,0 +1,647 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
+import 'package:bangla_hub/providers/auth_provider.dart';
+
+class ResetPasswordScreen extends StatefulWidget {
+  const ResetPasswordScreen({Key? key}) : super(key: key);
+
+  @override
+  _ResetPasswordScreenState createState() => _ResetPasswordScreenState();
+}
+
+class _ResetPasswordScreenState extends State<ResetPasswordScreen>
+    with SingleTickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final FocusNode _emailFocus = FocusNode();
+  
+  // Animation controllers
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _slideAnimation;
+  late Animation<Color?> _gradientAnimation;
+  
+  // Color scheme
+  final Color _primaryRed = Color(0xFFF42A41);
+  final Color _primaryGreen = Color(0xFF006A4E);
+  final Color _darkGreen = Color(0xFF004D38);
+  final Color _goldAccent = Color(0xFFFFD700);
+  final Color _offWhite = Color(0xFFF8F8F8);
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Initialize animations
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Interval(0.0, 0.6, curve: Curves.easeInOut),
+      ),
+    );
+    
+    _slideAnimation = Tween<double>(begin: 80.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Interval(0.2, 0.8, curve: Curves.easeOutQuint),
+      ),
+    );
+    
+    _gradientAnimation = ColorTween(
+      begin: _darkGreen,
+      end: _primaryGreen,
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+    
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _emailFocus.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenHeight < 700;
+
+    return Scaffold(
+      body: AnimatedBuilder(
+        animation: _animationController,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  _gradientAnimation.value!,
+                  _primaryGreen,
+                  _darkGreen,
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                physics: BouncingScrollPhysics(),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 16 : 24,
+                    vertical: 16,
+                  ),
+                  constraints: BoxConstraints(
+                    minHeight: screenHeight -
+                        MediaQuery.of(context).padding.top -
+                        MediaQuery.of(context).padding.bottom,
+                  ),
+                  child: Opacity(
+                    opacity: _fadeAnimation.value,
+                    child: Transform.translate(
+                      offset: Offset(0, _slideAnimation.value),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Back Button
+                          _buildBackButton(isSmallScreen),
+                        //  SizedBox(height: isSmallScreen ? 20 : 30),
+                            SizedBox(height: isSmallScreen ? 15 : 20),
+                          
+                          // Header Section
+                          _buildHeaderSection(isSmallScreen),
+                        //  SizedBox(height: isSmallScreen ? 30 : 40),
+                            SizedBox(height: isSmallScreen ? 25 : 30),
+
+                          // Reset Form
+                          _buildResetForm(isSmallScreen, authProvider),
+                          SizedBox(height: isSmallScreen ? 20 : 30),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBackButton(bool isSmallScreen) {
+    return GestureDetector(
+      onTap: () => Navigator.pop(context),
+      child: Icon(
+        Icons.arrow_back_ios_new_rounded,
+        color: Colors.white,
+        size: isSmallScreen ? 18 : 22,
+      ),
+    );
+  }
+
+  Widget _buildHeaderSection(bool isSmallScreen) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Logo Circle
+        Center(
+          child: Container(
+         //   width: isSmallScreen ? 90 : 110,
+         //   height: isSmallScreen ? 90 : 110,
+             width: isSmallScreen ? 70 : 90,
+            height: isSmallScreen ? 70 : 90,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  _primaryRed,
+                  _primaryRed.withOpacity(0.8),
+                  _primaryGreen,
+                ],
+                center: Alignment.center,
+                radius: 0.8,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _primaryRed.withOpacity(0.3),
+                  blurRadius: 25,
+                  spreadRadius: 3,
+                ),
+              ],
+            ),
+            child: Center(
+              child: Container(
+                width: isSmallScreen ? 36 : 44,
+                height: isSmallScreen ? 36 : 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.5),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.lock_reset_rounded,
+                  size: isSmallScreen ? 22 : 26,
+                  color: _primaryRed,
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 20 : 32),
+        
+        // Header Text
+        Text(
+          'Reset Password',
+          style: GoogleFonts.poppins(
+          //  fontSize: isSmallScreen ? 32 : 40,
+           fontSize: isSmallScreen ? 28 : 35,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+            height: 1.1,
+            letterSpacing: 0.5,
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 8 : 12),
+        Container(
+          width: 60,
+          height: 4,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_primaryRed, _goldAccent],
+            ),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 12 : 18),
+        Text(
+          'Enter your email to receive a password reset link',
+          style: GoogleFonts.inter(
+          //  fontSize: isSmallScreen ? 15 : 17,
+           fontSize: isSmallScreen ? 12 : 14,
+            color: Colors.white.withOpacity(0.9),
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResetForm(bool isSmallScreen, AuthProvider authProvider) {
+    return Container(
+      padding: EdgeInsets.all(isSmallScreen ? 22 : 28),
+      decoration: BoxDecoration(
+        color: _offWhite,
+        borderRadius: BorderRadius.circular(isSmallScreen ? 22 : 28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 30,
+            offset: Offset(0, 15),
+            spreadRadius: -5,
+          ),
+          BoxShadow(
+            color: _primaryGreen.withOpacity(0.1),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.white.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Email Field
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(isSmallScreen ? 14 : 16),
+                boxShadow: _emailFocus.hasFocus
+                    ? [
+                        BoxShadow(
+                          color: _primaryGreen.withOpacity(0.15),
+                          blurRadius: 15,
+                          spreadRadius: 2,
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+              ),
+              child: TextFormField(
+                controller: _emailController,
+                focusNode: _emailFocus,
+                keyboardType: TextInputType.emailAddress,
+                style: GoogleFonts.inter(
+                  color: Colors.black87,
+                  fontSize: isSmallScreen ? 15 : 16,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.3,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Email Address',
+                  labelStyle: GoogleFonts.inter(
+                    color: _emailFocus.hasFocus ? _primaryGreen : Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                    fontSize: isSmallScreen ? 14 : 15,
+                  ),
+                  hintText: 'Enter your email',
+                  hintStyle: GoogleFonts.inter(
+                    color: Colors.grey[500],
+                    fontSize: isSmallScreen ? 15 : 16,
+                  ),
+                  prefixIcon: Padding(
+                    padding: EdgeInsets.only(left: 16, right: 12),
+                    child: Icon(
+                      Icons.email_outlined,
+                      color: _emailFocus.hasFocus ? _primaryGreen : Colors.grey[600],
+                      size: isSmallScreen ? 22 : 24,
+                    ),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 14 : 16),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 14 : 16),
+                    borderSide: BorderSide(
+                      color: Colors.grey[300]!,
+                      width: 1.5,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 14 : 16),
+                    borderSide: BorderSide(
+                      color: _primaryGreen,
+                      width: 2.5,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: isSmallScreen ? 18 : 22,
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email address';
+                  }
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                    return 'Please enter a valid email address';
+                  }
+                  return null;
+                },
+              ),
+            ),
+           // SizedBox(height: isSmallScreen ? 28 : 36),
+            SizedBox(height: isSmallScreen ? 14 : 18),
+
+            // Instruction Text
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+              decoration: BoxDecoration(
+                color: _primaryGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _primaryGreen.withOpacity(0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    color: _primaryGreen,
+                    size: isSmallScreen ? 18 : 20,
+                  ),
+                  SizedBox(width: isSmallScreen ? 12 : 16),
+                  Expanded(
+                    child: Text(
+                      'We will send you a link to reset your password. Please check your inbox and spam folder.',
+                      style: GoogleFonts.inter(
+                       // fontSize: isSmallScreen ? 13 : 14,
+                       fontSize: isSmallScreen ? 10 : 10,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w500,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: isSmallScreen ? 28 : 36),
+
+            // Reset Button
+            _buildResetButton(isSmallScreen, authProvider),
+            SizedBox(height: isSmallScreen ? 16 : 20),
+
+            // Back to Login
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                    size: isSmallScreen ? 16 : 18,
+                  ),
+                  SizedBox(width: isSmallScreen ? 8 : 12),
+                  Text(
+                    'Back to Login',
+                    style: GoogleFonts.inter(
+                      fontSize: isSmallScreen ? 15 : 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResetButton(bool isSmallScreen, AuthProvider authProvider) {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 500),
+      width: double.infinity,
+      height: isSmallScreen ? 56 : 64,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_primaryRed, _primaryGreen],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          stops: [0.0, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryRed.withOpacity(0.3),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+        child: InkWell(
+          onTap: authProvider.isLoading ? null : () => _resetPassword(context, authProvider),
+          borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+          splashColor: Colors.white.withOpacity(0.2),
+          highlightColor: Colors.white.withOpacity(0.1),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 24),
+            child: AnimatedSwitcher(
+              duration: Duration(milliseconds: 300),
+              child: authProvider.isLoading
+                  ? Center(
+                      child: SizedBox(
+                        width: isSmallScreen ? 24 : 28,
+                        height: isSmallScreen ? 24 : 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        ),
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Send Reset Link',
+                          style: GoogleFonts.poppins(
+                          //  fontSize: isSmallScreen ? 1 : 19,
+                             fontSize: isSmallScreen ? 14 : 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                       // SizedBox(width: isSmallScreen ? 12 : 16),
+                         SizedBox(width: isSmallScreen ? 10 : 12),
+                        Container(
+                          width: isSmallScreen ? 30 : 36,
+                          height: isSmallScreen ? 30 : 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.send_rounded,
+                            color: Colors.white,
+                            size: isSmallScreen ? 18 : 20,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _resetPassword(BuildContext context, AuthProvider authProvider) async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        await authProvider.resetPassword(_emailController.text.trim());
+        
+        // Show success dialog
+        _showSuccessDialog(context);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: _primaryRed,
+            content: Text(e.toString()),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showSuccessDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        backgroundColor: Colors.white,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [_primaryGreen, _primaryRed],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Icon(
+                Icons.check_rounded,
+                size: 40,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Email Sent!',
+              style: GoogleFonts.poppins(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: _primaryGreen,
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Password reset link has been sent to:',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                color: Colors.grey[700],
+              ),
+            ),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _primaryGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _primaryGreen.withOpacity(0.3),
+                ),
+              ),
+              child: Text(
+                _emailController.text,
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  color: _primaryGreen,
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Please check your inbox and follow the instructions.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          Center(
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Go back to login
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryGreen,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Back to Login',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
