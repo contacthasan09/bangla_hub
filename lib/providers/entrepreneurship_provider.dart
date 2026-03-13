@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:bangla_hub/models/user_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/entrepreneurship_models.dart';
 import '../services/entrepreneurship_service.dart';
@@ -21,6 +23,17 @@ class EntrepreneurshipProvider with ChangeNotifier {
   // Loading and error states
   bool _isLoading = false;
   String _error = '';
+
+  // Add this at the top with other variables
+final Map<String, UserModel?> _userCache = {};
+
+// Add getter
+Map<String, UserModel?> get userCache => _userCache;
+
+// Add method to get user by ID
+UserModel? getUserById(String userId) {
+  return _userCache[userId];
+}
 
   // Filter states for each category
   Map<EntrepreneurshipCategory, Map<String, dynamic>> _filters = {
@@ -217,7 +230,7 @@ class EntrepreneurshipProvider with ChangeNotifier {
     }
   }
 
-  Future<void> loadVerifiedBusinessPartners() async {
+/*  Future<void> loadVerifiedBusinessPartners() async {
     _isLoading = true;
     _error = '';
     notifyListeners();
@@ -263,6 +276,88 @@ class EntrepreneurshipProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+*/
+
+// In entrepreneurship_provider.dart, modify loadVerifiedBusinessPartners:
+
+Future<void> loadVerifiedBusinessPartners() async {
+  _isLoading = true;
+  _error = '';
+  notifyListeners();
+
+  try {
+    await _businessPartnersSubscription?.cancel();
+
+    final filters = getFiltersForCategory(EntrepreneurshipCategory.networkingBusinessPartner);
+    
+    final stream = _service.getNetworkingBusinessPartners(
+      state: filters['state'],
+      city: filters['city'],
+      industry: filters['industry'],
+      businessType: filters['businessType'],
+      searchQuery: _searchQuery.isNotEmpty ? _searchQuery : null,
+      includeDeleted: false,
+    );
+
+    _businessPartnersSubscription = stream.listen(
+      (partners) {
+        // Filter to only show verified and active partners
+        _businessPartners = partners
+            .where((p) => p.isVerified && p.isActive && !p.isDeleted)
+            .toList();
+        print('📊 Verified partners: ${_businessPartners.length} out of ${partners.length} total');
+        
+        // Immediately load all user profiles
+        _loadAllUserProfiles(_businessPartners);
+        
+        _isLoading = false;
+        notifyListeners();
+      },
+      onError: (error) {
+        print('❌ Stream error: $error');
+        _error = 'Failed to load business partners: $error';
+        _isLoading = false;
+        notifyListeners();
+      },
+    );
+  } catch (e) {
+    print('❌ Failed to load business partners: $e');
+    _error = 'Failed to load business partners: $e';
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
+// Add this method to provider to load users
+Future<void> _loadAllUserProfiles(List<NetworkingBusinessPartner> partners) async {
+  final userIds = partners.map((p) => p.createdBy).toSet().toList();
+  
+  // Create a map to store users (you'll need to add this to provider)
+  // Add: final Map<String, UserModel?> _userCache = {};
+  
+  try {
+    // Batch fetch users
+    const batchSize = 10;
+    for (var i = 0; i < userIds.length; i += batchSize) {
+      final end = (i + batchSize < userIds.length) ? i + batchSize : userIds.length;
+      final batch = userIds.sublist(i, end);
+      
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where(FieldPath.documentId, whereIn: batch)
+          .get();
+      
+      for (var doc in querySnapshot.docs) {
+        final user = UserModel.fromMap(doc.data(), doc.id);
+        _userCache[doc.id] = user;
+      }
+    }
+    notifyListeners();
+  } catch (e) {
+    print('❌ Error loading users: $e');
+  }
+}
+
 
   Future<void> loadPopularBusinessPartners() async {
     _isLoading = true;

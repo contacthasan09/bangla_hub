@@ -1,7 +1,7 @@
 // screens/user_app/entrepreneurship/small_business/business_promotion_details_screen.dart
+import 'dart:async';
 import 'dart:convert';
 import 'package:bangla_hub/models/entrepreneurship_models.dart';
-import 'package:bangla_hub/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,7 +10,6 @@ import 'package:flutter/services.dart';
 
 class BusinessPromotionDetailsScreen extends StatefulWidget {
   final SmallBusinessPromotion promotion;
-  final UserModel? user;
   final ScrollController scrollController;
   final Function(String) onLaunchPhone;
   final Function(String) onLaunchEmail;
@@ -23,7 +22,6 @@ class BusinessPromotionDetailsScreen extends StatefulWidget {
   const BusinessPromotionDetailsScreen({
     Key? key,
     required this.promotion,
-    this.user,
     required this.scrollController,
     required this.onLaunchPhone,
     required this.onLaunchEmail,
@@ -38,10 +36,18 @@ class BusinessPromotionDetailsScreen extends StatefulWidget {
   _BusinessPromotionDetailsScreenState createState() => _BusinessPromotionDetailsScreenState();
 }
 
-class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetailsScreen> with TickerProviderStateMixin {
+class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetailsScreen> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   int _currentImageIndex = 0;
   late AnimationController _animationController;
   late PageController _pageController;
+  
+  // Particle animation controllers
+  late List<AnimationController> _particleControllers;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
   // Premium Color Palette - Orange/Red/Green Theme
   final Color _primaryOrange = Color(0xFFFF9800);
@@ -80,18 +86,73 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 500),
     );
-    _animationController.forward();
+    
     _pageController = PageController();
+    
+    // Initialize particle controllers (20 particles)
+    _particleControllers = List.generate(20, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 3 + (index % 3)),
+      )..repeat(reverse: true);
+    });
+    
+    // Start animations if app is visible
+    if (_appLifecycleState == AppLifecycleState.resumed) {
+      _startAnimations();
+    }
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App is visible - start animations
+      _startAnimations();
+    } else {
+      // App is not visible - stop animations to save resources
+      _stopAnimations();
+    }
+  }
+  
+  void _startAnimations() {
+    if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
+      _animationController.forward();
+      // Particle controllers already running via repeat
+    }
+  }
+  
+  void _stopAnimations() {
+    _animationController.stop();
+    // Particle controllers will continue but we don't stop them as they're repetitive
   }
 
   @override
   void dispose() {
+    print('🗑️ BusinessPromotionDetailsScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
     _animationController.dispose();
     _pageController.dispose();
+    
+    // ✅ Dispose particle controllers
+    for (var controller in _particleControllers) {
+      controller.dispose();
+    }
+    
     super.dispose();
   }
 
@@ -108,14 +169,15 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
   }
 
   Widget _buildAnimatedParticle(int index, double width, double height) {
+    final controller = _particleControllers[index % _particleControllers.length];
+    
     return Positioned(
       left: (index * 37) % width,
       top: (index * 53) % height,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 3 + (index % 3)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          final value = controller.value;
           return Opacity(
             opacity: (0.1 + (value * 0.2)) * (0.5 + (index % 3) * 0.1),
             child: Transform.rotate(
@@ -141,16 +203,47 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
     );
   }
 
+  // NEW: Build poster image from promotion.postedByProfileImageBase64
+  Widget _buildPromotionPosterImage({bool isLarge = false}) {
+    if (widget.promotion.postedByProfileImageBase64 != null && widget.promotion.postedByProfileImageBase64!.isNotEmpty) {
+      try {
+        String base64String = widget.promotion.postedByProfileImageBase64!;
+        
+        if (base64String.contains('base64,')) {
+          base64String = base64String.split('base64,').last;
+        }
+        
+        base64String = base64String.replaceAll(RegExp(r'\s'), '');
+        
+        while (base64String.length % 4 != 0) {
+          base64String += '=';
+        }
+        
+        final bytes = base64Decode(base64String);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildDefaultProfileImage(isLarge: isLarge);
+          },
+        );
+      } catch (e) {
+        return _buildDefaultProfileImage(isLarge: isLarge);
+      }
+    }
+    return _buildDefaultProfileImage(isLarge: isLarge);
+  }
+
   bool get isOfferActive => widget.promotion.specialOfferDiscount != null && 
                             widget.promotion.specialOfferDiscount! > 0;
 
   @override
   Widget build(BuildContext context) {
     final promotion = widget.promotion;
-    final user = widget.user;
     final hasImages = promotion.galleryImagesBase64 != null && promotion.galleryImagesBase64!.isNotEmpty;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
@@ -160,6 +253,23 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+               Icons.arrow_back_rounded, 
+              color: Colors.white, 
+              fontWeight: FontWeight.bold,
+              size: isTablet ? 28 : 24,
+            ),
+            onPressed: () => Navigator.pop(context),
+            constraints: BoxConstraints.expand(),
+            padding: EdgeInsets.zero,
+            splashRadius: isTablet ? 18 : 14,
+          ),
+          leadingWidth: isTablet ? 52 : 44,
+        ),
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -180,7 +290,7 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                   // Banner/Gallery Section
                   SliverToBoxAdapter(
                     child: hasImages
-                        ? _buildPremiumImageGallery(promotion, isTablet)
+                        ? _buildPremiumImageGallery(promotion, isTablet, shouldAnimate)
                         : Container(
                             height: isTablet ? 300 : 250,
                             decoration: BoxDecoration(
@@ -219,32 +329,13 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Back Button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _shadowColor,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: Icon(Icons.arrow_back_rounded, color: _textPrimary, size: isTablet ? 22 : 20),
-                            ),
-                          ),
-                          
                           SizedBox(height: isTablet ? 20 : 16),
                           
-                          // User Profile and Business Info
+                          // User Profile and Business Info - Using promotion's stored user info
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // User Profile Image with Premium Border
+                              // User Profile Image from promotion.postedByProfileImageBase64
                               Container(
                                 width: isTablet ? 80 : 70,
                                 height: isTablet ? 80 : 70,
@@ -260,7 +351,7 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                                   ],
                                 ),
                                 child: ClipOval(
-                                  child: _buildUserProfileImage(user, isLarge: true),
+                                  child: _buildPromotionPosterImage(isLarge: true),
                                 ),
                               ),
                               
@@ -271,8 +362,8 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // User Name
-                                    if (user != null)
+                                    // User Name from promotion.postedByName
+                                    if (promotion.postedByName != null && promotion.postedByName!.isNotEmpty)
                                       Container(
                                         margin: EdgeInsets.only(bottom: 8),
                                         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -286,7 +377,7 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                                             Icon(Icons.person_rounded, color: widget.primaryOrange, size: 14),
                                             SizedBox(width: 4),
                                             Text(
-                                              user.fullName,
+                                              promotion.postedByName!,
                                               style: GoogleFonts.poppins(
                                                 color: widget.primaryOrange,
                                                 fontSize: isTablet ? 14 : 12,
@@ -699,11 +790,20 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                                             color: Colors.white.withOpacity(0.2),
                                             borderRadius: BorderRadius.circular(isTablet ? 14 : 12),
                                           ),
-                                          child: Icon(
-                                            Icons.percent_rounded,
-                                            color: Colors.white,
-                                            size: isTablet ? 28 : 24,
-                                          ),
+                                          child: shouldAnimate
+                                              ? RotationTransition(
+                                                  turns: _animationController,
+                                                  child: Icon(
+                                                    Icons.percent_rounded,
+                                                    color: Colors.white,
+                                                    size: isTablet ? 28 : 24,
+                                                  ),
+                                                )
+                                              : Icon(
+                                                  Icons.percent_rounded,
+                                                  color: Colors.white,
+                                                  size: isTablet ? 28 : 24,
+                                                ),
                                         ),
                                         SizedBox(width: isTablet ? 16 : 12),
                                         Expanded(
@@ -835,11 +935,20 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                                   ),
                                   child: Column(
                                     children: [
-                                      Icon(
-                                        Icons.remove_red_eye_rounded,
-                                        color: widget.primaryOrange,
-                                        size: isTablet ? 28 : 24,
-                                      ),
+                                      shouldAnimate
+                                          ? RotationTransition(
+                                              turns: _animationController,
+                                              child: Icon(
+                                                Icons.remove_red_eye_rounded,
+                                                color: widget.primaryOrange,
+                                                size: isTablet ? 28 : 24,
+                                              ),
+                                            )
+                                          : Icon(
+                                              Icons.remove_red_eye_rounded,
+                                              color: widget.primaryOrange,
+                                              size: isTablet ? 28 : 24,
+                                            ),
                                       SizedBox(height: isTablet ? 8 : 6),
                                       Text(
                                         '${promotion.totalViews}',
@@ -871,11 +980,20 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                                   ),
                                   child: Column(
                                     children: [
-                                      Icon(
-                                        Icons.share_rounded,
-                                        color: widget.greenAccent,
-                                        size: isTablet ? 28 : 24,
-                                      ),
+                                      shouldAnimate
+                                          ? RotationTransition(
+                                              turns: _animationController,
+                                              child: Icon(
+                                                Icons.share_rounded,
+                                                color: widget.greenAccent,
+                                                size: isTablet ? 28 : 24,
+                                              ),
+                                            )
+                                          : Icon(
+                                              Icons.share_rounded,
+                                              color: widget.greenAccent,
+                                              size: isTablet ? 28 : 24,
+                                            ),
                                       SizedBox(height: isTablet ? 8 : 6),
                                       Text(
                                         '${promotion.totalShares}',
@@ -934,11 +1052,20 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                                     ],
                                   ),
                                   child: Center(
-                                    child: Icon(
-                                      Icons.storefront_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 28 : 24,
-                                    ),
+                                    child: shouldAnimate
+                                        ? RotationTransition(
+                                            turns: _animationController,
+                                            child: Icon(
+                                              Icons.storefront_rounded,
+                                              color: Colors.white,
+                                              size: isTablet ? 28 : 24,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.storefront_rounded,
+                                            color: Colors.white,
+                                            size: isTablet ? 28 : 24,
+                                          ),
                                   ),
                                 ),
                                 SizedBox(width: isTablet ? 20 : 16),
@@ -1046,7 +1173,7 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
     );
   }
 
-  Widget _buildPremiumImageGallery(SmallBusinessPromotion promotion, bool isTablet) {
+  Widget _buildPremiumImageGallery(SmallBusinessPromotion promotion, bool isTablet, bool shouldAnimate) {
     final galleryImages = promotion.galleryImagesBase64 ?? [];
     
     return Stack(
@@ -1058,9 +1185,11 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
             controller: _pageController,
             itemCount: galleryImages.length,
             onPageChanged: (index) {
-              setState(() {
-                _currentImageIndex = index;
-              });
+              if (mounted) {
+                setState(() {
+                  _currentImageIndex = index;
+                });
+              }
             },
             itemBuilder: (context, index) {
               return Container(
@@ -1121,7 +1250,12 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.photo_library_rounded, color: Colors.white, size: 16),
+                  shouldAnimate
+                      ? RotationTransition(
+                          turns: _animationController,
+                          child: Icon(Icons.photo_library_rounded, color: Colors.white, size: 16),
+                        )
+                      : Icon(Icons.photo_library_rounded, color: Colors.white, size: 16),
                   SizedBox(width: 8),
                   Text(
                     '${_currentImageIndex + 1} / ${galleryImages.length}',
@@ -1234,35 +1368,7 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
     );
   }
 
-  Widget _buildUserProfileImage(UserModel? user, {bool isLarge = false}) {
-    if (user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty) {
-      try {
-        String base64String = user.profileImageUrl!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage(isLarge: isLarge);
-          },
-        );
-      } catch (e) {
-        return _buildDefaultProfileImage(isLarge: isLarge);
-      }
-    }
-    return _buildDefaultProfileImage(isLarge: isLarge);
-  }
+  // REMOVED: _buildUserProfileImage method - now using _buildPromotionPosterImage
 
   Widget _buildDefaultProfileImage({bool isLarge = false}) {
     return Container(
@@ -1283,6 +1389,8 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
     required Widget child,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1298,11 +1406,20 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                 ),
                 borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
               ),
-              child: Icon(
-                icon,
-                color: Colors.white,
-                size: isTablet ? 18 : 16,
-              ),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: _animationController,
+                      child: Icon(
+                        icon,
+                        color: Colors.white,
+                        size: isTablet ? 18 : 16,
+                      ),
+                    )
+                  : Icon(
+                      icon,
+                      color: Colors.white,
+                      size: isTablet ? 18 : 16,
+                    ),
             ),
             SizedBox(width: isTablet ? 12 : 10),
             Text(
@@ -1328,6 +1445,8 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
     required List<Color> gradientColors,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Container(
       padding: EdgeInsets.all(isTablet ? 20 : 16),
       decoration: BoxDecoration(
@@ -1368,11 +1487,20 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
               ],
             ),
             child: Center(
-              child: Icon(
-                icon,
-                color: Colors.white,
-                size: isTablet ? 22 : 18,
-              ),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: _animationController,
+                      child: Icon(
+                        icon,
+                        color: Colors.white,
+                        size: isTablet ? 22 : 18,
+                      ),
+                    )
+                  : Icon(
+                      icon,
+                      color: Colors.white,
+                      size: isTablet ? 22 : 18,
+                    ),
             ),
           ),
           SizedBox(width: isTablet ? 16 : 12),
@@ -1414,6 +1542,8 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
     required bool isTablet,
     VoidCallback? onTap,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1442,11 +1572,20 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                   borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                 ),
                 child: Center(
-                  child: Icon(
-                    icon,
-                    color: onTap != null ? Colors.white : Colors.grey.shade600,
-                    size: isTablet ? 20 : 18,
-                  ),
+                  child: shouldAnimate
+                      ? RotationTransition(
+                          turns: _animationController,
+                          child: Icon(
+                            icon,
+                            color: onTap != null ? Colors.white : Colors.grey.shade600,
+                            size: isTablet ? 20 : 18,
+                          ),
+                        )
+                      : Icon(
+                          icon,
+                          color: onTap != null ? Colors.white : Colors.grey.shade600,
+                          size: isTablet ? 20 : 18,
+                        ),
                 ),
               ),
               SizedBox(width: isTablet ? 16 : 12),

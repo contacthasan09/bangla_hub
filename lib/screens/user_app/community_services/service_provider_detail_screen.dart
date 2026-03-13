@@ -27,56 +27,59 @@ class ServiceProviderDetailScreen extends StatefulWidget {
   State<ServiceProviderDetailScreen> createState() => _ServiceProviderDetailScreenState();
 }
 
-class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScreen> with TickerProviderStateMixin {
+class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScreen> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   // Premium Color Palette - Light Green Background (50%)
-  final Color _primaryRed = Color(0xFFD32F2F); // Darker red for buttons
-  final Color _primaryGreen = Color(0xFF2E7D32); // Darker green for buttons
-  final Color _darkGreen = Color(0xFF1B5E20); // Very dark green
-  final Color _goldAccent = Color(0xFFFFB300); // Darker gold
+  final Color _primaryRed = const Color(0xFFD32F2F);
+  final Color _primaryGreen = const Color(0xFF2E7D32);
+  final Color _darkGreen = const Color(0xFF1B5E20);
+  final Color _goldAccent = const Color(0xFFFFB300);
   
   // Dark button colors
-  final Color _coralRed = Color(0xFFC62828); // Dark red
-  final Color _mintGreen = Color(0xFF2E7D32); // Dark green
-  final Color _softGold = Color(0xFFFF8F00); // Dark gold
-  final Color _emeraldGreen = Color(0xFF1B5E20); // Dark emerald
-  final Color _sapphireBlue = Color(0xFF1565C0); // Dark blue
-  final Color _amethystPurple = Color(0xFF6A1B9A); // Dark purple
-  final Color _deepRed = Color(0xFFB71C1C); // Deep red
+  final Color _coralRed = const Color(0xFFC62828);
+  final Color _mintGreen = const Color(0xFF2E7D32);
+  final Color _softGold = const Color(0xFFFF8F00);
+  final Color _emeraldGreen = const Color(0xFF1B5E20);
+  final Color _sapphireBlue = const Color(0xFF1565C0);
+  final Color _amethystPurple = const Color(0xFF6A1B9A);
+  final Color _deepRed = const Color(0xFFB71C1C);
   
   // Light Green Background (50% opacity)
-  final Color _lightGreenBg = Color(0x80E8F5E9); // Light green with 50% opacity
-  final Color _creamWhite = Color(0xFFFFF9E6);
-  final Color _lightGreen = Color(0xFFE8F5E9);
-  final Color _lightRed = Color(0xFFFFEBEE);
-  final Color _lightYellow = Color(0xFFFFF3E0);
-  final Color _lightBlue = Color(0xFFE3F2FD);
+  final Color _lightGreenBg = const Color(0x80E8F5E9);
+  final Color _creamWhite = const Color(0xFFFFF9E6);
+  final Color _lightGreen = const Color(0xFFE8F5E9);
+  final Color _lightRed = const Color(0xFFFFEBEE);
+  final Color _lightYellow = const Color(0xFFFFF3E0);
+  final Color _lightBlue = const Color(0xFFE3F2FD);
   
   // 50% opacity colors for backgrounds
-  final Color _creamWhite50 = Color(0x80FFF9E6);
-  final Color _lightGreen50 = Color(0x80E8F5E9);
-  final Color _lightRed50 = Color(0x80FFEBEE);
-  final Color _lightYellow50 = Color(0x80FFF3E0);
-  final Color _lightBlue50 = Color(0x80E3F2FD);
+  final Color _creamWhite50 = const Color(0x80FFF9E6);
+  final Color _lightGreen50 = const Color(0x80E8F5E9);
+  final Color _lightRed50 = const Color(0x80FFEBEE);
+  final Color _lightYellow50 = const Color(0x80FFF3E0);
+  final Color _lightBlue50 = const Color(0x80E3F2FD);
   
   // Border and shadow colors
-  final Color _borderLight = Color(0xFFE0E7E9);
-  final Color _shadowColor = Color(0x1A000000);
+  final Color _borderLight = const Color(0xFFE0E7E9);
+  final Color _shadowColor = const Color(0x1A000000);
   
   // Text Colors
-  final Color _textPrimary = Color(0xFF1A2B3C);
-  final Color _textSecondary = Color(0xFF5D6D7E);
-  final Color _textLight = Color(0xFF6C757D);
+  final Color _textPrimary = const Color(0xFF1A2B3C);
+  final Color _textSecondary = const Color(0xFF5D6D7E);
+  final Color _textLight = const Color(0xFF6C757D);
   
   // Additional colors
-  final Color _successGreen = Color(0xFF2E7D32);
-  final Color _infoBlue = Color(0xFF1565C0);
-  final Color _badgeGold = Color(0xFFFF8F00);
+  final Color _successGreen = const Color(0xFF2E7D32);
+  final Color _infoBlue = const Color(0xFF1565C0);
+  final Color _badgeGold = const Color(0xFFFF8F00);
   
   bool _isLiked = false;
   bool _isLoading = false;
   bool _isGeneratingPDF = false;
   bool _isFollowing = false;
   int _likeCount = 0;
+  String? _userId;
   
   // Animation Controllers
   late AnimationController _pulseController;
@@ -84,8 +87,17 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
   late AnimationController _rotateController;
   late Animation<double> _rotateAnimation;
   
+  // Particle animation controllers
+  late List<AnimationController> _particleControllers;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  
   final ScrollController _scrollController = ScrollController();
   StreamSubscription<ServiceProviderModel?>? _providerSubscription;
+  
+  // Cache for expensive operations
+  final Map<String, Uint8List> _imageCache = {};
 
   @override
   void initState() {
@@ -93,11 +105,14 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
     
     print('🚀 ServiceProviderDetailScreen initState called for ID: ${widget.providerId}');
     
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     // Initialize animations
     _pulseController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 2000),
+    );
     
     _pulseAnimation = CurvedAnimation(
       parent: _pulseController,
@@ -106,7 +121,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
     
     _rotateController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1500),
     );
     
     _rotateAnimation = CurvedAnimation(
@@ -114,7 +129,16 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
       curve: Curves.easeInOut,
     );
     
-    _rotateController.repeat();
+    // Initialize particle controllers
+    _particleControllers = List.generate(10, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 3 + (index % 3)),
+      )..repeat(reverse: true);
+    });
+    
+    // Get user ID
+    _userId = context.read<AuthProvider>().user?.id;
     
     // Load provider details
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -123,6 +147,35 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
       _subscribeToProviderUpdates(provider);
     });
   }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App is visible - start animations
+      _startAnimations();
+    } else {
+      // App is not visible - stop animations to save resources
+      _stopAnimations();
+    }
+  }
+  
+  void _startAnimations() {
+    if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
+      _pulseController.repeat(reverse: true);
+      _rotateController.repeat();
+      // Particle controllers already running via repeat
+    }
+  }
+  
+  void _stopAnimations() {
+    _pulseController.stop();
+    _rotateController.stop();
+    // Particle controllers will continue but we don't stop them as they're repetitive
+  }
 
   void _subscribeToProviderUpdates(ServiceProviderProvider provider) {
     _providerSubscription?.cancel();
@@ -130,25 +183,10 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
       if (serviceProvider != null && mounted) {
         setState(() {
           _likeCount = serviceProvider.totalLikes;
-          _checkIfLiked();
+          _isLiked = serviceProvider.isLikedByUser(_userId ?? '');
         });
       }
     });
-  }
-
-  Future<void> _checkIfLiked() async {
-    final authProvider = context.read<AuthProvider>();
-    final serviceProvider = context.read<ServiceProviderProvider>().selectedProvider;
-    
-    if (authProvider.user != null && serviceProvider != null) {
-      try {
-        setState(() {
-          _isLiked = serviceProvider.isLikedByUser(authProvider.user!.id);
-        });
-      } catch (e) {
-        print('❌ Error checking like status: $e');
-      }
-    }
   }
 
   Future<void> _toggleLike() async {
@@ -172,16 +210,6 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
         widget.providerId,
         authProvider.user!.id,
       );
-      
-      // Get fresh data after like
-      final updatedProvider = serviceProviderProvider.selectedProvider;
-      if (updatedProvider != null) {
-        setState(() {
-          _likeCount = updatedProvider.totalLikes;
-          _isLiked = updatedProvider.isLikedByUser(authProvider.user!.id);
-        });
-      }
-      
     } catch (e) {
       print('❌ Error toggling like: $e');
       // Revert optimistic update on error
@@ -191,17 +219,21 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
       });
       _showPremiumSnackBar('Error: $e', isError: true);
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   void _showPremiumSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
-          padding: EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isError 
@@ -215,7 +247,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
               BoxShadow(
                 color: Colors.black.withOpacity(0.2),
                 blurRadius: 10,
-                offset: Offset(0, 5),
+                offset: const Offset(0, 5),
               ),
             ],
           ),
@@ -226,7 +258,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                 color: Colors.white,
                 size: 24,
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   message,
@@ -243,8 +275,8 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
         backgroundColor: Colors.transparent,
         elevation: 0,
         behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(16),
-        duration: Duration(seconds: 2),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -403,7 +435,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
-          margin: pw.EdgeInsets.all(32),
+          margin: const pw.EdgeInsets.all(32),
           build: (pw.Context context) {
             return [
               pw.Header(
@@ -420,7 +452,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                       ),
                     ),
                     pw.Container(
-                      padding: pw.EdgeInsets.all(8),
+                      padding: const pw.EdgeInsets.all(8),
                       decoration: pw.BoxDecoration(
                         color: PdfColors.green50,
                         borderRadius: pw.BorderRadius.circular(8),
@@ -442,7 +474,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
               
               // Provider Basic Info
               pw.Container(
-                padding: pw.EdgeInsets.all(16),
+                padding: const pw.EdgeInsets.all(16),
                 decoration: pw.BoxDecoration(
                   color: PdfColors.grey50,
                   borderRadius: pw.BorderRadius.circular(12),
@@ -472,7 +504,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                     pw.Row(
                       children: [
                         pw.Container(
-                          padding: pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: pw.BoxDecoration(
                             color: provider.isVerified ? PdfColors.green100 : PdfColors.grey100,
                             borderRadius: pw.BorderRadius.circular(12),
@@ -488,7 +520,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                         ),
                         pw.SizedBox(width: 10),
                         pw.Container(
-                          padding: pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: pw.BoxDecoration(
                             color: provider.isAvailable ? PdfColors.green100 : PdfColors.red100,
                             borderRadius: pw.BorderRadius.circular(12),
@@ -512,7 +544,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
               
               // Contact Information
               pw.Container(
-                padding: pw.EdgeInsets.all(16),
+                padding: const pw.EdgeInsets.all(16),
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(color: PdfColors.grey300),
                   borderRadius: pw.BorderRadius.circular(12),
@@ -542,7 +574,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
               
               // Service Details
               pw.Container(
-                padding: pw.EdgeInsets.all(16),
+                padding: const pw.EdgeInsets.all(16),
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(color: PdfColors.grey300),
                   borderRadius: pw.BorderRadius.circular(12),
@@ -574,7 +606,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
               if (provider.description != null && provider.description!.isNotEmpty) ...[
                 pw.SizedBox(height: 20),
                 pw.Container(
-                  padding: pw.EdgeInsets.all(16),
+                  padding: const pw.EdgeInsets.all(16),
                   decoration: pw.BoxDecoration(
                     border: pw.Border.all(color: PdfColors.grey300),
                     borderRadius: pw.BorderRadius.circular(12),
@@ -603,7 +635,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
               if (provider.languagesSpoken.isNotEmpty) ...[
                 pw.SizedBox(height: 20),
                 pw.Container(
-                  padding: pw.EdgeInsets.all(16),
+                  padding: const pw.EdgeInsets.all(16),
                   decoration: pw.BoxDecoration(
                     border: pw.Border.all(color: PdfColors.grey300),
                     borderRadius: pw.BorderRadius.circular(12),
@@ -625,7 +657,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                         runSpacing: 8,
                         children: provider.languagesSpoken.map((language) {
                           return pw.Container(
-                            padding: pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: pw.BoxDecoration(
                               color: PdfColors.green50,
                               borderRadius: pw.BorderRadius.circular(16),
@@ -649,7 +681,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
               if (provider.serviceTags.isNotEmpty) ...[
                 pw.SizedBox(height: 20),
                 pw.Container(
-                  padding: pw.EdgeInsets.all(16),
+                  padding: const pw.EdgeInsets.all(16),
                   decoration: pw.BoxDecoration(
                     border: pw.Border.all(color: PdfColors.grey300),
                     borderRadius: pw.BorderRadius.circular(12),
@@ -671,7 +703,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                         runSpacing: 8,
                         children: provider.serviceTags.map((tag) {
                           return pw.Container(
-                            padding: pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: pw.BoxDecoration(
                               color: PdfColors.blue50,
                               borderRadius: pw.BorderRadius.circular(16),
@@ -731,20 +763,26 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
         text: 'Check out this service provider from Bangla Hub!',
       );
 
-      _showPremiumSnackBar('✅ PDF generated and shared successfully!');
+      if (mounted) {
+        _showPremiumSnackBar('✅ PDF generated and shared successfully!');
+      }
     } catch (e) {
       print('PDF Generation Error: $e');
-      _showPremiumSnackBar('Error generating PDF: $e', isError: true);
+      if (mounted) {
+        _showPremiumSnackBar('Error generating PDF: $e', isError: true);
+      }
     } finally {
-      setState(() {
-        _isGeneratingPDF = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isGeneratingPDF = false;
+        });
+      }
     }
   }
 
   pw.Widget _buildPDFInfoRow(String label, String value, pw.Font font, pw.Font boldFont) {
     return pw.Padding(
-      padding: pw.EdgeInsets.only(bottom: 8),
+      padding: const pw.EdgeInsets.only(bottom: 8),
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
@@ -776,7 +814,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
       backgroundColor: Colors.transparent,
       builder: (context) {
         final provider = context.read<ServiceProviderProvider>().selectedProvider;
-        if (provider == null) return SizedBox();
+        if (provider == null) return const SizedBox();
         
         return Container(
           decoration: BoxDecoration(
@@ -794,7 +832,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
               BoxShadow(
                 color: Colors.black.withOpacity(0.3),
                 blurRadius: 30,
-                offset: Offset(0, -10),
+                offset: const Offset(0, -10),
               ),
             ],
           ),
@@ -816,7 +854,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                     ),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 
                 // Premium Header
                 Row(
@@ -839,7 +877,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                         size: isTablet ? 28 : 24,
                       ),
                     ),
-                    SizedBox(width: 16),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -852,7 +890,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                               color: Colors.white,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             'Share this provider with friends',
                             style: TextStyle(
@@ -885,7 +923,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                 
                 SizedBox(height: isTablet ? 32 : 24),
                 
-                // Share Options Grid - DARK BUTTONS
+                // Share Options Grid
                 GridView.count(
                   shrinkWrap: true,
                   crossAxisCount: 4,
@@ -895,7 +933,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                     _buildPremiumShareOption(
                       icon: Icons.text_fields_rounded,
                       label: 'Text',
-                      gradientColors: [_infoBlue, Color(0xFF0D47A1)],
+                      gradientColors: [_infoBlue, const Color(0xFF0D47A1)],
                       onTap: () {
                         Navigator.pop(context);
                         _shareAsText(provider);
@@ -906,7 +944,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                     _buildPremiumShareOption(
                       icon: Icons.chat_rounded,
                       label: 'WhatsApp',
-                      gradientColors: [Color(0xFF1B5E20), Color(0xFF0D3B1A)],
+                      gradientColors: [const Color(0xFF1B5E20), const Color(0xFF0D3B1A)],
                       onTap: () {
                         Navigator.pop(context);
                         _shareToWhatsApp(provider);
@@ -917,7 +955,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                     _buildPremiumShareOption(
                       icon: Icons.facebook_rounded,
                       label: 'Facebook',
-                      gradientColors: [Color(0xFF0D47A1), Color(0xFF002171)],
+                      gradientColors: [const Color(0xFF0D47A1), const Color(0xFF002171)],
                       onTap: () {
                         Navigator.pop(context);
                         _shareToFacebook(provider);
@@ -928,10 +966,10 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                     _buildPremiumShareOption(
                       icon: Icons.copy_rounded,
                       label: 'Copy',
-                      gradientColors: [_amethystPurple, Color(0xFF4A148C)],
+                      gradientColors: [_amethystPurple, const Color(0xFF4A148C)],
                       onTap: () async {
                         await _copyDetails(provider);
-                        Navigator.pop(context);
+                        if (mounted) Navigator.pop(context);
                       },
                       isTablet: isTablet,
                     ),
@@ -940,7 +978,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                 
                 SizedBox(height: isTablet ? 24 : 20),
                 
-                // PDF Share Option - DARK BUTTON
+                // PDF Share Option
                 Container(
                   width: double.infinity,
                   child: Material(
@@ -957,7 +995,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                           vertical: isTablet ? 18 : 16,
                         ),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
+                          gradient:  LinearGradient(
                             colors: [_primaryRed, _primaryGreen],
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
@@ -967,7 +1005,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                             BoxShadow(
                               color: Colors.black.withOpacity(0.2),
                               blurRadius: 15,
-                              offset: Offset(0, 8),
+                              offset: const Offset(0, 8),
                             ),
                           ],
                         ),
@@ -1011,6 +1049,8 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
     required VoidCallback onTap,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1028,7 +1068,7 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
               BoxShadow(
                 color: gradientColors.first.withOpacity(0.3),
                 blurRadius: 10,
-                offset: Offset(0, 5),
+                offset: const Offset(0, 5),
               ),
             ],
           ),
@@ -1043,14 +1083,20 @@ class _ServiceProviderDetailScreenState extends State<ServiceProviderDetailScree
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: RotationTransition(
-                    turns: _rotateAnimation,
-                    child: Icon(
-                      icon,
-                      color: Colors.white,
-                      size: isTablet ? 24 : 20,
-                    ),
-                  ),
+                  child: shouldAnimate
+                      ? RotationTransition(
+                          turns: _rotateAnimation,
+                          child: Icon(
+                            icon,
+                            color: Colors.white,
+                            size: isTablet ? 24 : 20,
+                          ),
+                        )
+                      : Icon(
+                          icon,
+                          color: Colors.white,
+                          size: isTablet ? 24 : 20,
+                        ),
                 ),
               ),
               SizedBox(height: isTablet ? 12 : 8),
@@ -1098,7 +1144,9 @@ Download the app today! 📱
       text,
       subject: 'Service Provider: ${provider.fullName}',
     ).then((result) {
-      _showPremiumSnackBar('✨ Shared successfully!');
+      if (mounted) {
+        _showPremiumSnackBar('✨ Shared successfully!');
+      }
     });
   }
 
@@ -1120,7 +1168,9 @@ _Download Bangla Hub App for more details!_ 📱
     if (await canLaunch(url)) {
       await launch(url);
     } else {
-      _showPremiumSnackBar('WhatsApp not installed 📱', isError: true);
+      if (mounted) {
+        _showPremiumSnackBar('WhatsApp not installed 📱', isError: true);
+      }
     }
   }
 
@@ -1140,7 +1190,9 @@ Shared via Bangla Hub App. Download now! 📲
       text,
       subject: 'Bangla Hub Service Provider: ${provider.fullName}',
     ).then((result) {
-      _showPremiumSnackBar('✨ Shared to Facebook!');
+      if (mounted) {
+        _showPremiumSnackBar('✨ Shared to Facebook!');
+      }
     });
   }
 
@@ -1166,15 +1218,30 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
 ''';
     
     await Clipboard.setData(ClipboardData(text: text));
-    _showPremiumSnackBar('📋 Details copied to clipboard!');
+    if (mounted) {
+      _showPremiumSnackBar('📋 Details copied to clipboard!');
+    }
   }
 
   @override
   void dispose() {
+    print('🗑️ ServiceProviderDetailScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
     _scrollController.dispose();
     _providerSubscription?.cancel();
+    
+    // ✅ Dispose animation controllers
     _pulseController.dispose();
     _rotateController.dispose();
+    
+    // ✅ Dispose particle controllers
+    for (var controller in _particleControllers) {
+      controller.dispose();
+    }
+    
     super.dispose();
   }
 
@@ -1201,6 +1268,8 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
   }
 
   Widget _buildBannerImage(ServiceProviderModel serviceProvider, bool isTablet) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     if (serviceProvider.profileImageBase64 != null && serviceProvider.profileImageBase64!.isNotEmpty) {
       try {
         final cleanedBase64 = _cleanBase64String(serviceProvider.profileImageBase64!);
@@ -1229,14 +1298,20 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                   ),
                 ),
                 child: Center(
-                  child: RotationTransition(
-                    turns: _rotateAnimation,
-                    child: Icon(
-                      Icons.person_rounded,
-                      color: _primaryGreen,
-                      size: isTablet ? 80 : 60,
-                    ),
-                  ),
+                  child: shouldAnimate
+                      ? RotationTransition(
+                          turns: _rotateAnimation,
+                          child: Icon(
+                            Icons.person_rounded,
+                            color: _primaryGreen,
+                            size: isTablet ? 80 : 60,
+                          ),
+                        )
+                      : Icon(
+                          Icons.person_rounded,
+                          color: _primaryGreen,
+                          size: isTablet ? 80 : 60,
+                        ),
                 ),
               );
             },
@@ -1257,14 +1332,20 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
             ),
           ),
           child: Center(
-            child: RotationTransition(
-              turns: _rotateAnimation,
-              child: Icon(
-                Icons.person_rounded,
-                color: _primaryGreen,
-                size: isTablet ? 80 : 60,
-              ),
-            ),
+            child: shouldAnimate
+                ? RotationTransition(
+                    turns: _rotateAnimation,
+                    child: Icon(
+                      Icons.person_rounded,
+                      color: _primaryGreen,
+                      size: isTablet ? 80 : 60,
+                    ),
+                  )
+                : Icon(
+                    Icons.person_rounded,
+                    color: _primaryGreen,
+                    size: isTablet ? 80 : 60,
+                  ),
           ),
         );
       }
@@ -1283,83 +1364,23 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
           ),
         ),
         child: Center(
-          child: RotationTransition(
-            turns: _rotateAnimation,
-            child: Icon(
-              Icons.person_rounded,
-              color: _primaryGreen,
-              size: isTablet ? 80 : 60,
-            ),
-          ),
+          child: shouldAnimate
+              ? RotationTransition(
+                  turns: _rotateAnimation,
+                  child: Icon(
+                    Icons.person_rounded,
+                    color: _primaryGreen,
+                    size: isTablet ? 80 : 60,
+                  ),
+                )
+              : Icon(
+                  Icons.person_rounded,
+                  color: _primaryGreen,
+                  size: isTablet ? 80 : 60,
+                ),
         ),
       );
     }
-  }
-
-  Widget _buildPremiumAppBar(bool isTablet) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        isTablet ? 24 : 20,
-        MediaQuery.of(context).padding.top + (isTablet ? 20 : 16),
-        isTablet ? 24 : 20,
-        isTablet ? 20 : 16,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Back Button
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: _shadowColor,
-                  blurRadius: 8,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: Icon(Icons.arrow_back_rounded, color: _textPrimary, size: isTablet ? 22 : 20),
-            ),
-          ),
-          
-          // Like Button
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: _shadowColor,
-                  blurRadius: 8,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: IconButton(
-              onPressed: _isLoading ? null : _toggleLike,
-              icon: _isLoading
-                  ? SizedBox(
-                      width: isTablet ? 20 : 18,
-                      height: isTablet ? 20 : 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: _primaryRed,
-                      ),
-                    )
-                  : Icon(
-                      _isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: _isLiked ? Colors.red : _textPrimary,
-                      size: isTablet ? 22 : 20,
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildPremiumDetailSection({
@@ -1368,6 +1389,8 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
     required Widget child,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1376,21 +1399,27 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
             Container(
               padding: EdgeInsets.all(isTablet ? 8 : 6),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
+                gradient:  LinearGradient(
                   colors: [_primaryRed, _primaryGreen],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
               ),
-              child: RotationTransition(
-                turns: _rotateAnimation,
-                child: Icon(
-                  icon,
-                  color: Colors.white,
-                  size: isTablet ? 18 : 16,
-                ),
-              ),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: _rotateAnimation,
+                      child: Icon(
+                        icon,
+                        color: Colors.white,
+                        size: isTablet ? 18 : 16,
+                      ),
+                    )
+                  : Icon(
+                      icon,
+                      color: Colors.white,
+                      size: isTablet ? 18 : 16,
+                    ),
             ),
             SizedBox(width: isTablet ? 12 : 10),
             Text(
@@ -1417,6 +1446,8 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
     required bool isTablet,
     VoidCallback? onTap,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1436,7 +1467,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
               BoxShadow(
                 color: gradientColors.first.withOpacity(0.1),
                 blurRadius: 12,
-                offset: Offset(0, 5),
+                offset: const Offset(0, 5),
                 spreadRadius: -2,
               ),
             ],
@@ -1457,19 +1488,25 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                     BoxShadow(
                       color: gradientColors.first.withOpacity(0.3),
                       blurRadius: 8,
-                      offset: Offset(0, 3),
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
                 child: Center(
-                  child: RotationTransition(
-                    turns: _rotateAnimation,
-                    child: Icon(
-                      icon,
-                      color: Colors.white,
-                      size: isTablet ? 22 : 18,
-                    ),
-                  ),
+                  child: shouldAnimate
+                      ? RotationTransition(
+                          turns: _rotateAnimation,
+                          child: Icon(
+                            icon,
+                            color: Colors.white,
+                            size: isTablet ? 22 : 18,
+                          ),
+                        )
+                      : Icon(
+                          icon,
+                          color: Colors.white,
+                          size: isTablet ? 22 : 18,
+                        ),
                 ),
               ),
               SizedBox(width: isTablet ? 16 : 12),
@@ -1485,7 +1522,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       value,
                       style: GoogleFonts.poppins(
@@ -1526,6 +1563,8 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
     required bool isTablet,
     VoidCallback? onTap,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1549,19 +1588,25 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                 height: isTablet ? 44 : 38,
                 decoration: BoxDecoration(
                   gradient: onTap != null 
-                      ? LinearGradient(colors: [_primaryRed, _primaryGreen])
+                      ?  LinearGradient(colors: [_primaryRed, _primaryGreen])
                       : LinearGradient(colors: [Colors.grey.shade200, Colors.grey.shade300]),
                   borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                 ),
                 child: Center(
-                  child: RotationTransition(
-                    turns: _rotateAnimation,
-                    child: Icon(
-                      icon,
-                      color: onTap != null ? Colors.white : Colors.grey.shade600,
-                      size: isTablet ? 20 : 18,
-                    ),
-                  ),
+                  child: shouldAnimate
+                      ? RotationTransition(
+                          turns: _rotateAnimation,
+                          child: Icon(
+                            icon,
+                            color: onTap != null ? Colors.white : Colors.grey.shade600,
+                            size: isTablet ? 20 : 18,
+                          ),
+                        )
+                      : Icon(
+                          icon,
+                          color: onTap != null ? Colors.white : Colors.grey.shade600,
+                          size: isTablet ? 20 : 18,
+                        ),
                 ),
               ),
               SizedBox(width: isTablet ? 16 : 12),
@@ -1577,7 +1622,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       value,
                       style: GoogleFonts.poppins(
@@ -1612,7 +1657,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
   }
 
   Widget _buildChipGrid(List<String> items, bool isTablet) {
-    if (items.isEmpty) return SizedBox.shrink();
+    if (items.isEmpty) return const SizedBox.shrink();
     
     return Wrap(
       spacing: isTablet ? 8 : 6,
@@ -1634,7 +1679,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
               BoxShadow(
                 color: _shadowColor,
                 blurRadius: 4,
-                offset: Offset(0, 2),
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -1652,7 +1697,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
   }
 
   Widget _buildGalleryImages(List<String> galleryImagesBase64, bool isTablet) {
-    if (galleryImagesBase64.isEmpty) return SizedBox.shrink();
+    if (galleryImagesBase64.isEmpty) return const SizedBox.shrink();
     
     return SizedBox(
       height: isTablet ? 160 : 120,
@@ -1688,7 +1733,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
             BoxShadow(
               color: _shadowColor,
               blurRadius: 10,
-              offset: Offset(0, 5),
+              offset: const Offset(0, 5),
             ),
           ],
         ),
@@ -1707,14 +1752,20 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
           ),
         ),
         child: Center(
-          child: RotationTransition(
-            turns: _rotateAnimation,
-            child: Icon(
-              Icons.broken_image_rounded,
-              color: Colors.grey[400],
-              size: isTablet ? 40 : 30,
-            ),
-          ),
+          child: _appLifecycleState == AppLifecycleState.resumed
+              ? RotationTransition(
+                  turns: _rotateAnimation,
+                  child: Icon(
+                    Icons.broken_image_rounded,
+                    color: Colors.grey[400],
+                    size: isTablet ? 40 : 30,
+                  ),
+                )
+              : Icon(
+                  Icons.broken_image_rounded,
+                  color: Colors.grey[400],
+                  size: isTablet ? 40 : 30,
+                ),
         ),
       );
     }
@@ -1728,235 +1779,11 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
     final isTablet = screenWidth >= 600;
 
     if (provider.isLoading && serviceProvider == null) {
-      return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.dark.copyWith(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-        ),
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          extendBodyBehindAppBar: true,
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_lightGreenBg, _lightGreen, Colors.white],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: 1),
-                    duration: Duration(seconds: 2),
-                    curve: Curves.easeInOut,
-                    builder: (context, value, child) {
-                      return RotationTransition(
-                        turns: AlwaysStoppedAnimation(value),
-                        child: Container(
-                          width: isTablet ? 120 : 100,
-                          height: isTablet ? 120 : 100,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [_primaryRed, _primaryGreen],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: _primaryRed.withOpacity(0.3),
-                                blurRadius: 30,
-                                spreadRadius: 3,
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Container(
-                              width: isTablet ? 90 : 70,
-                              height: isTablet ? 90 : 70,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: SizedBox(
-                                  width: isTablet ? 50 : 40,
-                                  height: isTablet ? 50 : 40,
-                                  child: CircularProgressIndicator(
-                                    color: _primaryGreen,
-                                    strokeWidth: 4,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  SizedBox(height: isTablet ? 30 : 20),
-                  Text(
-                    'Loading...',
-                    style: GoogleFonts.poppins(
-                      fontSize: isTablet ? 26 : 22,
-                      fontWeight: FontWeight.w800,
-                      color: _textPrimary,
-                    ),
-                  ),
-                  SizedBox(height: isTablet ? 12 : 8),
-                  ScaleTransition(
-                    scale: _pulseAnimation,
-                    child: Text(
-                      'Fetching service details ✨',
-                      style: GoogleFonts.inter(
-                        fontSize: isTablet ? 16 : 14,
-                        color: _textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
+      return _buildLoadingState(isTablet);
     }
 
     if (serviceProvider == null) {
-      return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.dark.copyWith(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-        ),
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          extendBodyBehindAppBar: true,
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_lightGreenBg, _lightGreen, Colors.white],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Center(
-              child: Padding(
-                padding: EdgeInsets.all(isTablet ? 30 : 20),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: 1),
-                      duration: Duration(milliseconds: 700),
-                      curve: Curves.elasticOut,
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: 0.85 + (0.15 * value),
-                          child: Container(
-                            padding: EdgeInsets.all(isTablet ? 28 : 24),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [_lightRed50, _lightRed50],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              shape: BoxShape.circle,
-                            ),
-                            child: RotationTransition(
-                              turns: _rotateAnimation,
-                              child: Icon(
-                                Icons.error_outline_rounded,
-                                size: isTablet ? 70 : 60,
-                                color: _primaryRed,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    SizedBox(height: isTablet ? 30 : 20),
-                    Text(
-                      'Not Found',
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 28 : 24,
-                        fontWeight: FontWeight.w800,
-                        color: _textPrimary,
-                      ),
-                    ),
-                    SizedBox(height: isTablet ? 12 : 8),
-                    Text(
-                      'The service provider you\'re looking for\ncould not be found',
-                      style: GoogleFonts.inter(
-                        fontSize: isTablet ? 16 : 14,
-                        color: _textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: isTablet ? 30 : 20),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0, end: 1),
-                        duration: Duration(milliseconds: 400),
-                        curve: Curves.elasticOut,
-                        builder: (context, value, child) {
-                          return Transform.scale(
-                            scale: 0.92 + (0.08 * value),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: isTablet ? 40 : 30,
-                                vertical: isTablet ? 16 : 14,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [_primaryRed, _primaryGreen],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(25),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _primaryRed.withOpacity(0.3),
-                                    blurRadius: 20,
-                                    offset: Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  RotationTransition(
-                                    turns: _rotateAnimation,
-                                    child: Icon(Icons.arrow_back_rounded, color: Colors.white, size: isTablet ? 22 : 20),
-                                  ),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'GO BACK',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontSize: isTablet ? 18 : 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
+      return _buildErrorState(isTablet);
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -1967,46 +1794,16 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
-        floatingActionButton: ScaleTransition(
-          scale: _pulseAnimation,
-          child: GestureDetector(
-            onTap: _isGeneratingPDF ? null : _showPremiumShareOptions,
-            child: Container(
-              width: isTablet ? 64 : 56,
-              height: isTablet ? 64 : 56,
-              decoration: BoxDecoration(
-                gradient: _isGeneratingPDF
-                    ? LinearGradient(colors: [Colors.grey.shade300, Colors.grey.shade400])
-                    : LinearGradient(colors: [_primaryRed, _primaryGreen]),
-                borderRadius: BorderRadius.circular(isTablet ? 22 : 18),
-                boxShadow: [
-                  BoxShadow(
-                    color: _primaryRed.withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: Offset(0, 10),
-                  ),
-                ],
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: _isGeneratingPDF
-                  ? Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 3,
-                      ),
-                    )
-                  : RotationTransition(
-                      turns: _rotateAnimation,
-                      child: Icon(
-                        Icons.share_rounded,
-                        color: Colors.white,
-                        size: isTablet ? 28 : 24,
-                      ),
-                    ),
-            ),
-          ),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: _buildBackButton(isTablet),
+          leadingWidth: isTablet ? 52 : 44,
+          actions: [
+            _buildLikeButton(isTablet),
+          ],
         ),
+        floatingActionButton: _buildShareFloatingButton(isTablet),
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -2018,81 +1815,25 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
           child: Stack(
             children: [
               // Animated Background Particles
-              ...List.generate(20, (index) => _buildAnimatedParticle(index, screenWidth, MediaQuery.of(context).size.height)),
+              ...List.generate(10, (index) => _buildAnimatedParticle(index, screenWidth, MediaQuery.of(context).size.height)),
               
               // Main Content
               CustomScrollView(
                 controller: _scrollController,
-                physics: BouncingScrollPhysics(),
+                physics: const BouncingScrollPhysics(),
                 slivers: [
                   // Banner Image
                   SliverToBoxAdapter(
                     child: _buildBannerImage(serviceProvider, isTablet),
                   ),
                   
-                  // All Information in Column Below
+                  // All Information
                   SliverToBoxAdapter(
                     child: Container(
                       padding: EdgeInsets.all(isTablet ? 24 : 20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Back and Like Buttons
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _shadowColor,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: IconButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  icon: Icon(Icons.arrow_back_rounded, color: _textPrimary, size: isTablet ? 22 : 20),
-                                ),
-                              ),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _shadowColor,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: IconButton(
-                                  onPressed: _isLoading ? null : _toggleLike,
-                                  icon: _isLoading
-                                      ? SizedBox(
-                                          width: isTablet ? 20 : 18,
-                                          height: isTablet ? 20 : 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: _primaryRed,
-                                          ),
-                                        )
-                                      : Icon(
-                                          _isLiked ? Icons.favorite : Icons.favorite_border,
-                                          color: _isLiked ? Colors.red : _textPrimary,
-                                          size: isTablet ? 22 : 20,
-                                        ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 20 : 16),
-                          
                           // Name and Basic Info
                           Text(
                             serviceProvider.fullName,
@@ -2105,7 +1846,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                           
                           SizedBox(height: isTablet ? 8 : 6),
                           
-                          // Company Name - DARK GREEN BUTTON
+                          // Company Name
                           Container(
                             padding: EdgeInsets.symmetric(
                               horizontal: isTablet ? 14 : 12,
@@ -2122,7 +1863,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                 BoxShadow(
                                   color: _primaryGreen.withOpacity(0.3),
                                   blurRadius: 6,
-                                  offset: Offset(0, 3),
+                                  offset: const Offset(0, 3),
                                 ),
                               ],
                             ),
@@ -2138,7 +1879,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                           
                           SizedBox(height: isTablet ? 16 : 14),
                           
-                          // Category Badge - DARK RED BUTTON
+                          // Category Badge
                           Container(
                             padding: EdgeInsets.symmetric(
                               horizontal: isTablet ? 14 : 12,
@@ -2155,21 +1896,27 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                 BoxShadow(
                                   color: _primaryRed.withOpacity(0.3),
                                   blurRadius: 6,
-                                  offset: Offset(0, 3),
+                                  offset: const Offset(0, 3),
                                 ),
                               ],
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                RotationTransition(
-                                  turns: _rotateAnimation,
-                                  child: Icon(
-                                    serviceProvider.serviceCategory.icon,
-                                    color: Colors.white,
-                                    size: isTablet ? 18 : 16,
-                                  ),
-                                ),
+                                _appLifecycleState == AppLifecycleState.resumed
+                                    ? RotationTransition(
+                                        turns: _rotateAnimation,
+                                        child: Icon(
+                                          serviceProvider.serviceCategory.icon,
+                                          color: Colors.white,
+                                          size: isTablet ? 18 : 16,
+                                        ),
+                                      )
+                                    : Icon(
+                                        serviceProvider.serviceCategory.icon,
+                                        color: Colors.white,
+                                        size: isTablet ? 18 : 16,
+                                      ),
                                 SizedBox(width: isTablet ? 8 : 6),
                                 Text(
                                   serviceProvider.serviceCategory.displayName,
@@ -2189,7 +1936,6 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // Verified Badge - DARK GREEN
                               if (serviceProvider.isVerified)
                                 Container(
                                   padding: EdgeInsets.symmetric(
@@ -2207,7 +1953,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                       BoxShadow(
                                         color: _successGreen.withOpacity(0.3),
                                         blurRadius: 5,
-                                        offset: Offset(0, 2),
+                                        offset: const Offset(0, 2),
                                       ),
                                     ],
                                   ),
@@ -2231,9 +1977,8 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                   ),
                                 )
                               else
-                                Container(),
+                                const SizedBox(),
                               
-                              // Status Badge - DARK RED or DARK GREEN
                               Container(
                                 padding: EdgeInsets.symmetric(
                                   horizontal: isTablet ? 14 : 12,
@@ -2248,7 +1993,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: (serviceProvider.isAvailable ? _successGreen : _primaryRed).withOpacity(0.3),
                                       blurRadius: 5,
-                                      offset: Offset(0, 2),
+                                      offset: const Offset(0, 2),
                                     ),
                                   ],
                                 ),
@@ -2278,7 +2023,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                           
                           // Stats Row
                           Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               // Likes
                               Container(
@@ -2295,20 +2040,26 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: _shadowColor,
                                       blurRadius: 4,
-                                      offset: Offset(0, 2),
+                                      offset: const Offset(0, 2),
                                     ),
                                   ],
                                 ),
                                 child: Row(
                                   children: [
-                                    RotationTransition(
-                                      turns: _rotateAnimation,
-                                      child: Icon(
-                                        Icons.favorite_rounded,
-                                        color: _primaryRed,
-                                        size: isTablet ? 16 : 14,
-                                      ),
-                                    ),
+                                    _appLifecycleState == AppLifecycleState.resumed
+                                        ? RotationTransition(
+                                            turns: _rotateAnimation,
+                                            child: Icon(
+                                              Icons.favorite_rounded,
+                                              color: _primaryRed,
+                                              size: isTablet ? 16 : 14,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.favorite_rounded,
+                                            color: _primaryRed,
+                                            size: isTablet ? 16 : 14,
+                                          ),
                                     SizedBox(width: isTablet ? 4 : 3),
                                     Text(
                                       _formatCount(_likeCount),
@@ -2336,7 +2087,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: _shadowColor,
                                       blurRadius: 4,
-                                      offset: Offset(0, 2),
+                                      offset: const Offset(0, 2),
                                     ),
                                   ],
                                 ),
@@ -2372,7 +2123,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                           
                           SizedBox(height: isTablet ? 28 : 24),
                           
-                          // Action Buttons - DARK BUTTONS
+                          // Action Buttons
                           Row(
                             children: [
                               Expanded(
@@ -2393,17 +2144,19 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                         BoxShadow(
                                           color: _primaryRed.withOpacity(0.3),
                                           blurRadius: 15,
-                                          offset: Offset(0, 6),
+                                          offset: const Offset(0, 6),
                                         ),
                                       ],
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        RotationTransition(
-                                          turns: _rotateAnimation,
-                                          child: Icon(Icons.call_rounded, color: Colors.white, size: isTablet ? 20 : 18),
-                                        ),
+                                        _appLifecycleState == AppLifecycleState.resumed
+                                            ? RotationTransition(
+                                                turns: _rotateAnimation,
+                                                child: Icon(Icons.call_rounded, color: Colors.white, size: isTablet ? 20 : 18),
+                                              )
+                                            : Icon(Icons.call_rounded, color: Colors.white, size: isTablet ? 20 : 18),
                                         SizedBox(width: isTablet ? 10 : 8),
                                         Text(
                                           'Call',
@@ -2439,17 +2192,19 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                         BoxShadow(
                                           color: _primaryGreen.withOpacity(0.3),
                                           blurRadius: 15,
-                                          offset: Offset(0, 6),
+                                          offset: const Offset(0, 6),
                                         ),
                                       ],
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        RotationTransition(
-                                          turns: _rotateAnimation,
-                                          child: Icon(Icons.email_rounded, color: Colors.white, size: isTablet ? 20 : 18),
-                                        ),
+                                        _appLifecycleState == AppLifecycleState.resumed
+                                            ? RotationTransition(
+                                                turns: _rotateAnimation,
+                                                child: Icon(Icons.email_rounded, color: Colors.white, size: isTablet ? 20 : 18),
+                                              )
+                                            : Icon(Icons.email_rounded, color: Colors.white, size: isTablet ? 20 : 18),
                                         SizedBox(width: isTablet ? 10 : 8),
                                         Text(
                                           'Email',
@@ -2583,7 +2338,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: _shadowColor,
                                       blurRadius: 8,
-                                      offset: Offset(0, 4),
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
@@ -2634,7 +2389,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: _shadowColor,
                                       blurRadius: 8,
-                                      offset: Offset(0, 4),
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
@@ -2667,7 +2422,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: _shadowColor,
                                       blurRadius: 8,
-                                      offset: Offset(0, 4),
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
@@ -2700,7 +2455,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: _shadowColor,
                                       blurRadius: 8,
-                                      offset: Offset(0, 4),
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
@@ -2726,7 +2481,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: _shadowColor,
                                       blurRadius: 8,
-                                      offset: Offset(0, 4),
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
@@ -2752,7 +2507,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: _shadowColor,
                                       blurRadius: 8,
-                                      offset: Offset(0, 4),
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
@@ -2789,21 +2544,27 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                         BoxShadow(
                                           color: _shadowColor,
                                           blurRadius: 4,
-                                          offset: Offset(0, 2),
+                                          offset: const Offset(0, 2),
                                         ),
                                       ],
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        RotationTransition(
-                                          turns: _rotateAnimation,
-                                          child: Icon(
-                                            Icons.photo_camera_rounded,
-                                            color: _primaryGreen,
-                                            size: isTablet ? 18 : 16,
-                                          ),
-                                        ),
+                                        _appLifecycleState == AppLifecycleState.resumed
+                                            ? RotationTransition(
+                                                turns: _rotateAnimation,
+                                                child: Icon(
+                                                  Icons.photo_camera_rounded,
+                                                  color: _primaryGreen,
+                                                  size: isTablet ? 18 : 16,
+                                                ),
+                                              )
+                                            : Icon(
+                                                Icons.photo_camera_rounded,
+                                                color: _primaryGreen,
+                                                size: isTablet ? 18 : 16,
+                                              ),
                                         SizedBox(width: isTablet ? 8 : 6),
                                         Text(
                                           '📸 ${serviceProvider.galleryImagesBase64!.length} ${serviceProvider.galleryImagesBase64!.length == 1 ? 'photo' : 'photos'}',
@@ -2845,14 +2606,14 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: _shadowColor,
                                       blurRadius: 10,
-                                      offset: Offset(0, 5),
+                                      offset: const Offset(0, 5),
                                     ),
                                   ],
                                 ),
                                 child: Row(
                                   children: [
                                     Container(
-                                      padding: EdgeInsets.all(10),
+                                      padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
                                         color: _primaryGreen,
                                         shape: BoxShape.circle,
@@ -2914,7 +2675,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: _shadowColor,
                                       blurRadius: 8,
-                                      offset: Offset(0, 4),
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
@@ -2940,14 +2701,14 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                     BoxShadow(
                                       color: _shadowColor,
                                       blurRadius: 8,
-                                      offset: Offset(0, 4),
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
                                 child: Row(
                                   children: [
                                     Container(
-                                      padding: EdgeInsets.all(10),
+                                      padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: [_badgeGold, _goldAccent],
@@ -2975,7 +2736,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
-                                          SizedBox(height: 2),
+                                          const SizedBox(height: 2),
                                           Text(
                                             serviceProvider.licenseNumber!,
                                             style: GoogleFonts.poppins(
@@ -3014,7 +2775,7 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                   width: isTablet ? 50 : 44,
                                   height: isTablet ? 50 : 44,
                                   decoration: BoxDecoration(
-                                    gradient: LinearGradient(
+                                    gradient:  LinearGradient(
                                       colors: [_primaryRed, _primaryGreen],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
@@ -3024,19 +2785,25 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
                                       BoxShadow(
                                         color: _primaryRed.withOpacity(0.3),
                                         blurRadius: 8,
-                                        offset: Offset(0, 4),
+                                        offset: const Offset(0, 4),
                                       ),
                                     ],
                                   ),
                                   child: Center(
-                                    child: RotationTransition(
-                                      turns: _rotateAnimation,
-                                      child: Icon(
-                                        Icons.handshake_rounded,
-                                        color: Colors.white,
-                                        size: isTablet ? 24 : 20,
-                                      ),
-                                    ),
+                                    child: _appLifecycleState == AppLifecycleState.resumed
+                                        ? RotationTransition(
+                                            turns: _rotateAnimation,
+                                            child: Icon(
+                                              Icons.handshake_rounded,
+                                              color: Colors.white,
+                                              size: isTablet ? 24 : 20,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.handshake_rounded,
+                                            color: Colors.white,
+                                            size: isTablet ? 24 : 20,
+                                          ),
                                   ),
                                 ),
                                 SizedBox(width: isTablet ? 16 : 12),
@@ -3081,15 +2848,387 @@ ${provider.yearsOfExperience != null && provider.yearsOfExperience!.isNotEmpty ?
     );
   }
 
+  // Extracted Widgets for Better Performance and Reusability
+
+  Widget _buildBackButton(bool isTablet) {
+    return Container(
+      width: isTablet ? 40 : 36,
+      height: isTablet ? 30 : 26,
+      margin: EdgeInsets.only(left: isTablet ? 12 : 8, top: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white,
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(
+          Icons.arrow_back_rounded, 
+          color: Colors.black87, 
+          size: isTablet ? 18 : 16,
+        ),
+        onPressed: () => Navigator.pop(context),
+        constraints: const BoxConstraints.expand(),
+        padding: EdgeInsets.zero,
+        splashRadius: isTablet ? 18 : 14,
+      ),
+    );
+  }
+
+  Widget _buildLikeButton(bool isTablet) {
+    return Container(
+      width: isTablet ? 40 : 36,
+      height: isTablet ? 30 : 26,
+      margin: EdgeInsets.only(right: isTablet ? 12 : 8, top: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white,
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: _isLoading
+            ? SizedBox(
+                width: isTablet ? 16 : 14,
+                height: isTablet ? 16 : 14,
+                child:  CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _primaryRed,
+                ),
+              )
+            : Icon(
+                _isLiked ? Icons.favorite : Icons.favorite_border,
+                color: _isLiked ? Colors.red : Colors.black87,
+                size: isTablet ? 18 : 16,
+              ),
+        onPressed: _isLoading ? null : _toggleLike,
+        constraints: const BoxConstraints.expand(),
+        padding: EdgeInsets.zero,
+        splashRadius: isTablet ? 18 : 14,
+      ),
+    );
+  }
+
+  Widget _buildShareFloatingButton(bool isTablet) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed && !_isGeneratingPDF;
+    
+    Widget button = GestureDetector(
+      onTap: _isGeneratingPDF ? null : _showPremiumShareOptions,
+      child: Container(
+        width: isTablet ? 64 : 56,
+        height: isTablet ? 64 : 56,
+        decoration: BoxDecoration(
+          gradient: _isGeneratingPDF
+              ? LinearGradient(colors: [Colors.grey.shade300, Colors.grey.shade400])
+              :  LinearGradient(colors: [_primaryRed, _primaryGreen]),
+          borderRadius: BorderRadius.circular(isTablet ? 22 : 18),
+          boxShadow: [
+            BoxShadow(
+              color: _primaryRed.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+          border: Border.all(color: Colors.white, width: 2),
+        ),
+        child: _isGeneratingPDF
+            ? Padding(
+                padding: const EdgeInsets.all(16),
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 3,
+                ),
+              )
+            : shouldAnimate
+                ? RotationTransition(
+                    turns: _rotateAnimation,
+                    child: Icon(
+                      Icons.share_rounded,
+                      color: Colors.white,
+                      size: isTablet ? 28 : 24,
+                    ),
+                  )
+                : Icon(
+                    Icons.share_rounded,
+                    color: Colors.white,
+                    size: isTablet ? 28 : 24,
+                  ),
+      ),
+    );
+    
+    return shouldAnimate
+        ? ScaleTransition(scale: _pulseAnimation, child: button)
+        : button;
+  }
+
+  Widget _buildLoadingState(bool isTablet) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: true,
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_lightGreenBg, _lightGreen, Colors.white],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(seconds: 2),
+                  curve: Curves.easeInOut,
+                  builder: (context, value, child) {
+                    return RotationTransition(
+                      turns: AlwaysStoppedAnimation(value),
+                      child: Container(
+                        width: isTablet ? 120 : 100,
+                        height: isTablet ? 120 : 100,
+                        decoration: BoxDecoration(
+                          gradient:  LinearGradient(
+                            colors: [_primaryRed, _primaryGreen],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: _primaryRed.withOpacity(0.3),
+                              blurRadius: 30,
+                              spreadRadius: 3,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: isTablet ? 90 : 70,
+                            height: isTablet ? 90 : 70,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: SizedBox(
+                                width: isTablet ? 50 : 40,
+                                height: isTablet ? 50 : 40,
+                                child:  CircularProgressIndicator(
+                                  color: _primaryGreen,
+                                  strokeWidth: 4,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                SizedBox(height: isTablet ? 30 : 20),
+                Text(
+                  'Loading...',
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 26 : 22,
+                    fontWeight: FontWeight.w800,
+                    color: _textPrimary,
+                  ),
+                ),
+                SizedBox(height: isTablet ? 12 : 8),
+                ScaleTransition(
+                  scale: _pulseAnimation,
+                  child: Text(
+                    'Fetching service details ✨',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 16 : 14,
+                      color: _textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(bool isTablet) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: true,
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_lightGreenBg, _lightGreen, Colors.white],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 30 : 20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.elasticOut,
+                    builder: (context, value, child) {
+                      return Transform.scale(
+                        scale: 0.85 + (0.15 * value),
+                        child: Container(
+                          padding: EdgeInsets.all(isTablet ? 28 : 24),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_lightRed50, _lightRed50],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: _appLifecycleState == AppLifecycleState.resumed
+                              ? RotationTransition(
+                                  turns: _rotateAnimation,
+                                  child: Icon(
+                                    Icons.error_outline_rounded,
+                                    size: isTablet ? 70 : 60,
+                                    color: _primaryRed,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.error_outline_rounded,
+                                  size: isTablet ? 70 : 60,
+                                  color: _primaryRed,
+                                ),
+                        ),
+                      );
+                    },
+                  ),
+                  SizedBox(height: isTablet ? 30 : 20),
+                  Text(
+                    'Not Found',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 28 : 24,
+                      fontWeight: FontWeight.w800,
+                      color: _textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: isTablet ? 12 : 8),
+                  Text(
+                    'The service provider you\'re looking for\ncould not be found',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 16 : 14,
+                      color: _textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: isTablet ? 30 : 20),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.elasticOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: 0.92 + (0.08 * value),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isTablet ? 40 : 30,
+                              vertical: isTablet ? 16 : 14,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient:  LinearGradient(
+                                colors: [_primaryRed, _primaryGreen],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              borderRadius: BorderRadius.circular(25),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _primaryRed.withOpacity(0.3),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _appLifecycleState == AppLifecycleState.resumed
+                                    ? RotationTransition(
+                                        turns: _rotateAnimation,
+                                        child: Icon(Icons.arrow_back_rounded, color: Colors.white, size: isTablet ? 22 : 20),
+                                      )
+                                    : Icon(Icons.arrow_back_rounded, color: Colors.white, size: isTablet ? 22 : 20),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'GO BACK',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: isTablet ? 18 : 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAnimatedParticle(int index, double width, double height) {
+    final controller = _particleControllers[index % _particleControllers.length];
+    
     return Positioned(
       left: (index * 37) % width,
       top: (index * 53) % height,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 3 + (index % 3)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          final value = controller.value;
           return Opacity(
             opacity: (0.1 + (value * 0.2)) * (0.5 + (index % 3) * 0.1),
             child: Transform.rotate(

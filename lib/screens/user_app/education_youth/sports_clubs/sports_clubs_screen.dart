@@ -1,13 +1,19 @@
+// screens/user_app/education_youth/sports_clubs/sports_clubs_screen.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:bangla_hub/models/community_services_models.dart';
 import 'package:bangla_hub/models/education_models.dart';
-import 'package:bangla_hub/models/user_model.dart';
 import 'package:bangla_hub/providers/education_provider.dart';
 import 'package:bangla_hub/providers/auth_provider.dart';
+import 'package:bangla_hub/providers/location_filter_provider.dart';
+import 'package:bangla_hub/screens/auth/login_screen.dart';
+import 'package:bangla_hub/screens/auth/signup_screen.dart';
 import 'package:bangla_hub/screens/user_app/education_youth/sports_clubs/sports_club_details_screen.dart';
+import 'package:bangla_hub/widgets/common/distance_widget.dart';
+import 'package:bangla_hub/widgets/common/global_location_filter_bar.dart';
+import 'package:bangla_hub/widgets/common/osm_location_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -20,7 +26,7 @@ class SportsClubsScreen extends StatefulWidget {
   _SportsClubsScreenState createState() => _SportsClubsScreenState();
 }
 
-class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
+class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKeepAliveClientMixin, TickerProviderStateMixin, WidgetsBindingObserver {
   // Premium Color Palette - Sports Theme
   final Color _primaryRed = Color(0xFFF44336);
   final Color _darkRed = Color(0xFFD32F2F);
@@ -46,10 +52,12 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
   late Animation<Offset> _slideAnimation;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
-
-  // Cache for user profiles
-  final Map<String, UserModel?> _userCache = {};
-  final Map<String, StreamSubscription?> _userSubscriptions = {};
+  
+  // Particle animation controllers for background
+  late List<AnimationController> _particleControllers;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
 
   bool _isLoading = false;
   SportsType? _selectedSportType;
@@ -73,6 +81,9 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
   void initState() {
     super.initState();
     
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     // Initialize animations
     _fadeController = AnimationController(
       vsync: this,
@@ -92,28 +103,105 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
     _pulseController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
+    );
     _pulseAnimation = CurvedAnimation(
       parent: _pulseController,
       curve: Curves.easeInOut,
     );
     
-    _fadeController.forward();
-    _slideController.forward();
+    // Initialize particle controllers
+    _particleControllers = List.generate(8, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 4 + (index % 3)),
+      )..repeat(reverse: true);
+    });
+    
+    // Start animations if app is visible
+    if (_appLifecycleState == AppLifecycleState.resumed) {
+      _startAnimations();
+    }
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
+      
+      // Get user location if not already
+      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+      if (locationProvider.currentUserLocation == null) {
+        locationProvider.getUserLocation(showLoading: false);
+      }
     });
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App is visible - start animations
+      _startAnimations();
+    } else {
+      // App is not visible - stop animations to save resources
+      _stopAnimations();
+    }
+  }
+  
+  void _startAnimations() {
+    if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
+      _fadeController.forward();
+      _slideController.forward();
+      _pulseController.repeat(reverse: true);
+    }
+  }
+  
+  void _stopAnimations() {
+    _fadeController.stop();
+    _slideController.stop();
+    _pulseController.stop();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // ✅ FIXED: Use post-frame callback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      
+      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+      final educationProvider = Provider.of<EducationProvider>(context, listen: false);
+      
+      // Apply state filter if active
+      if (locationProvider.isFilterActive && locationProvider.selectedState != null) {
+        educationProvider.setFilter(
+          EducationCategory.localSports,
+          'state',
+          locationProvider.selectedState,
+        );
+        educationProvider.loadSportsClubs();
+      }
+    });
+  }
+  
+  @override
   void dispose() {
+    print('🗑️ SportsClubsScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // ✅ Dispose animation controllers
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
-    // Cancel all user subscriptions
-    _userSubscriptions.values.forEach((sub) => sub?.cancel());
-    _userSubscriptions.clear();
+    
+    // ✅ Dispose particle controllers
+    for (var controller in _particleControllers) {
+      controller.dispose();
+    }
+    
     super.dispose();
   }
 
@@ -127,97 +215,209 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
     print('📊 Total sports clubs loaded: ${provider.sportsClubs.length}');
     print('✅ Verified clubs: ${provider.sportsClubs.where((s) => s.isVerified).length}');
     
-    // Load user profiles for all clubs
-    if (provider.sportsClubs.isNotEmpty) {
-      await _loadAllUserProfiles(provider.sportsClubs);
-      _setupUserProfileListeners(provider.sportsClubs);
-    }
-    
     if (mounted) setState(() => _isLoading = false);
   }
 
-  Future<void> _loadAllUserProfiles(List<SportsClub> clubs) async {
-    final Map<String, Future<UserModel?>> futures = {};
-    
-    for (var club in clubs) {
-      final userId = club.createdBy;
-      if (!_userCache.containsKey(userId)) {
-        futures[userId] = _fetchUserProfile(userId);
-      }
-    }
-    
-    if (futures.isNotEmpty) {
-      await Future.wait(futures.values);
-    }
-  }
-
-  Future<UserModel?> _fetchUserProfile(String userId) async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .get();
-      
-      if (doc.exists && mounted) {
-        final user = UserModel.fromMap(doc.data()!, doc.id);
-        setState(() {
-          _userCache[userId] = user;
-        });
-        return user;
-      }
-    } catch (e) {
-      print('❌ Error fetching user $userId: $e');
-    }
-    return null;
-  }
-
-  void _setupUserProfileListeners(List<SportsClub> clubs) {
-    _userSubscriptions.values.forEach((sub) => sub?.cancel());
-    _userSubscriptions.clear();
-    
-    for (var club in clubs) {
-      final userId = club.createdBy;
-      
-      if (!_userSubscriptions.containsKey(userId)) {
-        final subscription = FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .snapshots()
-            .listen((snapshot) {
-              if (snapshot.exists && mounted) {
-                final user = UserModel.fromMap(snapshot.data()!, snapshot.id);
-                setState(() {
-                  _userCache[userId] = user;
-                });
-              } else if (mounted) {
-                setState(() {
-                  _userCache[userId] = null;
-                });
-              }
-            }, onError: (error) {
-              print('❌ Error listening to user $userId: $error');
-            });
-        
-        _userSubscriptions[userId] = subscription;
-      }
-    }
-  }
-
-  // Get filtered clubs - ONLY SHOW VERIFIED CLUBS
-  List<SportsClub> _getFilteredClubs(List<SportsClub> clubs) {
+  // Get filtered clubs - ONLY SHOW VERIFIED CLUBS and apply location filter
+  List<SportsClub> _getFilteredClubs(
+    List<SportsClub> clubs,
+    LocationFilterProvider locationProvider,
+  ) {
     // Only show verified and active clubs
-    final verifiedClubs = clubs.where((club) => 
+    var verifiedClubs = clubs.where((club) => 
       club.isVerified == true && club.isActive == true
     ).toList();
     
     print('✅ Verified clubs: ${verifiedClubs.length} out of ${clubs.length} total');
     
-    if (_selectedSportType == null) return verifiedClubs;
+    // Apply global location filter if active
+    if (locationProvider.isFilterActive && locationProvider.selectedState != null) {
+      verifiedClubs = verifiedClubs.where((club) {
+        return club.state == locationProvider.selectedState;
+      }).toList();
+      print('📍 After state filter (${locationProvider.selectedState}): ${verifiedClubs.length} clubs');
+    }
     
     // Filter by sport type
-    return verifiedClubs.where((club) => 
-      club.sportType == _selectedSportType
-    ).toList();
+    if (_selectedSportType != null) {
+      verifiedClubs = verifiedClubs.where((club) => 
+        club.sportType == _selectedSportType
+      ).toList();
+    }
+    
+    return verifiedClubs;
+  }
+
+  void _showLoginRequiredDialog(BuildContext context, String feature) {
+    final Color _primaryRed = Color(0xFFF42A41);
+    final Color _primaryGreen = Color(0xFF006A4E);
+    final Color _goldAccent = Color(0xFFFFD700);
+    
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 30,
+                offset: Offset(0, 15),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with gradient - reduced size
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_primaryRed, _primaryGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.lock_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Login Required',
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'You need to login to $feature',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Create an account or sign in to access full details',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 16),
+                    
+                    // Login Button - reduced size
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LoginScreen(),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryGreen,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Login',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    
+                    // Sign Up Button - reduced size
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RegisterScreen(role: 'user'),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _primaryGreen,
+                          side: BorderSide(color: _primaryGreen, width: 2),
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Create Account',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    
+                    // Continue Browsing - slightly reduced size
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'Continue Browsing',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -234,6 +434,26 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
         body: CustomScrollView(
           slivers: [
             _buildPremiumAppBar(isTablet),
+            
+            // Global Location Filter Bar
+            SliverToBoxAdapter(
+              child: Consumer<LocationFilterProvider>(
+                builder: (context, locationProvider, _) {
+                  return GlobalLocationFilterBar(
+                    isTablet: isTablet,
+                    onClearTap: () {
+                      final educationProvider = Provider.of<EducationProvider>(context, listen: false);
+                      educationProvider.clearFilter(
+                        EducationCategory.localSports,
+                        'state',
+                      );
+                      educationProvider.loadSportsClubs();
+                    },
+                  );
+                },
+              ),
+            ),
+            
             SliverToBoxAdapter(
               child: _buildFilterBar(isTablet),
             ),
@@ -368,25 +588,9 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
         ),
       ),
       leading: IconButton(
-        icon: Icon(Icons.arrow_back_rounded, color: Colors.white, size: isTablet ? 24 : 20),
+        icon: Icon(Icons.arrow_back_rounded, color: Colors.white, fontWeight: FontWeight.bold, size: isTablet ? 28 : 24,),
         onPressed: () => Navigator.pop(context),
       ),
-      actions: [
-        Container(
-          margin: EdgeInsets.only(right: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: IconButton(
-            icon: Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
-            onPressed: _loadData,
-            tooltip: 'Refresh',
-            padding: EdgeInsets.all(8),
-            constraints: BoxConstraints(minWidth: 36, minHeight: 36),
-          ),
-        ),
-      ],
     );
   }
 
@@ -518,66 +722,76 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
   }
 
   Widget _buildPremiumFloatingActionButton(bool isTablet) {
-    return Padding(
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
+    Widget button = Padding(
       padding: EdgeInsets.only(bottom: isTablet ? 20 : 16),
-      child: ScaleTransition(
-        scale: _pulseAnimation,
-        child: FloatingActionButton.extended(
-          onPressed: () => _showAddClubDialog(context),
-          backgroundColor: Colors.transparent,
-          elevation: 12,
-          label: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isTablet ? 24 : 20,
-              vertical: isTablet ? 16 : 14,
+      child: FloatingActionButton.extended(
+        onPressed: () {
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          if (authProvider.isGuestMode) {
+            _showLoginRequiredDialog(context, 'Add New Club');
+          } else {
+            _showAddClubDialog(context);
+          }
+        },
+        backgroundColor: Colors.transparent,
+        elevation: 12,
+        label: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 24 : 20,
+            vertical: isTablet ? 16 : 14,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_primaryRed, _purpleAccent, _tealAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_primaryRed, _purpleAccent, _tealAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: _primaryRed.withOpacity(0.4),
+                blurRadius: 15,
+                offset: Offset(0, 8),
               ),
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: _primaryRed.withOpacity(0.4),
-                  blurRadius: 15,
-                  offset: Offset(0, 8),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: isTablet ? 24 : 20),
+              SizedBox(width: isTablet ? 12 : 8),
+              Text(
+                'Add Club',
+                style: GoogleFonts.poppins(
+                  fontSize: isTablet ? 18 : 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: isTablet ? 24 : 20),
-                SizedBox(width: isTablet ? 12 : 8),
-                Text(
-                  'Add Club',
-                  style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 18 : 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
+    
+    return shouldAnimate
+        ? ScaleTransition(scale: _pulseAnimation, child: button)
+        : button;
   }
 
   Widget _buildContent() {
-    return Consumer<EducationProvider>(
-      builder: (context, provider, child) {
+    return Consumer2<EducationProvider, LocationFilterProvider>(
+      builder: (context, provider, locationProvider, child) {
         if (provider.isLoading || _isLoading) {
           return _buildLoadingState();
         }
 
-        final filteredClubs = _getFilteredClubs(provider.sportsClubs);
+        final filteredClubs = _getFilteredClubs(provider.sportsClubs, locationProvider);
 
         if (filteredClubs.isEmpty) {
-          return _buildEmptyState();
+          return _buildEmptyState(locationProvider);
         }
 
         return SliverPadding(
@@ -586,7 +800,6 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final club = filteredClubs[index];
-                final user = _userCache[club.createdBy];
                 
                 return TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0, end: 1),
@@ -601,7 +814,7 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                       ),
                     );
                   },
-                  child: _buildPremiumClubCard(club, user, index),
+                  child: _buildPremiumClubCard(club, index),
                 );
               },
               childCount: filteredClubs.length,
@@ -615,6 +828,7 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
   Widget _buildLoadingState() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
     return SliverFillRemaining(
       child: Center(
@@ -630,8 +844,8 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                 return RotationTransition(
                   turns: AlwaysStoppedAnimation(value),
                   child: Container(
-                    width: isTablet ? 140 : 120,
-                    height: isTablet ? 140 : 120,
+                    width: isTablet ? 100 : 80,
+                    height: isTablet ? 100 : 80,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [_primaryRed, _purpleAccent, _tealAccent],
@@ -642,26 +856,26 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                       boxShadow: [
                         BoxShadow(
                           color: _primaryRed.withOpacity(0.3),
-                          blurRadius: 30,
-                          spreadRadius: 3,
+                          blurRadius: 20,
+                          spreadRadius: 2,
                         ),
                       ],
                     ),
                     child: Center(
                       child: Container(
-                        width: isTablet ? 110 : 90,
-                        height: isTablet ? 110 : 90,
+                        width: isTablet ? 80 : 60,
+                        height: isTablet ? 80 : 60,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
                           child: SizedBox(
-                            width: isTablet ? 60 : 50,
-                            height: isTablet ? 60 : 50,
+                            width: isTablet ? 40 : 30,
+                            height: isTablet ? 40 : 30,
                             child: CircularProgressIndicator(
                               color: _primaryRed,
-                              strokeWidth: 4,
+                              strokeWidth: 3,
                             ),
                           ),
                         ),
@@ -671,7 +885,7 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                 );
               },
             ),
-            SizedBox(height: isTablet ? 40 : 30),
+            SizedBox(height: isTablet ? 24 : 16),
             ShaderMask(
               shaderCallback: (bounds) => LinearGradient(
                 colors: [_primaryRed, _purpleAccent],
@@ -681,38 +895,47 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
               child: Text(
                 'Loading Clubs...',
                 style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 30 : 26,
+                  fontSize: isTablet ? 24 : 20,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
                 ),
               ),
             ),
-            SizedBox(height: isTablet ? 16 : 12),
-            ScaleTransition(
-              scale: _pulseAnimation,
-              child: Text(
-                'Finding the best sports clubs for you 🏃',
-                style: GoogleFonts.inter(
-                  fontSize: isTablet ? 18 : 16,
-                  color: _textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+            SizedBox(height: isTablet ? 12 : 8),
+            shouldAnimate
+                ? ScaleTransition(
+                    scale: _pulseAnimation,
+                    child: Text(
+                      'Finding sports clubs for you 🏃',
+                      style: GoogleFonts.inter(
+                        fontSize: isTablet ? 15 : 13,
+                        color: _textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  )
+                : Text(
+                    'Finding sports clubs for you 🏃',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 15 : 13,
+                      color: _textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(LocationFilterProvider locationProvider) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     
     return SliverFillRemaining(
       child: Center(
         child: Padding(
-          padding: EdgeInsets.all(isTablet ? 40 : 30),
+          padding: EdgeInsets.all(isTablet ? 30 : 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -725,7 +948,7 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                   return Transform.scale(
                     scale: 0.85 + (0.15 * value),
                     child: Container(
-                      padding: EdgeInsets.all(isTablet ? 32 : 28),
+                      padding: EdgeInsets.all(isTablet ? 24 : 20),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [_lightRed, _primaryRed.withOpacity(0.3)],
@@ -736,14 +959,14 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                       ),
                       child: Icon(
                         Icons.sports_rounded,
-                        size: isTablet ? 80 : 70,
+                        size: isTablet ? 60 : 50,
                         color: _primaryRed,
                       ),
                     ),
                   );
                 },
               ),
-              SizedBox(height: isTablet ? 40 : 30),
+              SizedBox(height: isTablet ? 24 : 16),
               ShaderMask(
                 shaderCallback: (bounds) => LinearGradient(
                   colors: [_primaryRed, _purpleAccent],
@@ -751,43 +974,75 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                   end: Alignment.bottomRight,
                 ).createShader(bounds),
                 child: Text(
-                  _selectedSportType != null 
-                      ? 'No ${_selectedSportType!.displayName} Clubs Found'
-                      : 'No Clubs Found',
+                  locationProvider.isFilterActive
+                      ? 'No Clubs in ${locationProvider.selectedState}'
+                      : _selectedSportType != null 
+                          ? 'No ${_selectedSportType!.displayName} Clubs'
+                          : 'No Clubs Found',
                   style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 30 : 26,
+                    fontSize: isTablet ? 24 : 20,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                 ),
               ),
-              SizedBox(height: isTablet ? 16 : 12),
+              SizedBox(height: isTablet ? 12 : 8),
               Text(
-                _selectedSportType != null 
-                    ? 'No verified clubs found for ${_selectedSportType!.displayName}\nCheck back later or add your own! 🏏'
-                    : 'Check back later for verified clubs\nor add your own sports club! 🏏',
+                locationProvider.isFilterActive
+                    ? 'Try clearing the location filter'
+                    : _selectedSportType != null 
+                        ? 'No clubs for ${_selectedSportType!.displayName} yet'
+                        : 'Check back later for clubs',
                 style: GoogleFonts.inter(
-                  fontSize: isTablet ? 18 : 16,
+                  fontSize: isTablet ? 15 : 13,
                   color: _textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: isTablet ? 32 : 24),
-              ElevatedButton.icon(
-                onPressed: () => _showAddClubDialog(context),
-                icon: Icon(Icons.add_rounded),
-                label: Text('Add Sports Club'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryRed,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              if (locationProvider.isFilterActive) ...[
+                SizedBox(height: isTablet ? 20 : 16),
+                GestureDetector(
+                  onTap: () {
+                    locationProvider.clearLocationFilter();
+                    final educationProvider = Provider.of<EducationProvider>(context, listen: false);
+                    educationProvider.clearFilter(
+                      EducationCategory.localSports,
+                      'state',
+                    );
+                    educationProvider.loadSportsClubs();
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isTablet ? 24 : 20,
+                      vertical: isTablet ? 12 : 10,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_primaryRed, _purpleAccent],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.clear_rounded, color: Colors.white, size: isTablet ? 20 : 18),
+                        SizedBox(width: isTablet ? 8 : 6),
+                        Text(
+                          'Clear Filter',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  elevation: 8,
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -795,45 +1050,48 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
     );
   }
 
-  Widget _buildPremiumClubCard(SportsClub club, UserModel? user, int index) {
+  // UPDATED: Now uses club's own user info fields instead of separate UserModel
+  Widget _buildPremiumClubCard(SportsClub club, int index) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     final isFull = club.currentMembers >= club.maxMembers;
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: Duration(milliseconds: 500 + (index * 100)),
       curve: Curves.elasticOut,
       builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
         return Transform.scale(
-          scale: 0.92 + (0.08 * value),
+          scale: 0.92 + (0.08 * clampedValue),
           child: Opacity(
-            opacity: value,
+            opacity: clampedValue,
             child: Container(
               margin: EdgeInsets.symmetric(
-                horizontal: isTablet ? 20 : 14,
-                vertical: 8,
+                horizontal: isTablet ? 16 : 12,
+                vertical: 6,
               ),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(40),
+                borderRadius: BorderRadius.circular(30),
                 boxShadow: [
                   BoxShadow(
-                    color: _primaryRed.withOpacity(0.25),
-                    blurRadius: 30,
-                    offset: Offset(0, 16),
-                    spreadRadius: -4,
+                    color: _primaryRed.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                    spreadRadius: -2,
                   ),
                   BoxShadow(
-                    color: _goldAccent.withOpacity(0.15),
-                    blurRadius: 40,
-                    offset: Offset(0, -8),
+                    color: _goldAccent.withOpacity(0.1),
+                    blurRadius: 25,
+                    offset: Offset(0, -4),
                   ),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(40),
+                borderRadius: BorderRadius.circular(30),
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                  filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -849,29 +1107,37 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () => _showClubDetails(club, user),
-                        borderRadius: BorderRadius.circular(40),
+                        onTap: () {
+                          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                          if (authProvider.isGuestMode) {
+                            _showLoginRequiredDialog(context, 'View Club Details');
+                          } else {
+                            _showClubDetails(club);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(30),
                         splashColor: _goldAccent.withOpacity(0.15),
                         highlightColor: Colors.transparent,
                         child: Padding(
-                          padding: EdgeInsets.all(isTablet ? 24 : 20),
+                          padding: EdgeInsets.all(isTablet ? 20 : 16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Header with User Profile and Name
+                              // Header with User Profile and Name - Using club's stored user info
                               Row(
                                 children: [
-                                  // User Profile Image
+                                  // User Profile Image from club.postedByProfileImageBase64
                                   TweenAnimationBuilder<double>(
                                     tween: Tween(begin: 0, end: 1),
                                     duration: Duration(milliseconds: 700 + (index * 80)),
                                     curve: Curves.elasticOut,
                                     builder: (context, value, child) {
+                                      final nestedClampedValue = value.clamp(0.0, 1.0);
                                       return Transform.scale(
-                                        scale: 0.85 + (0.15 * value),
+                                        scale: 0.85 + (0.15 * nestedClampedValue),
                                         child: Container(
-                                          width: isTablet ? 60 : 50,
-                                          height: isTablet ? 60 : 50,
+                                          width: isTablet ? 50 : 40,
+                                          height: isTablet ? 50 : 40,
                                           decoration: BoxDecoration(
                                             shape: BoxShape.circle,
                                             gradient: LinearGradient(
@@ -881,25 +1147,20 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                             ),
                                             border: Border.all(
                                               color: Colors.white,
-                                              width: 2.5,
+                                              width: 2,
                                             ),
                                             boxShadow: [
                                               BoxShadow(
                                                 color: _goldAccent.withOpacity(0.4),
-                                                blurRadius: 15,
-                                                spreadRadius: 2,
+                                                blurRadius: 12,
+                                                spreadRadius: 1,
                                               ),
                                             ],
                                           ),
                                           child: Padding(
                                             padding: EdgeInsets.all(2),
                                             child: ClipOval(
-                                              child: AnimatedSwitcher(
-                                                duration: Duration(milliseconds: 300),
-                                                child: user != null
-                                                    ? _buildUserProfileImage(user)
-                                                    : _buildLoadingProfileImage(),
-                                              ),
+                                              child: _buildClubPosterImage(club),
                                             ),
                                           ),
                                         ),
@@ -907,65 +1168,35 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                     },
                                   ),
                                   
-                                  SizedBox(width: 14),
+                                  SizedBox(width: 12),
                                   
                                   // User Info
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        AnimatedSwitcher(
-                                          duration: Duration(milliseconds: 300),
-                                          child: user != null
-                                              ? ShaderMask(
-                                                  key: ValueKey(user.fullName),
-                                                  shaderCallback: (bounds) => LinearGradient(
-                                                    colors: [_primaryRed, _purpleAccent],
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                  ).createShader(bounds),
-                                                  child: Text(
-                                                    user.fullName,
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: isTablet ? 18 : 16,
-                                                      fontWeight: FontWeight.w800,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                )
-                                              : Container(
-                                                  width: 120,
-                                                  height: 20,
-                                                  decoration: BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                      colors: [
-                                                        Colors.grey[300]!,
-                                                        Colors.grey[200]!,
-                                                        Colors.grey[300]!,
-                                                      ],
-                                                      begin: Alignment.centerLeft,
-                                                      end: Alignment.centerRight,
-                                                    ),
-                                                    borderRadius: BorderRadius.circular(10),
-                                                  ),
-                                                  child: Center(
-                                                    child: SizedBox(
-                                                      width: 80,
-                                                      height: 12,
-                                                      child: LinearProgressIndicator(
-                                                        backgroundColor: Colors.transparent,
-                                                        valueColor: AlwaysStoppedAnimation<Color>(_primaryRed.withOpacity(0.3)),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
+                                        // User Name from club.postedByName
+                                        ShaderMask(
+                                          shaderCallback: (bounds) => LinearGradient(
+                                            colors: [_primaryRed, _purpleAccent],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ).createShader(bounds),
+                                          child: Text(
+                                            club.postedByName ?? 'Club Owner',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: isTablet ? 16 : 14,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white,
+                                            ),
+                                          ),
                                         ),
                                         SizedBox(height: 2),
                                         Text(
-                                          user != null ? 'added this club' : 'Loading...',
+                                          'added this club',
                                           style: TextStyle(
-                                            fontSize: isTablet ? 13 : 12,
-                                            color: user != null ? _textSecondary : Colors.grey,
+                                            fontSize: isTablet ? 12 : 11,
+                                            color: _textSecondary,
                                             fontStyle: FontStyle.italic,
                                           ),
                                         ),
@@ -975,7 +1206,7 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                   
                                   // Verified Badge
                                   Container(
-                                    padding: EdgeInsets.all(8),
+                                    padding: EdgeInsets.all(6),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: [_successGreen, _tealAccent],
@@ -986,21 +1217,21 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                       boxShadow: [
                                         BoxShadow(
                                           color: _successGreen.withOpacity(0.4),
-                                          blurRadius: 12,
-                                          spreadRadius: 2,
+                                          blurRadius: 10,
+                                          spreadRadius: 1,
                                         ),
                                       ],
                                     ),
                                     child: Icon(
                                       Icons.verified_rounded, 
                                       color: Colors.white, 
-                                      size: isTablet ? 18 : 16,
+                                      size: isTablet ? 16 : 14,
                                     ),
                                   ),
                                 ],
                               ),
                               
-                              SizedBox(height: 20),
+                              SizedBox(height: 16),
                               
                               // Club Name and Sport
                               Column(
@@ -1015,7 +1246,7 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                     child: Text(
                                       club.clubName,
                                       style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 24 : 22,
+                                        fontSize: isTablet ? 20 : 18,
                                         fontWeight: FontWeight.w900,
                                         color: Colors.white,
                                         letterSpacing: -0.5,
@@ -1024,19 +1255,19 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  SizedBox(height: 8),
+                                  SizedBox(height: 6),
                                   Row(
                                     children: [
                                       Icon(
                                         _getSportIcon(club.sportType),
                                         color: _primaryRed,
-                                        size: isTablet ? 20 : 18,
+                                        size: isTablet ? 18 : 16,
                                       ),
-                                      SizedBox(width: 6),
+                                      SizedBox(width: 4),
                                       Text(
                                         club.sportType.displayName,
                                         style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 16 : 14,
+                                          fontSize: isTablet ? 14 : 12,
                                           fontWeight: FontWeight.w600,
                                           color: _primaryRed,
                                         ),
@@ -1046,109 +1277,36 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                 ],
                               ),
                               
-                              SizedBox(height: 16),
+                              SizedBox(height: 14),
                               
                               // Tags Row
                               Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
+                                spacing: 6,
+                                runSpacing: 6,
                                 children: [
                                   // Fee Tag
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isTablet ? 14 : 12,
-                                      vertical: isTablet ? 8 : 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [_successGreen.withOpacity(0.1), _successGreen.withOpacity(0.05)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(25),
-                                      border: Border.all(color: _successGreen.withOpacity(0.3)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.attach_money_rounded, color: _successGreen, size: isTablet ? 16 : 14),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          club.formattedFee,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 14 : 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: _successGreen,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                  _buildPremiumTag(
+                                    icon: Icons.attach_money_rounded,
+                                    text: club.formattedFee,
+                                    color: _successGreen,
+                                    isTablet: isTablet,
                                   ),
                                   
                                   // Membership Status Tag
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isTablet ? 14 : 12,
-                                      vertical: isTablet ? 8 : 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: isFull 
-                                            ? [Colors.red.withOpacity(0.1), Colors.red.withOpacity(0.05)]
-                                            : [_infoBlue.withOpacity(0.1), _infoBlue.withOpacity(0.05)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(25),
-                                      border: Border.all(
-                                        color: isFull ? Colors.red.withOpacity(0.3) : _infoBlue.withOpacity(0.3),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          isFull ? Icons.warning_rounded : Icons.people_rounded,
-                                          color: isFull ? Colors.red : _infoBlue,
-                                          size: isTablet ? 16 : 14,
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          club.membershipStatus,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 14 : 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: isFull ? Colors.red : _infoBlue,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                  _buildPremiumTag(
+                                    icon: isFull ? Icons.warning_rounded : Icons.people_rounded,
+                                    text: club.membershipStatus,
+                                    color: isFull ? Colors.red : _infoBlue,
+                                    isTablet: isTablet,
                                   ),
                                   
                                   // First Age Group Tag
                                   if (club.ageGroups.isNotEmpty)
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: isTablet ? 14 : 12,
-                                        vertical: isTablet ? 8 : 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [_orangeAccent.withOpacity(0.1), _orangeAccent.withOpacity(0.05)],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                        borderRadius: BorderRadius.circular(25),
-                                        border: Border.all(color: _orangeAccent.withOpacity(0.3)),
-                                      ),
-                                      child: Text(
-                                        club.ageGroups[0],
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 14 : 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: _orangeAccent,
-                                        ),
-                                      ),
+                                    _buildPremiumTag(
+                                      icon: Icons.cake_rounded,
+                                      text: club.ageGroups[0],
+                                      color: _orangeAccent,
+                                      isTablet: isTablet,
                                     ),
                                 ],
                               ),
@@ -1159,35 +1317,36 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                   child: Text(
                                     '+${club.ageGroups.length - 1} more age groups',
                                     style: GoogleFonts.inter(
-                                      fontSize: isTablet ? 13 : 11,
+                                      fontSize: isTablet ? 12 : 10,
                                       color: _textSecondary,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ),
                               
-                              SizedBox(height: 16),
+                              SizedBox(height: 14),
                               
-                              // Location and Members Row
+                              // Location, Distance, and Members Row
                               Row(
                                 children: [
                                   // Location
                                   Expanded(
+                                    flex: 2,
                                     child: Row(
                                       children: [
                                         Container(
-                                          padding: EdgeInsets.all(isTablet ? 8 : 6),
+                                          padding: EdgeInsets.all(isTablet ? 6 : 5),
                                           decoration: BoxDecoration(
                                             color: _primaryRed.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(8),
                                           ),
                                           child: Icon(
                                             Icons.location_on_rounded,
                                             color: _primaryRed,
-                                            size: isTablet ? 20 : 18,
+                                            size: isTablet ? 18 : 16,
                                           ),
                                         ),
-                                        SizedBox(width: isTablet ? 10 : 8),
+                                        SizedBox(width: isTablet ? 8 : 6),
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1195,7 +1354,7 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                               Text(
                                                 'Location',
                                                 style: GoogleFonts.inter(
-                                                  fontSize: isTablet ? 12 : 11,
+                                                  fontSize: isTablet ? 11 : 10,
                                                   color: _textSecondary,
                                                   fontWeight: FontWeight.w500,
                                                 ),
@@ -1203,7 +1362,7 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                               Text(
                                                 '${club.city}, ${club.state}',
                                                 style: GoogleFonts.poppins(
-                                                  fontSize: isTablet ? 14 : 13,
+                                                  fontSize: isTablet ? 13 : 12,
                                                   fontWeight: FontWeight.w600,
                                                   color: _textPrimary,
                                                 ),
@@ -1217,11 +1376,23 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                     ),
                                   ),
                                   
+                                  // Distance Badge
+                                  if (club.latitude != null && club.longitude != null)
+                                    Padding(
+                                      padding: EdgeInsets.only(right: isTablet ? 10 : 8),
+                                      child: DistanceBadge(
+                                        latitude: club.latitude!,
+                                        longitude: club.longitude!,
+                                        isTablet: isTablet,
+                                  //      backgroundColor: _primaryRed,
+                                      ),
+                                    ),
+                                  
                                   // Members Count
                                   Container(
                                     padding: EdgeInsets.symmetric(
-                                      horizontal: isTablet ? 16 : 12,
-                                      vertical: isTablet ? 10 : 8,
+                                      horizontal: isTablet ? 12 : 10,
+                                      vertical: isTablet ? 8 : 6,
                                     ),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
@@ -1231,7 +1402,7 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(14),
                                       border: Border.all(
                                         color: isFull ? Colors.red.withOpacity(0.3) : _infoBlue.withOpacity(0.3),
                                       ),
@@ -1242,13 +1413,13 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                         Icon(
                                           Icons.people_rounded,
                                           color: isFull ? Colors.red : _infoBlue,
-                                          size: isTablet ? 20 : 18,
+                                          size: isTablet ? 18 : 16,
                                         ),
-                                        SizedBox(width: 6),
+                                        SizedBox(width: 4),
                                         Text(
                                           '${club.currentMembers}/${club.maxMembers}',
                                           style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 16 : 14,
+                                            fontSize: isTablet ? 14 : 12,
                                             fontWeight: FontWeight.w700,
                                             color: isFull ? Colors.red : _infoBlue,
                                           ),
@@ -1259,7 +1430,7 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                 ],
                               ),
                               
-                              SizedBox(height: 20),
+                              SizedBox(height: 16),
                               
                               // View Details Button
                               TweenAnimationBuilder<double>(
@@ -1267,14 +1438,22 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                 duration: Duration(milliseconds: 800),
                                 curve: Curves.elasticOut,
                                 builder: (context, value, child) {
+                                  final buttonClampedValue = value.clamp(0.0, 1.0);
                                   return Transform.scale(
-                                    scale: 0.92 + (0.08 * value),
+                                    scale: 0.92 + (0.08 * buttonClampedValue),
                                     child: GestureDetector(
-                                      onTap: () => _showClubDetails(club, user),
+                                      onTap: () {
+                                        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                                        if (authProvider.isGuestMode) {
+                                          _showLoginRequiredDialog(context, 'View Club Details');
+                                        } else {
+                                          _showClubDetails(club);
+                                        }
+                                      },
                                       child: Container(
                                         width: double.infinity,
                                         padding: EdgeInsets.symmetric(
-                                          vertical: isTablet ? 18 : 16,
+                                          vertical: isTablet ? 14 : 12,
                                         ),
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(
@@ -1282,12 +1461,12 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                             begin: Alignment.centerLeft,
                                             end: Alignment.centerRight,
                                           ),
-                                          borderRadius: BorderRadius.circular(30),
+                                          borderRadius: BorderRadius.circular(24),
                                           boxShadow: [
                                             BoxShadow(
                                               color: _primaryRed.withOpacity(0.3),
-                                              blurRadius: 18,
-                                              offset: Offset(0, 8),
+                                              blurRadius: 14,
+                                              offset: Offset(0, 5),
                                             ),
                                           ],
                                         ),
@@ -1297,16 +1476,16 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
                                             Text(
                                               'View Details',
                                               style: GoogleFonts.poppins(
-                                                color: Colors.white,
-                                                fontSize: isTablet ? 20 : 18,
+                                              color: Colors.white,
+                                                fontSize: isTablet ? 16 : 14,
                                                 fontWeight: FontWeight.w700,
                                               ),
                                             ),
-                                            SizedBox(width: 12),
+                                            SizedBox(width: 8),
                                             Icon(
                                               Icons.arrow_forward_rounded,
                                               color: Colors.white,
-                                              size: isTablet ? 22 : 20,
+                                              size: isTablet ? 18 : 16,
                                             ),
                                           ],
                                         ),
@@ -1330,14 +1509,11 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
     );
   }
 
-  Widget _buildUserProfileImage(UserModel? user) {
-    if (user == null) {
-      return _buildLoadingProfileImage();
-    }
-    
-    if (user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty) {
+  // NEW: Build poster image from club.postedByProfileImageBase64
+  Widget _buildClubPosterImage(SportsClub club) {
+    if (club.postedByProfileImageBase64 != null && club.postedByProfileImageBase64!.isNotEmpty) {
       try {
-        String base64String = user.profileImageUrl!;
+        String base64String = club.postedByProfileImageBase64!;
         
         if (base64String.contains('base64,')) {
           base64String = base64String.split('base64,').last;
@@ -1364,22 +1540,41 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
     return _buildDefaultProfileImage();
   }
 
-  Widget _buildLoadingProfileImage() {
+  // Helper method for premium tags
+  Widget _buildPremiumTag({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required bool isTablet,
+  }) {
     return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 10 : 8,
+        vertical: isTablet ? 5 : 4,
+      ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.grey[300]!, Colors.grey[100]!],
+          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
-      child: Center(
-        child: SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(_primaryRed),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: isTablet ? 14 : 12),
+          SizedBox(width: 4),
+          Text(
+            text,
+            style: GoogleFonts.poppins(
+              fontSize: isTablet ? 12 : 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1428,14 +1623,13 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
     }
   }
 
-  void _showClubDetails(SportsClub club, UserModel? user) {
+  void _showClubDetails(SportsClub club) {
     HapticFeedback.mediumImpact();
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => SportsClubDetailsScreen(
           club: club,
-          user: user,
           scrollController: ScrollController(),
           primaryRed: _primaryRed,
           successGreen: _successGreen,
@@ -1526,7 +1720,7 @@ class PremiumAddClubDialog extends StatefulWidget {
   _PremiumAddClubDialogState createState() => _PremiumAddClubDialogState();
 }
 
-class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with TickerProviderStateMixin {
+class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with TickerProviderStateMixin, WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _clubNameController = TextEditingController();
   final TextEditingController _coachNameController = TextEditingController();
@@ -1554,10 +1748,20 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
   List<String> _amenities = [];
   List<String> _tournaments = [];
 
+  final Color _textPrimary = const Color(0xFF1A2B3C);
+
+  // Location picking
+  double? _latitude;
+  double? _longitude;
+  String? _fullAddress;
+
   final List<String> _states = CommunityStates.states;
   
   late TabController _tabController;
   late AnimationController _animationController;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
 
   // Track validation errors
   String? _validationError;
@@ -1565,6 +1769,10 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _tabController = TabController(length: 3, vsync: this);
     _animationController = AnimationController(
       vsync: this,
@@ -1572,9 +1780,21 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
     );
     _animationController.forward();
   }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+  }
 
   @override
   void dispose() {
+    print('🗑️ PremiumAddClubDialog disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
     _clubNameController.dispose();
     _coachNameController.dispose();
     _emailController.dispose();
@@ -1594,6 +1814,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
     _tournamentController.dispose();
     _tabController.dispose();
     _animationController.dispose();
+    
     super.dispose();
   }
 
@@ -1872,43 +2093,114 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
           ),
           SizedBox(height: isTablet ? 16 : 12),
           
-          _buildPremiumTextField(
-            controller: _addressController,
-            label: 'Street Address *',
-            icon: Icons.home_rounded,
-            isRequired: true,
-            isTablet: isTablet,
-          ),
+          // Location Picker with Map
+          _buildLocationPickerField(isTablet),
           SizedBox(height: isTablet ? 16 : 12),
-          
-          _buildPremiumDropdown<String>(
-            value: _selectedState,
-            label: 'State *',
-            icon: Icons.map_rounded,
-            isRequired: true,
-            isTablet: isTablet,
-            items: _states.map((state) {
-              return DropdownMenuItem<String>(
-                value: state,
-                child: Text(state, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-              );
-            }).toList(),
-            onChanged: (String? newValue) {
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationPickerField(bool isTablet) {
+    return GestureDetector(
+      onTap: () async {
+        final result = await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => OSMLocationPicker(
+            initialLatitude: _latitude,
+            initialLongitude: _longitude,
+            initialAddress: _fullAddress,
+            initialState: _selectedState,
+            initialCity: _cityController.text.isNotEmpty ? _cityController.text : null,
+            onLocationSelected: (lat, lng, address, state, city) {
               setState(() {
-                _selectedState = newValue;
+                _latitude = lat;
+                _longitude = lng;
+                _fullAddress = address;
+                _selectedState = state;
+                _addressController.text = address;
+                if (city != null) {
+                  _cityController.text = city;
+                }
               });
             },
           ),
-          SizedBox(height: isTablet ? 16 : 12),
-          
-          _buildPremiumTextField(
-            controller: _cityController,
-            label: 'City *',
-            icon: Icons.location_city_rounded,
-            isRequired: true,
-            isTablet: isTablet,
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.all(isTablet ? 16 : 14),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: _latitude != null ? widget.primaryRed : Colors.grey[300]!,
+            width: _latitude != null ? 2 : 1,
           ),
-        ],
+          borderRadius: BorderRadius.circular(16),
+          color: _latitude != null ? Colors.white.withOpacity(0.9) : Colors.white,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(isTablet ? 10 : 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [widget.primaryRed, widget.purpleAccent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                _latitude != null ? Icons.location_on : Icons.add_location,
+                color: Colors.white,
+                size: isTablet ? 22 : 18,
+              ),
+            ),
+            SizedBox(width: isTablet ? 16 : 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Location *',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 14 : 12,
+                      fontWeight: FontWeight.w600,
+                      color: widget.primaryRed,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    _fullAddress ?? 'Tap to select location on map',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 14 : 12,
+                      color: _fullAddress != null ? _textPrimary : Colors.grey[600],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (_latitude != null && _longitude != null) ...[
+                    SizedBox(height: 4),
+                    Text(
+                      'Lat: ${_latitude!.toStringAsFixed(4)}, Lng: ${_longitude!.toStringAsFixed(4)}',
+                      style: GoogleFonts.inter(
+                        fontSize: isTablet ? 11 : 10,
+                        color: widget.primaryRed,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: widget.primaryRed,
+              size: isTablet ? 16 : 14,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2524,12 +2816,12 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
       setState(() => _validationError = 'Please enter a valid phone number (at least 10 digits)');
       return false;
     }
-    if (_addressController.text.isEmpty) {
-      setState(() => _validationError = 'Please enter address');
+    if (_latitude == null || _longitude == null) {
+      setState(() => _validationError = 'Please select a location on the map');
       return false;
     }
     if (_selectedState == null) {
-      setState(() => _validationError = 'Please select a state');
+      setState(() => _validationError = 'Location must include a valid state');
       return false;
     }
     if (_cityController.text.isEmpty) {
@@ -2623,6 +2915,12 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
 
     print('📝 Current user: ${currentUser.fullName} (ID: ${currentUser.id})');
 
+    // Get user's profile image
+    String? userProfileImage;
+    if (currentUser.profileImageUrl != null && currentUser.profileImageUrl!.isNotEmpty) {
+      userProfileImage = currentUser.profileImageUrl;
+    }
+
     final provider = Provider.of<EducationProvider>(context, listen: false);
 
     final newClub = SportsClub(
@@ -2631,7 +2929,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
       coachName: _coachNameController.text.isNotEmpty ? _coachNameController.text : null,
       email: _emailController.text,
       phone: _phoneController.text,
-      address: _addressController.text,
+      address: _fullAddress ?? _addressController.text,
       state: _selectedState!,
       city: _cityController.text,
       venue: _venueController.text,
@@ -2645,6 +2943,17 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
       amenities: _amenities,
       tournaments: _tournaments,
       maxMembers: int.tryParse(_maxMembersController.text) ?? 50,
+      
+      // Location coordinates
+      latitude: _latitude,
+      longitude: _longitude,
+      
+      // Store user info directly in the club document
+      postedByUserId: currentUser.id,
+      postedByName: currentUser.fullName,
+      postedByEmail: currentUser.email,
+      postedByProfileImageBase64: userProfileImage,
+      
       createdBy: currentUser.id,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -2655,6 +2964,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
     );
 
     print('📝 Creating sports club with createdBy: ${newClub.createdBy} (user ID)');
+    print('📍 Location: ${_latitude}, ${_longitude} in ${_selectedState}');
     print('📝 Club will be hidden until admin verification (isVerified: false)');
 
     // Show loading dialog
@@ -2697,18 +3007,24 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
     }
     
     if (success) {
-      Navigator.pop(context); 
-      _showSuccessSnackBar('Sports club added successfully! Pending admin approval. 🏆');
+      if (mounted) {
+        Navigator.pop(context); 
+        _showSuccessSnackBar('Sports club added successfully! Pending admin approval. 🏆');
+      }
       
       if (widget.onClubAdded != null) {
         widget.onClubAdded!();
       }
     } else {
-      setState(() => _validationError = 'Failed to add sports club. Please try again.');
+      if (mounted) {
+        setState(() => _validationError = 'Failed to add sports club. Please try again.');
+      }
     }
   }
 
   void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(

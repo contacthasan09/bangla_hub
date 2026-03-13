@@ -22,7 +22,8 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -62,11 +63,20 @@ class _RegisterScreenState extends State<RegisterScreen>
   // Form focus nodes
   final List<FocusNode> _focusNodes = List.generate(10, (_) => FocusNode());
   bool _isFormValid = false;
-  bool _isTermsAccepted = false ;
+  bool _isTermsAccepted = false;
+  
+  // Debounce timer for form validation
+  Timer? _validationDebounce;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
 
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
     
     // Initialize animations
     _animationController = AnimationController(
@@ -107,16 +117,32 @@ class _RegisterScreenState extends State<RegisterScreen>
     
     _animationController.forward();
     
-    // Listen to form changes for validation animation
-    _firstNameController.addListener(_validateForm);
-    _lastNameController.addListener(_validateForm);
-    _emailController.addListener(_validateForm);
-    _phoneController.addListener(_validateForm);
-    _passwordController.addListener(_validateForm);
-    _confirmPasswordController.addListener(_validateForm);
+    // Listen to form changes for validation animation (with debounce)
+    _firstNameController.addListener(_debouncedValidateForm);
+    _lastNameController.addListener(_debouncedValidateForm);
+    _emailController.addListener(_debouncedValidateForm);
+    _phoneController.addListener(_debouncedValidateForm);
+    _passwordController.addListener(_debouncedValidateForm);
+    _confirmPasswordController.addListener(_debouncedValidateForm);
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+  }
+  
+  void _debouncedValidateForm() {
+    _validationDebounce?.cancel();
+    _validationDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _validateForm();
+      }
+    });
   }
 
-/*  void _validateForm() {
+  void _validateForm() {
     final isValid = _firstNameController.text.isNotEmpty &&
         _lastNameController.text.isNotEmpty &&
         _emailController.text.isNotEmpty &&
@@ -125,33 +151,15 @@ class _RegisterScreenState extends State<RegisterScreen>
         _passwordController.text.length >= 6 &&
         _passwordController.text == _confirmPasswordController.text &&
         _selectedCountry != null &&
-        _selectedLocation != null;
+        _selectedLocation != null &&
+        _isTermsAccepted;
     
     if (_isFormValid != isValid) {
       setState(() {
         _isFormValid = isValid;
       });
     }
-  }   */
-
- void _validateForm() {
-  final isValid = _firstNameController.text.isNotEmpty &&
-      _lastNameController.text.isNotEmpty &&
-      _emailController.text.isNotEmpty &&
-      RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(_emailController.text) &&
-      _phoneController.text.isNotEmpty &&
-      _passwordController.text.length >= 6 &&
-      _passwordController.text == _confirmPasswordController.text &&
-      _selectedCountry != null &&
-      _selectedLocation != null &&
-      _isTermsAccepted; // Add checkbox validation here
-  
-  if (_isFormValid != isValid) {
-    setState(() {
-      _isFormValid = isValid;
-    });
   }
-}
 
   // Toggle terms checkbox
   void _toggleTermsAccepted() {
@@ -159,6 +167,35 @@ class _RegisterScreenState extends State<RegisterScreen>
       _isTermsAccepted = !_isTermsAccepted;
       _validateForm(); // Re-validate form when checkbox changes
     });
+  }
+
+  @override
+  void dispose() {
+    print('🗑️ RegisterScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // ✅ Cancel debounce timer
+    _validationDebounce?.cancel();
+    
+    // ✅ Dispose animation controller
+    _animationController.dispose();
+    
+    // ✅ Dispose all focus nodes
+    for (var node in _focusNodes) {
+      node.dispose();
+    }
+    
+    // ✅ Dispose all text controllers
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _phoneController.dispose();
+    
+    super.dispose();
   }
 
   void _showCountryPickerForPhone() {
@@ -187,11 +224,13 @@ class _RegisterScreenState extends State<RegisterScreen>
         ),
       ),
       onSelect: (Country country) {
-        setState(() {
-          _selectedCountryCode = '+${country.phoneCode}';
-          _selectedCountry = country;
-        });
-        _validateForm();
+        if (mounted) {
+          setState(() {
+            _selectedCountryCode = '+${country.phoneCode}';
+            _selectedCountry = country;
+          });
+          _validateForm();
+        }
       },
     );
   }
@@ -222,21 +261,6 @@ class _RegisterScreenState extends State<RegisterScreen>
   }
 
   @override
-  void dispose() {
-    _animationController.dispose();
-    for (var node in _focusNodes) {
-      node.dispose();
-    }
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final screenWidth = MediaQuery.of(context).size.width;
@@ -261,7 +285,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             ),
             child: SafeArea(
               child: SingleChildScrollView(
-                physics: BouncingScrollPhysics(),
+                physics: const BouncingScrollPhysics(),
                 child: Container(
                   padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
                   child: Opacity(
@@ -273,10 +297,6 @@ class _RegisterScreenState extends State<RegisterScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Back Button
-                        //    _buildLuxuryBackButton(),
-                        //    SizedBox(height: isSmallScreen ? 20 : 30),
-                            
                             // Premium Welcome Section
                             _buildPremiumWelcomeSection(),
                             SizedBox(height: isSmallScreen ? 30 : 40),
@@ -302,23 +322,12 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
-  Widget _buildLuxuryBackButton() {
-    return GestureDetector(
-      onTap: () => Navigator.pop(context),
-      child: Icon(
-        Icons.arrow_back_ios_new_rounded,
-        color: Colors.white,
-        size: 20,
-      ),
-    );
-  }
-
   Widget _buildPremiumWelcomeSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Bangladeshi Flag Inspired Logo
-  /*      Center(
+        Center(
           child: Container(
             width: 100,
             height: 100,
@@ -347,100 +356,44 @@ class _RegisterScreenState extends State<RegisterScreen>
                 ),
               ],
             ),
-            child: Center(
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withOpacity(0.5),
-                      blurRadius: 15,
-                      spreadRadius: 2,
+            child: ClipOval(
+              child: Image.asset(
+                'assets/logo/logo.png',
+                fit: BoxFit.cover,
+                width: 100,
+                height: 100,
+                errorBuilder: (context, error, stackTrace) {
+                  print('Error loading logo: $error');
+                  // Fallback with the original icon design if image fails to load
+                  return Center(
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.5),
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.person_add_alt_1_rounded,
+                        size: 24,
+                        color: _bangladeshRed,
+                      ),
                     ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.person_add_alt_1_rounded,
-                  size: 24,
-                  color: _bangladeshRed,
-                ),
+                  );
+                },
               ),
             ),
           ),
-        ), */
-
-
-
-Center(
-  child: Container(
-    width: 100,
-    height: 100,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: RadialGradient(
-        colors: [
-          _bangladeshRed,
-          _bangladeshRed.withOpacity(0.8),
-          _bangladeshGreen,
-        ],
-        stops: [0.0, 0.7, 1.0],
-        center: Alignment.center,
-        radius: 0.8,
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: _bangladeshRed.withOpacity(0.4),
-          blurRadius: 30,
-          spreadRadius: 5,
         ),
-        BoxShadow(
-          color: Colors.black.withOpacity(0.2),
-          blurRadius: 20,
-          offset: Offset(0, 10),
-        ),
-      ],
-    ),
-    child: ClipOval(
-      child: Image.asset(
-        'assets/logo/logo.png',
-        fit: BoxFit.cover,
-        width: 100,
-        height: 100,
-        errorBuilder: (context, error, stackTrace) {
-          print('Error loading logo: $error');
-          // Fallback with the original icon design if image fails to load
-          return Center(
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.white.withOpacity(0.5),
-                    blurRadius: 15,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.person_add_alt_1_rounded,
-                size: 24,
-                color: _bangladeshRed,
-              ),
-            ),
-          );
-        },
-      ),
-    ),
-  ),
-),
 
-        SizedBox(height: 30),
+        const SizedBox(height: 30),
         
         // Welcome Text
         Text(
@@ -453,7 +406,7 @@ Center(
             letterSpacing: 1.1,
           ),
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         Container(
           width: 60,
           height: 4,
@@ -464,10 +417,9 @@ Center(
             borderRadius: BorderRadius.circular(2),
           ),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         Text(
-        //  'Join our healthcare community today',
-          'Be part of the BanglaHub community' ,
+          'Be part of the BanglaHub community',
           style: GoogleFonts.inter(
             fontSize: 13,
             color: Colors.white.withOpacity(0.9),
@@ -510,76 +462,29 @@ Center(
           children: [
             // Profile Picture Section
             _buildLuxuryProfilePicture(),
-            SizedBox(height: 24),
-
-            // Name Fields in Row for larger screens
-        /*    if (!isSmallScreen) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildLuxuryTextField(
-                      controller: _firstNameController,
-                      label: 'First Name',
-                      hintText: 'Enter first name',
-                      prefixIcon: Icons.person_outline_rounded,
-                      focusNode: _focusNodes[0],
-                      textCapitalization: TextCapitalization.words,
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: _buildLuxuryTextField(
-                      controller: _lastNameController,
-                      label: 'Last Name',
-                      hintText: 'Enter last name',
-                      prefixIcon: Icons.person_outline_rounded,
-                      focusNode: _focusNodes[1],
-                      textCapitalization: TextCapitalization.words,
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              // Stacked for small screens
-              _buildLuxuryTextField(
-                controller: _firstNameController,
-                label: 'First Name',
-                hintText: 'Enter first name',
-                prefixIcon: Icons.person_outline_rounded,
-                focusNode: _focusNodes[0],
-                textCapitalization: TextCapitalization.words,
-              ),
-              SizedBox(height: 16),
-              _buildLuxuryTextField(
-                controller: _lastNameController,
-                label: 'Last Name',
-                hintText: 'Enter last name',
-                prefixIcon: Icons.person_outline_rounded,
-                focusNode: _focusNodes[1],
-                textCapitalization: TextCapitalization.words,
-              ),
-            ],   */
+            const SizedBox(height: 24),
 
             // Stacked for small screens
-              _buildLuxuryTextField(
-                controller: _firstNameController,
-                label: 'First Name',
-                hintText: 'Enter first name',
-                prefixIcon: Icons.person_outline_rounded,
-                focusNode: _focusNodes[0],
-                textCapitalization: TextCapitalization.words,
-              ),
-              SizedBox(height: 16),
-              _buildLuxuryTextField(
-                controller: _lastNameController,
-                label: 'Last Name',
-                hintText: 'Enter last name',
-                prefixIcon: Icons.person_outline_rounded,
-                focusNode: _focusNodes[1],
-                textCapitalization: TextCapitalization.words,
-              ),
+            _buildLuxuryTextField(
+              controller: _firstNameController,
+              label: 'First Name',
+              hintText: 'Enter first name',
+              prefixIcon: Icons.person_outline_rounded,
+              focusNode: _focusNodes[0],
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 16),
             
-            SizedBox(height: 16),
+            _buildLuxuryTextField(
+              controller: _lastNameController,
+              label: 'Last Name',
+              hintText: 'Enter last name',
+              prefixIcon: Icons.person_outline_rounded,
+              focusNode: _focusNodes[1],
+              textCapitalization: TextCapitalization.words,
+            ),
+            
+            const SizedBox(height: 16),
             
             // Email Field
             _buildLuxuryTextField(
@@ -590,19 +495,19 @@ Center(
               keyboardType: TextInputType.emailAddress,
               focusNode: _focusNodes[2],
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
             // Phone Number Field
             _buildLuxuryPhoneNumberField(),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
             // Country Picker
             _buildLuxuryCountryPicker(),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
             // Location Picker (City & Country only)
             _buildLuxuryLocationPicker(),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
             // Password Fields
             _buildLuxuryTextField(
@@ -613,7 +518,7 @@ Center(
               obscureText: _obscurePassword,
               suffixIcon: IconButton(
                 icon: AnimatedSwitcher(
-                  duration: Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 300),
                   child: Icon(
                     _obscurePassword 
                         ? Icons.visibility_outlined 
@@ -626,7 +531,7 @@ Center(
               ),
               focusNode: _focusNodes[6],
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             
             _buildLuxuryTextField(
               controller: _confirmPasswordController,
@@ -636,7 +541,7 @@ Center(
               obscureText: _obscureConfirmPassword,
               suffixIcon: IconButton(
                 icon: AnimatedSwitcher(
-                  duration: Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 300),
                   child: Icon(
                     _obscureConfirmPassword 
                         ? Icons.visibility_outlined 
@@ -649,11 +554,11 @@ Center(
               ),
               focusNode: _focusNodes[7],
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
 
             // Terms and Conditions
             _buildLuxuryTermsAndConditions(),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
 
             // Register Button
             _buildLuxuryRegisterButton(isSmallScreen, authProvider),
@@ -765,7 +670,7 @@ Center(
             ),
           ],
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(
           'Profile Picture (Optional)',
           style: GoogleFonts.inter(
@@ -776,9 +681,9 @@ Center(
           ),
         ),
         if (_profileImagePath != null) ...[
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
               color: _bangladeshGreen.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
@@ -795,7 +700,7 @@ Center(
                   size: 12,
                   color: _bangladeshGreen,
                 ),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
                   'Image selected',
                   style: GoogleFonts.inter(
@@ -917,7 +822,7 @@ Center(
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
@@ -953,7 +858,7 @@ Center(
             letterSpacing: 0.3,
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
@@ -978,7 +883,7 @@ Center(
               GestureDetector(
                 onTap: _showCountryPickerForPhone,
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -988,7 +893,7 @@ Center(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.only(
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(16),
                       bottomLeft: Radius.circular(16),
                     ),
@@ -1004,10 +909,10 @@ Center(
                     children: [
                       if (_selectedCountry != null)
                         Padding(
-                          padding: EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.only(right: 8),
                           child: Text(
                             _selectedCountry!.flagEmoji,
-                            style: TextStyle(fontSize: 16),
+                            style: const TextStyle(fontSize: 16),
                           ),
                         ),
                       Text(
@@ -1019,7 +924,7 @@ Center(
                           letterSpacing: 0.5,
                         ),
                       ),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Icon(
                         Icons.arrow_drop_down_rounded,
                         color: _bangladeshGreen,
@@ -1050,7 +955,7 @@ Center(
                       letterSpacing: 0.3,
                     ),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
+                    contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 18,
                     ),
@@ -1101,12 +1006,12 @@ Center(
             letterSpacing: 0.3,
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         InkWell(
           onTap: _showCountryPicker,
           borderRadius: BorderRadius.circular(16),
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
             decoration: BoxDecoration(
               gradient: _selectedCountry != null
                   ? LinearGradient(
@@ -1143,10 +1048,10 @@ Center(
                   color: _selectedCountry != null ? _bangladeshGreen : Colors.grey[600],
                   size: 22,
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: AnimatedSwitcher(
-                    duration: Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 300),
                     child: Text(
                       _selectedCountry != null 
                           ? '${_selectedCountry!.flagEmoji} ${_selectedCountry!.name}'
@@ -1173,11 +1078,11 @@ Center(
           ),
         ),
         if (_selectedCountry == null) ...[
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Row(
             children: [
               Icon(Icons.info_outline, size: 14, color: _bangladeshRed),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Text(
                 'Please select your country',
                 style: GoogleFonts.inter(
@@ -1206,9 +1111,9 @@ Center(
             letterSpacing: 0.3,
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Container(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: _selectedLocation != null
                 ? LinearGradient(
@@ -1249,10 +1154,10 @@ Center(
                         : Colors.grey[600],
                     size: 22,
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: AnimatedSwitcher(
-                      duration: Duration(milliseconds: 300),
+                      duration: const Duration(milliseconds: 300),
                       child: Text(
                         _selectedLocation ?? 'No location selected',
                         key: ValueKey<String>(_selectedLocation ?? 'empty'),
@@ -1271,7 +1176,7 @@ Center(
                   ),
                 ],
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -1284,7 +1189,7 @@ Center(
                       borderRadius: BorderRadius.circular(12),
                       side: BorderSide(color: _bangladeshGreen.withOpacity(0.3)),
                     ),
-                    padding: EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                   ),
                   icon: _isLoadingLocation
                       ? SizedBox(
@@ -1297,7 +1202,7 @@ Center(
                         )
                       : Icon(Icons.my_location, size: 18),
                   label: AnimatedSwitcher(
-                    duration: Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 300),
                     child: Text(
                       _isLoadingLocation ? 'Getting location...' : 'Use Current Location',
                       key: ValueKey<bool>(_isLoadingLocation),
@@ -1314,11 +1219,11 @@ Center(
           ),
         ),
         if (_selectedLocation == null) ...[
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Row(
             children: [
               Icon(Icons.info_outline, size: 14, color: _bangladeshRed),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Text(
                 'Please select your location',
                 style: GoogleFonts.inter(
@@ -1334,75 +1239,19 @@ Center(
     );
   }
 
-/*  Widget _buildLuxuryTermsAndConditions() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 22,
-          height: 22,
-          margin: EdgeInsets.only(top: 2),
-          decoration: BoxDecoration(
-            color: _bangladeshGreen.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: _bangladeshGreen.withOpacity(0.3)),
-          ),
-          child: Icon(
-            Icons.check_rounded,
-            size: 14,
-            color: _bangladeshGreen,
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: Colors.grey[700],
-                height: 1.5,
-                letterSpacing: 0.3,
-              ),
-              children: [
-                TextSpan(text: 'By registering, you agree to our '),
-                TextSpan(
-                  text: 'Terms of Service',
-                  style: TextStyle(
-                    color: _bangladeshGreen,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-                TextSpan(text: ' and '),
-                TextSpan(
-                  text: 'Privacy Policy',
-                  style: TextStyle(
-                    color: _bangladeshGreen,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }   */
-
   Widget _buildLuxuryTermsAndConditions() {
     return GestureDetector(
-      onTap: _toggleTermsAccepted, // Use the method we created
+      onTap: _toggleTermsAccepted,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Checkbox
           AnimatedContainer(
-            duration: Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOut,
             width: 22,
             height: 22,
-            margin: EdgeInsets.only(top: 2),
+            margin: const EdgeInsets.only(top: 2),
             decoration: BoxDecoration(
               color: _isTermsAccepted 
                   ? _bangladeshGreen 
@@ -1426,19 +1275,19 @@ Center(
             ),
             child: Center(
               child: AnimatedSwitcher(
-                duration: Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 200),
                 child: _isTermsAccepted
                     ? Icon(
                         Icons.check_rounded,
                         size: 16,
                         color: Colors.white,
-                        key: ValueKey('checked'),
+                        key: const ValueKey('checked'),
                       )
-                    : SizedBox.shrink(key: ValueKey('unchecked')),
+                    : const SizedBox.shrink(key: ValueKey('unchecked')),
               ),
             ),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: RichText(
               text: TextSpan(
@@ -1449,7 +1298,7 @@ Center(
                   letterSpacing: 0.3,
                 ),
                 children: [
-                  TextSpan(text: 'By registering, you agree to our '),
+                  const TextSpan(text: 'By registering, you agree to our '),
                   WidgetSpan(
                     child: GestureDetector(
                       onTap: () {
@@ -1469,7 +1318,7 @@ Center(
                       ),
                     ),
                   ),
-                  TextSpan(text: ' and '),
+                  const TextSpan(text: ' and '),
                   WidgetSpan(
                     child: GestureDetector(
                       onTap: () {
@@ -1498,116 +1347,12 @@ Center(
     );
   }
 
-/*  Widget _buildLuxuryRegisterButton(bool isSmallScreen, AuthProvider authProvider) {
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-      width: double.infinity,
-      height: 60,
-      decoration: BoxDecoration(
-        gradient: _isFormValid && !authProvider.isLoading
-            ? LinearGradient(
-                colors: [_bangladeshRed, _bangladeshGreen],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                stops: [0.0, 0.8],
-              )
-            : LinearGradient(
-                colors: [Colors.grey[400]!, Colors.grey[500]!],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: _isFormValid && !authProvider.isLoading
-            ? [
-                BoxShadow(
-                  color: _bangladeshRed.withOpacity(0.4),
-                  blurRadius: 25,
-                  offset: Offset(0, 10),
-                  spreadRadius: 3,
-                ),
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 15,
-                  offset: Offset(0, 5),
-                ),
-              ]
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: _isFormValid && !authProvider.isLoading ? () => _register(context, authProvider) : null,
-          borderRadius: BorderRadius.circular(18),
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 24),
-            child: AnimatedSwitcher(
-              duration: Duration(milliseconds: 300),
-              child: authProvider.isLoading
-                  ? Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
-                        ),
-                      ),
-                    )
-                  : _isFormValid
-                      ? Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Create Account',
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.arrow_forward_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Center(
-                          child: Text(
-                            'Fill all required fields',
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white.withOpacity(0.8),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }   */
-
   Widget _buildLuxuryRegisterButton(bool isSmallScreen, AuthProvider authProvider) {
     // The button is enabled only when ALL conditions are met including checkbox
     final bool isButtonEnabled = _isFormValid && !authProvider.isLoading;
     
     return AnimatedContainer(
-      duration: Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 500),
       curve: Curves.easeInOut,
       width: double.infinity,
       height: 60,
@@ -1617,7 +1362,7 @@ Center(
                 colors: [_bangladeshRed, _bangladeshGreen],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
-                stops: [0.0, 0.8],
+                stops: const [0.0, 0.8],
               )
             : LinearGradient(
                 colors: [Colors.grey[400]!, Colors.grey[500]!],
@@ -1648,20 +1393,20 @@ Center(
           onTap: isButtonEnabled ? () => _register(context, authProvider) : null,
           borderRadius: BorderRadius.circular(18),
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: AnimatedSwitcher(
-              duration: Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 300),
               child: authProvider.isLoading
                   ? Center(
                       child: SizedBox(
                         width: 24,
                         height: 24,
-                        child:  CircularProgressIndicator(
+                        child: CircularProgressIndicator(
                           strokeWidth: 3,
                           valueColor: AlwaysStoppedAnimation(Colors.white),
                         ),
                       ),
-                      key: ValueKey('loading'),
+                      key: const ValueKey('loading'),
                     )
                   : isButtonEnabled
                       ? Row(
@@ -1676,22 +1421,14 @@ Center(
                                 letterSpacing: 1.2,
                               ),
                             ),
-                            SizedBox(width: 16),
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.arrow_forward_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
+                            const SizedBox(width: 16),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: isSmallScreen ? 18 : 20,
                             ),
                           ],
-                          key: ValueKey('enabled'),
+                          key: const ValueKey('enabled'),
                         )
                       : Center(
                           child: Text(
@@ -1715,198 +1452,133 @@ Center(
     );
   }
 
-
-/*  Widget _buildPremiumSignInSection() {
+  Widget _buildPremiumSignInSection() {
+    final Color _primaryRed = Color(0xFFF42A41);
+    final Color _primaryGreen = Color(0xFF006A4E);
+    final Color _goldAccent = Color(0xFFFFD700);
+    
     return Center(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             "Already have an account?",
             style: GoogleFonts.inter(
               fontSize: 16,
-              color: Colors.white.withOpacity(0.9),
-              fontWeight: FontWeight.w500,
+              color: Colors.white.withOpacity(0.95),
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 8),
-          GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => LoginScreen(),
-              ),
-            ),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.transparent, Colors.white.withOpacity(0.1)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 1.5,
+          const SizedBox(height: 12),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const LoginScreen(),
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    "Sign In",
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                transform: Matrix4.identity()..scale(1.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_primaryRed, _primaryGreen],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
                     ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.4),
+                      width: 1.8,
+                    ),
+                    boxShadow: [
+                      // Deep shadow
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 15,
+                        offset: Offset(0, 5),
+                      ),
+                      // Red glow
+                      BoxShadow(
+                        color: _primaryRed.withOpacity(0.5),
+                        blurRadius: 20,
+                        offset: Offset(-3, 0),
+                      ),
+                      // Green glow
+                      BoxShadow(
+                        color: _primaryGreen.withOpacity(0.5),
+                        blurRadius: 20,
+                        offset: Offset(3, 0),
+                      ),
+                      // Gold inner glow
+                      BoxShadow(
+                        color: _goldAccent.withOpacity(0.2),
+                        blurRadius: 10,
+                        offset: Offset(0, 0),
+                        blurStyle: BlurStyle.inner,
+                      ),
+                    ],
                   ),
-                  SizedBox(width: 12),
-                  Icon(
-                    Icons.login_rounded,
-                    color: _goldAccent,
-                    size: 20,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "Sign In",
+                        style: GoogleFonts.inter(
+                          fontSize: 17,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 3,
+                              offset: Offset(0, 2),
+                            ),
+                            Shadow(
+                              color: _goldAccent.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: Offset(0, 0),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
         ],
       ),
     );
-  }  */
-
-Widget _buildPremiumSignInSection() {
-  final Color _lightRed = Color(0xFFFFE5E9);
-  final Color _glowRed = Color(0xFFFF3366).withOpacity(0.5);
-  final Color _glowGreen = Color(0xFF00CC88).withOpacity(0.5);
-  
-  return Center(
-    child: Column(
-      children: [
-        Text(
-          "Already have an account?",
-          style: GoogleFonts.inter(
-            fontSize: 16,
-            color: Colors.white.withOpacity(0.95),
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
-            shadows: [
-              Shadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 3,
-                offset: Offset(0, 1),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: 12),
-        GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LoginScreen(),
-            ),
-          ),
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 28, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  _lightRed.withOpacity(0.3),
-                  _lightGreen.withOpacity(0.3),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.3),
-                width: 1.8,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 15,
-                  offset: Offset(0, 5),
-                ),
-                BoxShadow(
-                  color: _glowRed,
-                  blurRadius: 20,
-                  offset: Offset(-3, 0),
-                ),
-                BoxShadow(
-                  color: _glowGreen,
-                  blurRadius: 20,
-                  offset: Offset(3, 0),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Sign In",
-                  style: GoogleFonts.inter(
-                    fontSize: 17,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.4),
-                        blurRadius: 3,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 14),
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [_lightRed, _lightGreen],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _goldAccent.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: Offset(0, 0),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward,
-                    color: Colors.black,
-                    size: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-
+  }
 
   void _showCountryPicker() {
     showCountryPicker(
       context: context,
       showPhoneCode: false,
       countryListTheme: CountryListThemeData(
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
         ),
@@ -1923,14 +1595,16 @@ Widget _buildPremiumSignInSection() {
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(color: _bangladeshGreen, width: 2),
           ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
       ),
       onSelect: (Country country) {
-        setState(() {
-          _selectedCountry = country;
-        });
-        _validateForm();
+        if (mounted) {
+          setState(() {
+            _selectedCountry = country;
+          });
+          _validateForm();
+        }
       },
     );
   }
@@ -1943,7 +1617,10 @@ Widget _buildPremiumSignInSection() {
     try {
       // Check if location service is enabled
       if (!await Geolocator.isLocationServiceEnabled()) {
-        _showLocationError('Location services are disabled. Please enable them.');
+        if (mounted) {
+          _showLocationError('Location services are disabled. Please enable them.');
+          setState(() => _isLoadingLocation = false);
+        }
         return;
       }
 
@@ -1952,14 +1629,20 @@ Widget _buildPremiumSignInSection() {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          _showLocationError('Location permissions are denied.');
+          if (mounted) {
+            _showLocationError('Location permissions are denied.');
+            setState(() => _isLoadingLocation = false);
+          }
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _showLocationError(
-          'Location permissions are permanently denied. Please enable them in app settings.');
+        if (mounted) {
+          _showLocationError(
+            'Location permissions are permanently denied. Please enable them in app settings.');
+          setState(() => _isLoadingLocation = false);
+        }
         return;
       }
 
@@ -1968,13 +1651,19 @@ Widget _buildPremiumSignInSection() {
       try {
         position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 30),
+          timeLimit: const Duration(seconds: 30),
         );
       } on TimeoutException {
-        _showLocationError('Location request timed out. Please try again.');
+        if (mounted) {
+          _showLocationError('Location request timed out. Please try again.');
+          setState(() => _isLoadingLocation = false);
+        }
         return;
       } catch (e) {
-        _showLocationError('Failed to get current location: $e');
+        if (mounted) {
+          _showLocationError('Failed to get current location: $e');
+          setState(() => _isLoadingLocation = false);
+        }
         return;
       }
 
@@ -2009,31 +1698,37 @@ Widget _buildPremiumSignInSection() {
             '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
       }
 
-      setState(() {
-        _selectedLocation = locationText;
-        _latitude = position.latitude;
-        _longitude = position.longitude;
-        _isLoadingLocation = false;
-      });
+      if (mounted) {
+        setState(() {
+          _selectedLocation = locationText;
+          _latitude = position.latitude;
+          _longitude = position.longitude;
+          _isLoadingLocation = false;
+        });
 
-      _validateForm();
-      _showLocationSuccessAnimation();
+        _validateForm();
+        _showLocationSuccessAnimation();
+      }
     } catch (e) {
-      setState(() {
-        _isLoadingLocation = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingLocation = false;
+        });
 
-      _showLocationError('Failed to get location: $e');
+        _showLocationError('Failed to get location: $e');
+      }
     }
   }
 
   void _showLocationError(String message) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             Icon(Icons.error_outline, color: Colors.white),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
@@ -2043,7 +1738,7 @@ Widget _buildPremiumSignInSection() {
           ],
         ),
         backgroundColor: _bangladeshRed,
-        duration: Duration(seconds: 4),
+        duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -2064,12 +1759,14 @@ Widget _buildPremiumSignInSection() {
   }
 
   void _showLocationSuccessAnimation() {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2082,7 +1779,7 @@ Widget _buildPremiumSignInSection() {
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   if (_selectedLocation != null)
                     Text(
                       _selectedLocation!,
@@ -2099,7 +1796,7 @@ Widget _buildPremiumSignInSection() {
           ],
         ),
         backgroundColor: _bangladeshGreen,
-        duration: Duration(seconds: 3),
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -2115,7 +1812,7 @@ Widget _buildPremiumSignInSection() {
       builder: (context) => _buildImageSourceBottomSheet(),
     );
     
-    if (result == null) return;
+    if (result == null || !mounted) return;
     
     final ImageSource source = result;
     
@@ -2128,7 +1825,7 @@ Widget _buildPremiumSignInSection() {
         imageQuality: 85,
       );
       
-      if (pickedFile != null) {
+      if (pickedFile != null && mounted) {
         final file = File(pickedFile.path);
         final fileSize = await file.length();
         const maxSize = 5 * 1024 * 1024;
@@ -2154,7 +1851,9 @@ Widget _buildPremiumSignInSection() {
         _showImageSuccessAnimation();
       }
     } catch (e) {
-      _handleImagePickerError(e);
+      if (mounted) {
+        _handleImagePickerError(e);
+      }
     }
   }
 
@@ -2162,14 +1861,14 @@ Widget _buildPremiumSignInSection() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
         ),
       ),
       child: SafeArea(
         child: Padding(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2181,7 +1880,7 @@ Widget _buildPremiumSignInSection() {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Text(
                 'Choose Profile Picture',
                 style: GoogleFonts.poppins(
@@ -2190,7 +1889,7 @@ Widget _buildPremiumSignInSection() {
                   color: Colors.black87,
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               _buildImageSourceOption(
                 icon: Icons.camera_alt_rounded,
                 title: 'Take Photo',
@@ -2198,7 +1897,7 @@ Widget _buildPremiumSignInSection() {
                 color: _bangladeshGreen,
                 onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               _buildImageSourceOption(
                 icon: Icons.photo_library_rounded,
                 title: 'Choose from Gallery',
@@ -2206,13 +1905,13 @@ Widget _buildPremiumSignInSection() {
                 color: _bangladeshRed,
                 onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),
                   style: TextButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2245,7 +1944,7 @@ Widget _buildPremiumSignInSection() {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: color.withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
@@ -2269,7 +1968,7 @@ Widget _buildPremiumSignInSection() {
                 size: 24,
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2282,7 +1981,7 @@ Widget _buildPremiumSignInSection() {
                       color: Colors.black87,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: GoogleFonts.inter(
@@ -2330,12 +2029,14 @@ Widget _buildPremiumSignInSection() {
   }
 
   void _showImageError(String message) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             Icon(Icons.error_outline, color: Colors.white),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
@@ -2345,7 +2046,7 @@ Widget _buildPremiumSignInSection() {
           ],
         ),
         backgroundColor: _bangladeshRed,
-        duration: Duration(seconds: 3),
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -2355,6 +2056,8 @@ Widget _buildPremiumSignInSection() {
   }
 
   void _showImageSuccessAnimation() {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -2372,7 +2075,7 @@ Widget _buildPremiumSignInSection() {
                 color: Colors.white,
               ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2385,7 +2088,7 @@ Widget _buildPremiumSignInSection() {
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   if (_profileImagePath != null)
                     Text(
                       'Image size: ${(_profileImageFile?.lengthSync() ?? 0) ~/ 1024} KB',
@@ -2400,7 +2103,7 @@ Widget _buildPremiumSignInSection() {
           ],
         ),
         backgroundColor: _bangladeshGreen,
-        duration: Duration(seconds: 3),
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -2429,6 +2132,8 @@ Widget _buildPremiumSignInSection() {
 
         // Don't show dialog here - it's now handled in the signUp method
       } catch (e) {
+        if (!mounted) return;
+        
         String errorMessage = 'Registration failed. Please try again.';
         
         if (e.toString().contains('email-already-in-use')) {
@@ -2447,7 +2152,7 @@ Widget _buildPremiumSignInSection() {
           SnackBar(
             backgroundColor: _bangladeshRed,
             content: Text(errorMessage),
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
           ),
         );
       }

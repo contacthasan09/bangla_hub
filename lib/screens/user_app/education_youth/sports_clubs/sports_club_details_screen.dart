@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:bangla_hub/models/education_models.dart';
-import 'package:bangla_hub/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 
 class SportsClubDetailsScreen extends StatefulWidget {
   final SportsClub club;
-  final UserModel? user;
   final ScrollController scrollController;
   final Color primaryRed;
   final Color successGreen;
@@ -23,7 +22,6 @@ class SportsClubDetailsScreen extends StatefulWidget {
   const SportsClubDetailsScreen({
     Key? key,
     required this.club,
-    this.user,
     required this.scrollController,
     required this.primaryRed,
     required this.successGreen,
@@ -39,8 +37,13 @@ class SportsClubDetailsScreen extends StatefulWidget {
   _SportsClubDetailsScreenState createState() => _SportsClubDetailsScreenState();
 }
 
-class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with TickerProviderStateMixin {
+class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   late AnimationController _animationController;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
   final Color _darkRed = Color(0xFFD32F2F);
   final Color _textPrimary = Color(0xFF1E2A3A);
@@ -52,16 +55,48 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 500),
     );
-    _animationController.forward();
+    
+    // Start animation if app is visible
+    if (_appLifecycleState == AppLifecycleState.resumed) {
+      _animationController.forward();
+    }
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App is visible - start animation
+      if (_animationController.status != AnimationStatus.forward) {
+        _animationController.forward();
+      }
+    } else {
+      // App is not visible - stop animation to save resources
+      _animationController.stop();
+    }
   }
 
   @override
   void dispose() {
+    print('🗑️ SportsClubDetailsScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // ✅ Dispose animation controller
     _animationController.dispose();
+    
     super.dispose();
   }
 
@@ -69,9 +104,13 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
     final Uri uri = Uri.parse('mailto:$email');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
-      _showPremiumSnackBar('Opening email app...');
+      if (mounted) {
+        _showPremiumSnackBar('Opening email app...');
+      }
     } else {
-      _showPremiumSnackBar('Could not launch email app', isError: true);
+      if (mounted) {
+        _showPremiumSnackBar('Could not launch email app', isError: true);
+      }
     }
   }
 
@@ -88,14 +127,20 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
     try {
       if (await canLaunchUrl(phoneUri)) {
         await launchUrl(phoneUri);
-        _showPremiumSnackBar('Opening phone dialer...');
+        if (mounted) {
+          _showPremiumSnackBar('Opening phone dialer...');
+        }
       }
     } catch (e) {
-      _showPremiumSnackBar('Could not launch phone dialer', isError: true);
+      if (mounted) {
+        _showPremiumSnackBar('Could not launch phone dialer', isError: true);
+      }
     }
   }
 
   void _showPremiumSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
@@ -147,10 +192,11 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
     );
   }
 
-  Widget _buildUserProfileImage(UserModel? user, {bool isLarge = false}) {
-    if (user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty) {
+  // NEW: Build poster image from club.postedByProfileImageBase64
+  Widget _buildClubPosterImage({bool isLarge = false}) {
+    if (widget.club.postedByProfileImageBase64 != null && widget.club.postedByProfileImageBase64!.isNotEmpty) {
       try {
-        String base64String = user.profileImageUrl!;
+        String base64String = widget.club.postedByProfileImageBase64!;
         
         if (base64String.contains('base64,')) {
           base64String = base64String.split('base64,').last;
@@ -218,10 +264,10 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
   @override
   Widget build(BuildContext context) {
     final club = widget.club;
-    final user = widget.user;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     final isFull = club.currentMembers >= club.maxMembers;
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
@@ -231,6 +277,27 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_rounded, 
+              color: Colors.white, 
+              size: isTablet ? 28 : 24,
+            ),
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+            splashRadius: isTablet ? 28 : 24,
+            constraints: BoxConstraints(
+              minWidth: isTablet ? 48 : 40,
+              minHeight: isTablet ? 48 : 40,
+            ),
+          ),
+          leadingWidth: isTablet ? 60 : 50,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+          toolbarHeight: isTablet ? 70 : 60,
+        ),
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -248,7 +315,7 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
                   // Header Section
                   SliverToBoxAdapter(
                     child: Container(
-                      height: isTablet ? 300 : 250,
+                      width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [widget.primaryRed, widget.purpleAccent, _darkRed],
@@ -258,97 +325,113 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
                       ),
                       child: SafeArea(
                         bottom: false,
+                        top: true,
                         child: Padding(
-                          padding: EdgeInsets.all(isTablet ? 24 : 20),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Premium Pattern Line
-                              Container(
-                                height: 4,
-                                width: 60,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [widget.goldAccent, widget.warningOrange, widget.goldAccent],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Club Name
-                              ShaderMask(
-                                shaderCallback: (bounds) => LinearGradient(
-                                  colors: [Colors.white, widget.goldAccent],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ).createShader(bounds),
-                                child: Text(
-                                  club.clubName,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: isTablet ? 32 : 28,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              SizedBox(height: isTablet ? 8 : 6),
-                              
-                              // Sport Type
-                              Row(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 40 : 24,
+                            vertical: isTablet ? 16 : 12,
+                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
-                                    _getSportIcon(club.sportType),
-                                    color: Colors.white,
-                                    size: isTablet ? 20 : 18,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    club.sportType.displayName,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: isTablet ? 18 : 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white.withOpacity(0.9),
+                                  // Premium Pattern Line
+                                  Container(
+                                    height: 4,
+                                    width: 60,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [widget.goldAccent, widget.warningOrange, widget.goldAccent],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(2),
                                     ),
                                   ),
-                                ],
-                              ),
-                              
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Verified Badge
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 16 : 14,
-                                  vertical: isTablet ? 8 : 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(30),
-                                  border: Border.all(color: Colors.white.withOpacity(0.3)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.verified_rounded, color: widget.goldAccent, size: isTablet ? 18 : 16),
-                                    SizedBox(width: isTablet ? 8 : 6),
-                                    Text(
-                                      'VERIFIED CLUB',
+                                  SizedBox(height: isTablet ? 12 : 8),
+                                  
+                                  // Club Name
+                                  ShaderMask(
+                                    shaderCallback: (bounds) => LinearGradient(
+                                      colors: [Colors.white, widget.goldAccent],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ).createShader(bounds),
+                                    child: Text(
+                                      club.clubName,
                                       style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 14 : 12,
-                                        fontWeight: FontWeight.w700,
+                                        fontSize: isTablet ? 32 : 24,
+                                        fontWeight: FontWeight.w800,
                                         color: Colors.white,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  SizedBox(height: isTablet ? 4 : 2),
+                                  
+                                  // Sport Type
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        _getSportIcon(club.sportType),
+                                        color: Colors.white,
+                                        size: isTablet ? 18 : 16,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        club.sportType.displayName,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isTablet ? 18 : 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white.withOpacity(0.9),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                  
+                                  // Verified Badge
+                                  if (club.isVerified) ...[
+                                    SizedBox(height: isTablet ? 10 : 8),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isTablet ? 14 : 12,
+                                        vertical: isTablet ? 6 : 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(30),
+                                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.verified_rounded, 
+                                            color: widget.goldAccent, 
+                                            size: isTablet ? 16 : 14
+                                          ),
+                                          SizedBox(width: isTablet ? 6 : 4),
+                                          Text(
+                                            'VERIFIED CLUB',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: isTablet ? 13 : 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
-                                ),
-                              ),
-                            ],
+                                ],
+                              );
+                            },
                           ),
                         ),
                       ),
@@ -362,32 +445,13 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Back Button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _shadowColor,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: Icon(Icons.arrow_back_rounded, color: _textPrimary, size: isTablet ? 22 : 20),
-                            ),
-                          ),
-                          
                           SizedBox(height: isTablet ? 20 : 16),
                           
-                          // User Profile and Club Info
+                          // User Profile and Club Info - Using club's stored user info
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // User Profile Image
+                              // User Profile Image from club.postedByProfileImageBase64
                               Container(
                                 width: isTablet ? 80 : 70,
                                 height: isTablet ? 80 : 70,
@@ -403,7 +467,7 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
                                   ],
                                 ),
                                 child: ClipOval(
-                                  child: _buildUserProfileImage(user, isLarge: true),
+                                  child: _buildClubPosterImage(isLarge: true),
                                 ),
                               ),
                               
@@ -414,8 +478,8 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // User Name
-                                    if (user != null)
+                                    // User Name from club.postedByName
+                                    if (club.postedByName != null && club.postedByName!.isNotEmpty)
                                       Container(
                                         margin: EdgeInsets.only(bottom: 8),
                                         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -429,7 +493,7 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
                                             Icon(Icons.person_rounded, color: widget.primaryRed, size: 14),
                                             SizedBox(width: 4),
                                             Text(
-                                              user.fullName,
+                                              club.postedByName!,
                                               style: GoogleFonts.poppins(
                                                 color: widget.primaryRed,
                                                 fontSize: isTablet ? 14 : 12,
@@ -996,7 +1060,7 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
                                             ? 'Currently at capacity. Join waiting list.'
                                             : '${club.maxMembers - club.currentMembers} spots available',
                                         style: GoogleFonts.inter(
-                color: isFull ? Colors.red : widget.successGreen, // Fixed this line
+                                          color: isFull ? Colors.red : widget.successGreen,
                                           fontSize: isTablet ? 15 : 14,
                                         ),
                                       ),
@@ -1063,12 +1127,14 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
                                   icon: Icons.person_add_rounded,
                                   label: isFull ? 'Full' : 'Join Club',
                                   onPressed: isFull ? null : () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Join feature coming soon!'),
-                                        backgroundColor: widget.primaryRed,
-                                      ),
-                                    );
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Join feature coming soon!'),
+                                          backgroundColor: widget.primaryRed,
+                                        ),
+                                      );
+                                    }
                                   },
                                   gradientColors: [widget.primaryRed, widget.purpleAccent],
                                   isTablet: isTablet,
@@ -1362,7 +1428,7 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen> with 
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onPressed,
+          onTap: isEnabled ? onPressed : null,
           borderRadius: BorderRadius.circular(16),
           child: Container(
             padding: EdgeInsets.symmetric(

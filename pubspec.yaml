@@ -54,6 +54,10 @@ dependencies:
   printing: ^5.14.2
   url_launcher: ^6.3.2
   carousel_slider: ^5.1.2
+
+  http: ^1.6.0
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
   
 
 dev_dependencies:

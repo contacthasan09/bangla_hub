@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:bangla_hub/models/education_models.dart';
-import 'package:bangla_hub/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,7 +8,6 @@ import 'package:flutter/services.dart';
 
 class TutoringDetailsScreen extends StatefulWidget {
   final TutoringService service;
-  final UserModel? user;
   final ScrollController scrollController;
   final Color primaryBlue;
   final Color successGreen;
@@ -22,7 +20,6 @@ class TutoringDetailsScreen extends StatefulWidget {
   const TutoringDetailsScreen({
     Key? key,
     required this.service,
-    this.user,
     required this.scrollController,
     required this.primaryBlue,
     required this.successGreen,
@@ -37,8 +34,13 @@ class TutoringDetailsScreen extends StatefulWidget {
   _TutoringDetailsScreenState createState() => _TutoringDetailsScreenState();
 }
 
-class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with TickerProviderStateMixin {
+class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   late AnimationController _animationController;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
   // Premium Color Palette - Education Theme
   final Color _darkBlue = Color(0xFF0D47A1);
@@ -51,16 +53,34 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 500),
     );
     _animationController.forward();
   }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+  }
 
   @override
   void dispose() {
+    print('🗑️ TutoringDetailsScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // ✅ Dispose animation controller
     _animationController.dispose();
+    
     super.dispose();
   }
 
@@ -68,9 +88,13 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
     final Uri uri = Uri.parse('mailto:$email');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
-      _showPremiumSnackBar('Opening email app...');
+      if (mounted) {
+        _showPremiumSnackBar('Opening email app...');
+      }
     } else {
-      _showPremiumSnackBar('Could not launch email app', isError: true);
+      if (mounted) {
+        _showPremiumSnackBar('Could not launch email app', isError: true);
+      }
     }
   }
 
@@ -87,14 +111,20 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
     try {
       if (await canLaunchUrl(phoneUri)) {
         await launchUrl(phoneUri);
-        _showPremiumSnackBar('Opening phone dialer...');
+        if (mounted) {
+          _showPremiumSnackBar('Opening phone dialer...');
+        }
       }
     } catch (e) {
-      _showPremiumSnackBar('Could not launch phone dialer', isError: true);
+      if (mounted) {
+        _showPremiumSnackBar('Could not launch phone dialer', isError: true);
+      }
     }
   }
 
   void _showPremiumSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
@@ -146,10 +176,11 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
     );
   }
 
-  Widget _buildUserProfileImage(UserModel? user, {bool isLarge = false}) {
-    if (user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty) {
+  // NEW: Build poster image from service.postedByProfileImageBase64
+  Widget _buildServicePosterImage({bool isLarge = false}) {
+    if (widget.service.postedByProfileImageBase64 != null && widget.service.postedByProfileImageBase64!.isNotEmpty) {
       try {
-        String base64String = user.profileImageUrl!;
+        String base64String = widget.service.postedByProfileImageBase64!;
         
         if (base64String.contains('base64,')) {
           base64String = base64String.split('base64,').last;
@@ -192,7 +223,6 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
   @override
   Widget build(BuildContext context) {
     final service = widget.service;
-    final user = widget.user;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
 
@@ -204,6 +234,27 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_rounded, 
+              color: Colors.white, 
+              size: isTablet ? 28 : 24,
+            ),
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+            splashRadius: isTablet ? 28 : 24,
+            constraints: BoxConstraints(
+              minWidth: isTablet ? 48 : 40,
+              minHeight: isTablet ? 48 : 40,
+            ),
+          ),
+          leadingWidth: isTablet ? 60 : 50,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+          toolbarHeight: isTablet ? 70 : 60,
+        ),
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -221,7 +272,7 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
                   // Header Section
                   SliverToBoxAdapter(
                     child: Container(
-                      height: isTablet ? 300 : 250,
+                      width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [widget.primaryBlue, widget.purpleAccent, _darkBlue],
@@ -231,87 +282,103 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
                       ),
                       child: SafeArea(
                         bottom: false,
+                        top: true,
                         child: Padding(
-                          padding: EdgeInsets.all(isTablet ? 24 : 20),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Premium Pattern Line
-                              Container(
-                                height: 4,
-                                width: 60,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [widget.goldAccent, widget.warningOrange, widget.goldAccent],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 40 : 24,
+                            vertical: isTablet ? 16 : 12,
+                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Premium Pattern Line
+                                  Container(
+                                    height: 4,
+                                    width: 60,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [widget.goldAccent, widget.warningOrange, widget.goldAccent],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
                                   ),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Tutor Name
-                              ShaderMask(
-                                shaderCallback: (bounds) => LinearGradient(
-                                  colors: [Colors.white, widget.goldAccent],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ).createShader(bounds),
-                                child: Text(
-                                  service.tutorName,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: isTablet ? 32 : 28,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              SizedBox(height: isTablet ? 8 : 6),
-                              
-                              // Organization
-                              Text(
-                                service.organizationName ?? 'Independent Tutor',
-                                style: GoogleFonts.poppins(
-                                  fontSize: isTablet ? 20 : 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
-                              ),
-                              
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Verified Badge
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 16 : 14,
-                                  vertical: isTablet ? 8 : 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(30),
-                                  border: Border.all(color: Colors.white.withOpacity(0.3)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.verified_rounded, color: widget.goldAccent, size: isTablet ? 18 : 16),
-                                    SizedBox(width: isTablet ? 8 : 6),
-                                    Text(
-                                      'VERIFIED TUTOR',
+                                  SizedBox(height: isTablet ? 12 : 8),
+                                  
+                                  // Tutor Name
+                                  ShaderMask(
+                                    shaderCallback: (bounds) => LinearGradient(
+                                      colors: [Colors.white, widget.goldAccent],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ).createShader(bounds),
+                                    child: Text(
+                                      service.tutorName,
                                       style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 14 : 12,
-                                        fontWeight: FontWeight.w700,
+                                        fontSize: isTablet ? 32 : 24,
+                                        fontWeight: FontWeight.w800,
                                         color: Colors.white,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  SizedBox(height: isTablet ? 4 : 2),
+                                  
+                                  // Organization
+                                  Text(
+                                    service.organizationName ?? 'Independent Tutor',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: isTablet ? 18 : 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  
+                                  // Verified Badge
+                                  if (service.isVerified) ...[
+                                    SizedBox(height: isTablet ? 10 : 8),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isTablet ? 14 : 12,
+                                        vertical: isTablet ? 6 : 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(30),
+                                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.verified_rounded, 
+                                            color: widget.goldAccent, 
+                                            size: isTablet ? 16 : 14
+                                          ),
+                                          SizedBox(width: isTablet ? 6 : 4),
+                                          Text(
+                                            'VERIFIED TUTOR',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: isTablet ? 13 : 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
-                                ),
-                              ),
-                            ],
+                                ],
+                              );
+                            },
                           ),
                         ),
                       ),
@@ -325,32 +392,13 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Back Button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _shadowColor,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: Icon(Icons.arrow_back_rounded, color: _textPrimary, size: isTablet ? 22 : 20),
-                            ),
-                          ),
-                          
                           SizedBox(height: isTablet ? 20 : 16),
                           
-                          // User Profile and Tutor Info
+                          // User Profile and Tutor Info - Using service's stored user info
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // User Profile Image
+                              // User Profile Image from service.postedByProfileImageBase64
                               Container(
                                 width: isTablet ? 80 : 70,
                                 height: isTablet ? 80 : 70,
@@ -366,7 +414,7 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
                                   ],
                                 ),
                                 child: ClipOval(
-                                  child: _buildUserProfileImage(user, isLarge: true),
+                                  child: _buildServicePosterImage(isLarge: true),
                                 ),
                               ),
                               
@@ -377,8 +425,8 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // User Name
-                                    if (user != null)
+                                    // User Name from service.postedByName
+                                    if (service.postedByName != null && service.postedByName!.isNotEmpty)
                                       Container(
                                         margin: EdgeInsets.only(bottom: 8),
                                         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -392,7 +440,7 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen> with Tick
                                             Icon(Icons.person_rounded, color: widget.primaryBlue, size: 14),
                                             SizedBox(width: 4),
                                             Text(
-                                              user.fullName,
+                                              service.postedByName!,
                                               style: GoogleFonts.poppins(
                                                 color: widget.primaryBlue,
                                                 fontSize: isTablet ? 14 : 12,

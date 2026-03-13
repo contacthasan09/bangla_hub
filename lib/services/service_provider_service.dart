@@ -109,7 +109,7 @@ class ServiceProviderService {
   }
 
   // Get all service providers with filters
-/*  Stream<List<ServiceProviderModel>> getServiceProviders({
+  Stream<List<ServiceProviderModel>> getServiceProviders({
     String? state,
     String? city,
     ServiceCategory? category,
@@ -119,256 +119,67 @@ class ServiceProviderService {
     bool includeDeleted = false,
     bool adminView = false,
   }) {
-    Query query = _firestore.collection(_collectionName);
-
-    // Apply filters
-    if (!adminView) {
-      query = query.where('isDeleted', isEqualTo: false);
-    }
-    
-    if (!includeDeleted) {
-      query = query.where('isDeleted', isEqualTo: false);
-    }
-
-    if (state != null && state.isNotEmpty) {
-      query = query.where('state', isEqualTo: state);
-    }
-
-    if (city != null && city.isNotEmpty) {
-      query = query.where('city', isEqualTo: city);
-    }
-
-    if (category != null) {
-      query = query.where('serviceCategory', isEqualTo: category.stringValue);
-    }
-
-    if (serviceProvider != null && serviceProvider.isNotEmpty) {
-      query = query.where('serviceProvider', isEqualTo: serviceProvider);
-    }
-
-    if (subServiceProvider != null && subServiceProvider.isNotEmpty) {
-      query = query.where('subServiceProvider', isEqualTo: subServiceProvider);
-    }
-
-    // Apply search query
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      final searchLower = searchQuery.toLowerCase();
-      query = query.where('searchKeywords', arrayContains: searchLower);
-    }
-
-    // Order by creation date
-    query = query.orderBy('createdAt', descending: true);
-
-    return query.snapshots().map((snapshot) {
-      return snapshot.docs
-          .map((doc) => ServiceProviderModel.fromFirestore(doc))
-          .toList();
-    });
-  }   */
-
-/*  Stream<List<ServiceProviderModel>> getServiceProviders({
-  String? state,
-  String? city,
-  ServiceCategory? category,
-  String? serviceProvider,
-  String? subServiceProvider,
-  String? searchQuery,
-  bool includeDeleted = false,
-  bool adminView = false,
-}) {
-  try {
-    print('🔍 Starting getServiceProviders query...');
-    print('📊 Parameters: adminView=$adminView, includeDeleted=$includeDeleted, searchQuery=$searchQuery');
-    
-    Query query = _firestore.collection(_collectionName);
-
-    // Apply filters - FIXED: Remove duplicate where clause
-    if (!adminView && !includeDeleted) {
-      query = query.where('isDeleted', isEqualTo: false);
-      print('✅ Applied isDeleted filter');
-    }
-
-    if (state != null && state.isNotEmpty) {
-      query = query.where('state', isEqualTo: state);
-      print('✅ Applied state filter: $state');
-    }
-
-    if (city != null && city.isNotEmpty) {
-      query = query.where('city', isEqualTo: city);
-      print('✅ Applied city filter: $city');
-    }
-
-    if (category != null) {
-      query = query.where('serviceCategory', isEqualTo: category.stringValue);
-      print('✅ Applied category filter: ${category.displayName}');
-    }
-
-    if (serviceProvider != null && serviceProvider.isNotEmpty) {
-      query = query.where('serviceProvider', isEqualTo: serviceProvider);
-      print('✅ Applied serviceProvider filter: $serviceProvider');
-    }
-
-    if (subServiceProvider != null && subServiceProvider.isNotEmpty) {
-      query = query.where('subServiceProvider', isEqualTo: subServiceProvider);
-      print('✅ Applied subServiceProvider filter: $subServiceProvider');
-    }
-
-    // Apply search query - IMPORTANT: Check if searchKeywords field exists in documents
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      final searchLower = searchQuery.toLowerCase().trim();
-      if (searchLower.isNotEmpty) {
-        print('🔍 Applying search filter: "$searchLower"');
-        query = query.where('searchKeywords', arrayContains: searchLower);
-      }
-    }
-
-    // Order by creation date
-    query = query.orderBy('createdAt', descending: true);
-    print('✅ Applied orderBy createdAt descending');
-
-    print('📤 Executing Firestore query...');
-    return query.snapshots().map((snapshot) {
-      print('📥 Received ${snapshot.docs.length} documents from Firestore');
-      final providers = snapshot.docs
-          .map((doc) {
-            try {
-              return ServiceProviderModel.fromFirestore(doc);
-            } catch (e) {
-              print('❌ Error parsing document ${doc.id}: $e');
-              print('📄 Document data: ${doc.data()}');
-              return null;
-            }
-          })
-          .where((provider) => provider != null)
-          .cast<ServiceProviderModel>()
-          .toList();
-      print('✅ Successfully parsed ${providers.length} service providers');
-      return providers;
-    }).handleError((error, stackTrace) {
-      print('❌ Firestore query error: $error');
-      print('❌ Stack trace: $stackTrace');
-      throw error;
-    });
-  } catch (e, stackTrace) {
-    print('❌ Exception in getServiceProviders: $e');
-    print('❌ Stack trace: $stackTrace');
-    rethrow;
-  }
-}    */
-
-// In ServiceProviderService class - update getServiceProviders method
-Stream<List<ServiceProviderModel>> getServiceProviders({
-  String? state,
-  String? city,
-  ServiceCategory? category,
-  String? serviceProvider,
-  String? subServiceProvider,
-  String? searchQuery,
-  bool includeDeleted = false,
-  bool adminView = false,
-}) {
-  try {
-    print('🔍 Starting getServiceProviders query...');
-    print('📊 Parameters:');
-    print('  - state: $state');
-    print('  - city: $city');
-    print('  - category: ${category?.displayName}');
-    print('  - serviceProvider: $serviceProvider');
-    print('  - subServiceProvider: $subServiceProvider');
-    print('  - searchQuery: $searchQuery');
-    print('  - adminView: $adminView');
-    print('  - includeDeleted: $includeDeleted');
-    
-    Query query = _firestore.collection(_collectionName);
-
-    // Apply isDeleted filter for non-admin views
-    if (!adminView || !includeDeleted) {
-      query = query.where('isDeleted', isEqualTo: false);
-      print('✅ Applied isDeleted filter');
-    }
-
-    // Apply state filter
-    if (state != null && state.isNotEmpty) {
-      query = query.where('state', isEqualTo: state);
-      print('✅ Applied state filter: $state');
-    }
-
-    // Apply city filter
-    if (city != null && city.isNotEmpty) {
-      query = query.where('city', isEqualTo: city);
-      print('✅ Applied city filter: $city');
-    }
-
-    // Apply category filter
-    if (category != null) {
-      query = query.where('serviceCategory', isEqualTo: category.stringValue);
-      print('✅ Applied category filter: ${category.displayName}');
-    }
-
-    // Apply service provider filter
-    if (serviceProvider != null && serviceProvider.isNotEmpty) {
-      query = query.where('serviceProvider', isEqualTo: serviceProvider);
-      print('✅ Applied serviceProvider filter: $serviceProvider');
-    }
-
-    // Apply sub-service provider filter
-    if (subServiceProvider != null && subServiceProvider.isNotEmpty) {
-      query = query.where('subServiceProvider', isEqualTo: subServiceProvider);
-      print('✅ Applied subServiceProvider filter: $subServiceProvider');
-    }
-
-    // Apply search query
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      final searchLower = searchQuery.toLowerCase().trim();
-      if (searchLower.isNotEmpty) {
-        print('🔍 Applying search filter: "$searchLower"');
-        query = query.where('searchKeywords', arrayContains: searchLower);
-      }
-    }
-
-    // Order by creation date
-    query = query.orderBy('createdAt', descending: true);
-    print('✅ Applied orderBy createdAt descending');
-
-    print('📤 Executing Firestore query...');
-    return query.snapshots().map((snapshot) {
-      print('📥 Received ${snapshot.docs.length} documents from Firestore');
-      final providers = snapshot.docs
-          .map((doc) {
-            try {
-              return ServiceProviderModel.fromFirestore(doc);
-            } catch (e) {
-              print('❌ Error parsing document ${doc.id}: $e');
-              print('📄 Document data: ${doc.data()}');
-              return null;
-            }
-          })
-          .where((provider) => provider != null)
-          .cast<ServiceProviderModel>()
-          .toList();
-      print('✅ Successfully parsed ${providers.length} service providers');
+    try {
+      print('🔍 Starting getServiceProviders query...');
       
-      // Debug: Log filter combinations
-      if (providers.isNotEmpty) {
-        print('🎯 Filter combination results:');
-        providers.take(3).forEach((p) {
-          print('  - ${p.fullName} | ${p.state}, ${p.city} | ${p.serviceCategory.displayName} | ${p.serviceProvider}');
-        });
-      }
-      
-      return providers;
-    }).handleError((error, stackTrace) {
-      print('❌ Firestore query error: $error');
-      print('❌ Stack trace: $stackTrace');
-      throw error;
-    });
-  } catch (e, stackTrace) {
-    print('❌ Exception in getServiceProviders: $e');
-    print('❌ Stack trace: $stackTrace');
-    rethrow;
-  }
-}
+      Query query = _firestore.collection(_collectionName);
 
+      // Apply isDeleted filter for non-admin views
+      if (!adminView || !includeDeleted) {
+        query = query.where('isDeleted', isEqualTo: false);
+      }
+
+      // Apply state filter
+      if (state != null && state.isNotEmpty) {
+        query = query.where('state', isEqualTo: state);
+      }
+
+      // Apply city filter
+      if (city != null && city.isNotEmpty) {
+        query = query.where('city', isEqualTo: city);
+      }
+
+      // Apply category filter
+      if (category != null) {
+        query = query.where('serviceCategory', isEqualTo: category.stringValue);
+      }
+
+      // Apply service provider filter
+      if (serviceProvider != null && serviceProvider.isNotEmpty) {
+        query = query.where('serviceProvider', isEqualTo: serviceProvider);
+      }
+
+      // Apply sub-service provider filter
+      if (subServiceProvider != null && subServiceProvider.isNotEmpty) {
+        query = query.where('subServiceProvider', isEqualTo: subServiceProvider);
+      }
+
+      // Apply search query
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        final searchLower = searchQuery.toLowerCase().trim();
+        if (searchLower.isNotEmpty) {
+          query = query.where('searchKeywords', arrayContains: searchLower);
+        }
+      }
+
+      // Order by creation date
+      query = query.orderBy('createdAt', descending: true);
+
+      return query.snapshots().map((snapshot) {
+        return snapshot.docs
+            .map((doc) => ServiceProviderModel.fromFirestore(doc))
+            .toList();
+      }).handleError((error, stackTrace) {
+             print('❌ Firestore query error: $error');
+        print('❌ Stack trace: $stackTrace');
+        throw error;
+      });
+    } catch (e, stackTrace) {
+      print('❌ Exception in getServiceProviders: $e');
+      print('❌ Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
 
   // Get unique cities for a state
   Future<List<String>> getCitiesByState(String state) async {

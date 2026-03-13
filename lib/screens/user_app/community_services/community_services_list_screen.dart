@@ -1,10 +1,16 @@
+// screens/user_app/community_services/community_services_list_screen.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:bangla_hub/models/community_services_models.dart';
 import 'package:bangla_hub/providers/auth_provider.dart';
+import 'package:bangla_hub/providers/location_filter_provider.dart';
 import 'package:bangla_hub/providers/service_provider_provider.dart';
+import 'package:bangla_hub/screens/auth/login_screen.dart';
 import 'package:bangla_hub/screens/user_app/community_services/service_provider_detail_screen.dart';
+import 'package:bangla_hub/widgets/common/distance_widget.dart';
+import 'package:bangla_hub/widgets/common/global_location_filter_bar.dart';
+import 'package:bangla_hub/widgets/common/osm_location_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,190 +24,142 @@ class CommunityServicesListScreen extends StatefulWidget {
   State<CommunityServicesListScreen> createState() => _CommunityServicesListScreenState();
 }
 
-class _CommunityServicesListScreenState extends State<CommunityServicesListScreen> with TickerProviderStateMixin {
-  // Color scheme matching HomeScreen
-  final Color _primaryRed = Color(0xFFF42A41);
-  final Color _primaryGreen = Color(0xFF006A4E);
-  final Color _darkGreen = Color(0xFF004D38);
-  final Color _goldAccent = Color(0xFFFFD700);
-  final Color _offWhite = Color(0xFFF8F8F8);
+class _CommunityServicesListScreenState extends State<CommunityServicesListScreen> 
+    with TickerProviderStateMixin, AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   
-  // Extended vibrant colors that complement the theme
-  final Color _coralRed = Color(0xFFFF6B6B);
-  final Color _mintGreen = Color(0xFF98D8C8);
-  final Color _softGold = Color(0xFFFFD966);
-  final Color _creamWhite = Color(0xFFFFF9E6);
-  final Color _lightGreen = Color(0xFFE8F5E9);
-  final Color _lightRed = Color(0xFFFFEBEE);
+  @override
+  bool get wantKeepAlive => true;
 
-    // Additional colors needed for success dialog
-  final Color _emeraldGreen = Color(0xFF2ECC71);
-  final Color _sapphireBlue = Color(0xFF3498DB);
-  final Color _amethystPurple = Color(0xFF9B59B6);
-  final Color _mintCream = Color(0xFFDCF8C6);
-  final Color _peachBlossom = Color(0xFFFFC0CB);
+  // Color scheme - Lighter red for app bar
+  static const Color _primaryRed = Color(0xFFF42A41);
+  final Color _lightRed = Color(0xFFFFE5E9);
+  final Color _lightGreen = Color(0xFFE0F2F1);
+  final Color _mintGreen = const Color(0xFF2E7D32);
+  final Color _creamWhite = const Color(0xFFFFF9E6);
+
+  static const Color _primaryGreen = Color(0xFF006A4E);
+  static const Color _darkGreen = Color(0xFF004D38);
+  static const Color _goldAccent = Color(0xFFFFD700);
+  static const Color _softGold = Color(0xFFFFD966);
+  static const Color _textPrimary = Color(0xFF1A1A2E);
+  static const Color _textSecondary = Color(0xFF4A4A4A);
+  static const Color _textLight = Color(0xFF6C757D);
+  static const Color _successGreen = Color(0xFF2ECC71);
+  static const Color _cardBgStart = Color(0xFFF8F9FA);
+  static const Color _cardBgEnd = Color(0xFFE9ECEF);
+  static const Color _coralRed = Color(0xFFFF6B6B);
   
-  // Background Gradient using HomeScreen colors
-  final LinearGradient _premiumBgGradient = LinearGradient(
+  // Lighter gradient for app bar
+  static const LinearGradient _appBarGradient = LinearGradient(
     colors: [
-      Color(0xFF006A4E), // _primaryGreen
-      Color(0xFF004D38), // _darkGreen
-      Color(0xFFF42A41), // _primaryRed
-      Color(0xFFD32F2F), // darker red
+      Color(0xFFE03C32), // Lighter red
+      Color(0xFFF55B4F), // Even lighter
+      Color(0xFF006A4E),
+      Color(0xFF2E8B57),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     stops: [0.0, 0.3, 0.7, 1.0],
   );
 
-  final LinearGradient _sunsetGradient = LinearGradient(
+  // Original gradient for background
+  static const LinearGradient _premiumBgGradient = LinearGradient(
     colors: [
-      Color(0xFFF42A41), // _primaryRed
-      Color(0xFFFF6B6B), // _coralRed
-      Color(0xFFFFD966), // _softGold
-      Color(0xFF006A4E), // _primaryGreen
+      Color(0xFF006A4E),
+      Color(0xFF004D38),
+      Color(0xFFF42A41),
+      Color(0xFFD32F2F),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
+    stops: [0.0, 0.3, 0.7, 1.0],
   );
-
-  final LinearGradient _oceanGradient = LinearGradient(
-    colors: [
-      Color(0xFF006A4E), // _primaryGreen
-      Color(0xFF004D38), // _darkGreen
-      Color(0xFF98D8C8), // _mintGreen
-      Color(0xFFE8F5E9), // _lightGreen
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  final LinearGradient _royalGradient = LinearGradient(
-    colors: [
-      Color(0xFFF42A41), // _primaryRed
-      Color(0xFFD32F2F), // darker red
-      Color(0xFFFFD966), // _softGold
-      Color(0xFF006A4E), // _primaryGreen
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  final LinearGradient _neonGradient = LinearGradient(
-    colors: [
-      Color(0xFFF42A41), // _primaryRed
-      Color(0xFFFF6B6B), // _coralRed
-      Color(0xFF006A4E), // _primaryGreen
-      Color(0xFF98D8C8), // _mintGreen
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-    final LinearGradient _auroraGradient = LinearGradient(
-    colors: [
-      Color(0xFF00F5A0),
-      Color(0xFF00D9F5),
-      Color(0xFF9D50BB),
-      Color(0xFF6E48AA),
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  final LinearGradient _glassMorphismGradient = LinearGradient(
-    colors: [
-      Colors.white.withOpacity(0.3),
-      Colors.white.withOpacity(0.1),
-      Colors.white.withOpacity(0.2),
-      Colors.white.withOpacity(0.05),
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  // Text Colors
-  final Color _textPrimary = Color(0xFF1A1A2E);
-  final Color _textSecondary = Color(0xFF4A4A4A);
-  final Color _textLight = Color(0xFF6C757D);
 
   // Controllers
-  final TextEditingController _searchController = TextEditingController();
-  
-  // Filter State
-  String? _tempSelectedState;
-  String? _tempSelectedCity;
-  ServiceCategory? _tempSelectedCategory;
-  String? _tempSelectedServiceProvider;
-  bool _showFilters = false;
-  bool _hasTempFilters = false;
-  
-  // Animation Controllers
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
-  late AnimationController _slideController;
-  late Animation<Offset> _slideAnimation;
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
-  late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
-  late AnimationController _rotateController;
-  late Animation<double> _rotateAnimation;
-  
-  // Scroll Controllers
-  final ScrollController _scrollController = ScrollController();
-  final ScrollController _filterScrollController = ScrollController();
+  late final TextEditingController _searchController;
+  late final ScrollController _scrollController;
+  late final ScrollController _filterScrollController;
+  final Map<String, Uint8List?> _imageCache = {};
+  Timer? _searchDebounce;
+  bool _isFilterView = false;
+  bool _isInitialized = false;
   
   // Suggestion Dialog Controllers
-  final TextEditingController _suggestFullNameController = TextEditingController();
-  final TextEditingController _suggestCompanyNameController = TextEditingController();
-  final TextEditingController _suggestPhoneController = TextEditingController();
-  final TextEditingController _suggestEmailController = TextEditingController();
-  final TextEditingController _suggestCityController = TextEditingController();
+  late final TextEditingController _suggestFullNameController;
+  late final TextEditingController _suggestCompanyNameController;
+  late final TextEditingController _suggestPhoneController;
+  late final TextEditingController _suggestEmailController;
+  late final TextEditingController _suggestAddressController;
   
-  // Stream subscription
-  StreamSubscription<List<ServiceProviderModel>>? _serviceProvidersStreamSubscription;
-  final GlobalKey _refreshIndicatorKey = GlobalKey();
+  // LOCAL FILTER STATE - separate from global filter
+  String? _localTempSelectedState;
+  String? _localTempSelectedCity;
+  ServiceCategory? _localTempSelectedCategory;
+  String? _localTempSelectedServiceProvider;
   
-  // Suggestion Dialog State
+  // Applied LOCAL filters
+  String? _localAppliedState;
+  String? _localAppliedCity;
+  ServiceCategory? _localAppliedCategory;
+  String? _localAppliedServiceProvider;
+  
+  // Track which local filters are active (for display)
+  bool _hasLocalFilters = false;
+  Map<String, dynamic> _activeLocalFilters = {};
+  
+  // Suggestion Dialog State with Location
   String? _suggestSelectedState;
+  String? _suggestSelectedCity;
   ServiceCategory? _suggestSelectedCategory;
   String? _suggestSelectedServiceProvider;
   List<String> _suggestAvailableServiceProviders = [];
   bool _isSubmittingSuggestion = false;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   
-  // UI State
-  int _selectedTabIndex = 0;
-//  final List<String> _categories = ['All', 'Popular', 'Nearby', 'New', 'Top Rated'];
+  // Location picking for suggestion
+  double? _suggestLatitude;
+  double? _suggestLongitude;
+  String? _suggestFullAddress;
+  
+  // Animation Controllers
+  late final AnimationController _fadeController;
+  late final Animation<double> _fadeAnimation;
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnimation;
+  late final AnimationController _rotateController;
+  late final Animation<double> _rotateAnimation;
+  
+  // Stream subscription
+  StreamSubscription<List<ServiceProviderModel>>? _serviceProvidersStreamSubscription;
   
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Initialize controllers
+    _searchController = TextEditingController();
+    _scrollController = ScrollController();
+    _filterScrollController = ScrollController();
+    _suggestFullNameController = TextEditingController();
+    _suggestCompanyNameController = TextEditingController();
+    _suggestPhoneController = TextEditingController();
+    _suggestEmailController = TextEditingController();
+    _suggestAddressController = TextEditingController();
     
     // Initialize animations
     _fadeController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 1200),
-    );
+      duration: const Duration(milliseconds: 600),
+    )..forward();
     
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController, 
       curve: Curves.easeInOut,
     );
     
-    _slideController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 1000),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
-    
     _pulseController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
     
     _pulseAnimation = CurvedAnimation(
@@ -209,461 +167,466 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
       curve: Curves.easeInOut,
     );
     
-    _scaleController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 800),
-    );
-    
-    _scaleAnimation = CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.elasticOut,
-    );
-    
     _rotateController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 1500),
-    );
+      duration: const Duration(milliseconds: 1000),
+    )..repeat();
     
     _rotateAnimation = CurvedAnimation(
       parent: _rotateController,
       curve: Curves.easeInOut,
     );
-    
-    _fadeController.forward();
-    _slideController.forward();
-    _scaleController.forward();
-    _rotateController.repeat();
-    
-    // Initialize data
+
+    // Add scroll listener to hide/show app bar items
+    _scrollController.addListener(_onScroll);
+
+    // Load data after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
-      _subscribeToServiceProviders(provider);
-      provider.loadServiceProviders();
+      if (mounted && !_isInitialized) {
+        _isInitialized = true;
+        final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
+        final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+        
+        // FIX: Use post-frame callback for initial sync
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          provider.syncWithLocationFilter(locationProvider);
+        });
+        
+        _setupStreamSubscription(provider);
+        provider.loadServiceProviders();
+        
+        // Get user location if not already
+        if (locationProvider.currentUserLocation == null) {
+          locationProvider.getUserLocation(showLoading: false);
+        }
+      }
     });
   }
   
-  void _subscribeToServiceProviders(ServiceProviderProvider provider) {
-    _serviceProvidersStreamSubscription?.cancel();
-    
-    _serviceProvidersStreamSubscription = provider.serviceProvidersStream().listen(
-      (providers) {
-        if (mounted) {
-          setState(() {});
-        }
-      },
-      onError: (error) {
-        print('❌ Stream error: $error');
-      },
-    );
+  void _onScroll() {
+    if (_scrollController.offset > 100) {
+      // User scrolled down - you can add animations here if needed
+    }
   }
   
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
-    _subscribeToServiceProviders(provider);
+    if (!_isInitialized) {
+      final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
+      _setupStreamSubscription(provider);
+    }
+  }
+  
+  void _setupStreamSubscription(ServiceProviderProvider provider) {
+    _serviceProvidersStreamSubscription?.cancel();
+    _serviceProvidersStreamSubscription = provider.serviceProvidersStream().listen(
+      (providers) {
+        if (mounted) {
+          setState(() {
+            _imageCache.clear();
+          });
+          print('✅ Stream received ${providers.length} providers');
+        }
+      },
+      onError: (error) => print('Stream error: $error'),
+    );
   }
   
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _serviceProvidersStreamSubscription?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
     _filterScrollController.dispose();
     _fadeController.dispose();
-    _slideController.dispose();
     _pulseController.dispose();
-    _scaleController.dispose();
     _rotateController.dispose();
-    _serviceProvidersStreamSubscription?.cancel();
+    _searchDebounce?.cancel();
     _suggestFullNameController.dispose();
     _suggestCompanyNameController.dispose();
     _suggestPhoneController.dispose();
     _suggestEmailController.dispose();
-    _suggestCityController.dispose();
+    _suggestAddressController.dispose();
+    _imageCache.clear();
     super.dispose();
   }
 
-  void _clearTempFilters() {
-    setState(() {
-      _tempSelectedState = null;
-      _tempSelectedCity = null;
-      _tempSelectedCategory = null;
-      _tempSelectedServiceProvider = null;
-      _hasTempFilters = false;
-    });
+  // ✅ FIXED: Robust drawer opening method
+  void _openDrawer(BuildContext context) {
+    try {
+      final ScaffoldState? scaffoldState = Scaffold.maybeOf(
+        Navigator.of(context, rootNavigator: true).context
+      );
+      
+      if (scaffoldState != null && scaffoldState.hasDrawer) {
+        scaffoldState.openDrawer();
+        return;
+      }
+      
+      final ScaffoldState? currentScaffold = Scaffold.maybeOf(context);
+      if (currentScaffold != null && currentScaffold.hasDrawer) {
+        currentScaffold.openDrawer();
+        return;
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Menu is available from the home screen'),
+          duration: Duration(milliseconds: 800),
+          backgroundColor: _primaryGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Could not open drawer: $e');
+    }
   }
 
-  void _syncTempWithAppliedFilters(ServiceProviderProvider provider) {
-    setState(() {
-      _tempSelectedState = provider.selectedState;
-      _tempSelectedCity = provider.selectedCity;
-      _tempSelectedCategory = provider.selectedCategory;
-      _tempSelectedServiceProvider = provider.selectedServiceProvider;
-      _hasTempFilters = provider.hasActiveFilters;
-    });
+  // Optimized image builder with caching - FIXED to show user images
+  Widget _buildProviderImage(ServiceProviderModel provider) {
+    if (provider.profileImageBase64 == null || provider.profileImageBase64!.isEmpty) {
+      return _buildDefaultProfileImage();
+    }
+
+    if (_imageCache.containsKey(provider.id)) {
+      final bytes = _imageCache[provider.id];
+      if (bytes != null) {
+        return ClipOval(
+          child: Image.memory(
+            bytes, 
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+          ),
+        );
+      }
+    }
+
+    try {
+      String base64String = provider.profileImageBase64!;
+      if (base64String.contains('base64,')) {
+        base64String = base64String.split('base64,').last;
+      }
+      base64String = base64String.replaceAll(RegExp(r'\s'), '');
+      while (base64String.length % 4 != 0) base64String += '=';
+      
+      final bytes = base64Decode(base64String);
+      _imageCache[provider.id!] = bytes;
+      return ClipOval(
+        child: Image.memory(
+          bytes, 
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+        ),
+      );
+    } catch (e) {
+      print('Error decoding image: $e');
+      return _buildDefaultProfileImage();
+    }
   }
 
-  void _applyFilters(ServiceProviderProvider provider) {
-    provider.setSelectedState(_tempSelectedState);
-    provider.setSelectedCity(_tempSelectedCity);
-    provider.setSelectedCategory(_tempSelectedCategory);
-    provider.setSelectedServiceProvider(_tempSelectedServiceProvider);
-    setState(() {
-      _showFilters = false;
-      _hasTempFilters = provider.hasActiveFilters;
-    });
+  Widget _buildDefaultProfileImage() {
+    return Container(
+      color: const Color(0xFFE8F5E9),
+      child: Center(
+        child: Icon(Icons.person_rounded, color: _primaryGreen, size: 30),
+      ),
+    );
   }
 
-  void _cancelFilters() {
-    _clearTempFilters();
-    setState(() {
-      _showFilters = false;
-    });
+  // Get filtered providers - applying BOTH global and local filters
+  List<ServiceProviderModel> _getFilteredProviders(
+    List<ServiceProviderModel> providers,
+    LocationFilterProvider locationProvider,
+  ) {
+    // Start with all providers
+    var filteredProviders = List<ServiceProviderModel>.from(providers);
+    
+    print('📊 Initial providers: ${filteredProviders.length}');
+    
+    // Apply GLOBAL location filter if active (from LocationFilterProvider)
+    if (locationProvider.isFilterActive && locationProvider.selectedState != null) {
+      filteredProviders = filteredProviders.where((provider) {
+        return provider.state == locationProvider.selectedState;
+      }).toList();
+      print('📍 After GLOBAL filter (${locationProvider.selectedState}): ${filteredProviders.length} providers');
+    }
+    
+    // Apply LOCAL filters if any (from this screen's filter view)
+    if (_hasLocalFilters) {
+      // State filter
+      if (_localAppliedState != null) {
+        filteredProviders = filteredProviders.where((provider) => 
+          provider.state == _localAppliedState
+        ).toList();
+        print('📍 After LOCAL state filter (${_localAppliedState}): ${filteredProviders.length} providers');
+      }
+      
+      // City filter
+      if (_localAppliedCity != null && _localAppliedCity!.isNotEmpty) {
+        filteredProviders = filteredProviders.where((provider) => 
+          provider.city.toLowerCase().contains(_localAppliedCity!.toLowerCase())
+        ).toList();
+        print('🏙️ After LOCAL city filter (${_localAppliedCity}): ${filteredProviders.length} providers');
+      }
+      
+      // Category filter
+      if (_localAppliedCategory != null) {
+        filteredProviders = filteredProviders.where((provider) => 
+          provider.serviceCategory == _localAppliedCategory
+        ).toList();
+        print('📁 After LOCAL category filter (${_localAppliedCategory!.displayName}): ${filteredProviders.length} providers');
+      }
+      
+      // Service Provider filter
+      if (_localAppliedServiceProvider != null && _localAppliedServiceProvider!.isNotEmpty) {
+        filteredProviders = filteredProviders.where((provider) => 
+          provider.serviceProvider == _localAppliedServiceProvider
+        ).toList();
+        print('🔧 After LOCAL service provider filter (${_localAppliedServiceProvider}): ${filteredProviders.length} providers');
+      }
+    }
+    
+    return filteredProviders;
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<ServiceProviderProvider>(context);
-    final screenWidth = MediaQuery.of(context).size.width;
+    super.build(context);
+    final isTablet = MediaQuery.of(context).size.width >= 600;
     final screenHeight = MediaQuery.of(context).size.height;
-    final isTablet = screenWidth >= 600;
-
-    final availableProviders = provider.serviceProviders.where((p) => p.isAvailable).toList();
-
-    if (!_showFilters) {
-      _syncTempWithAppliedFilters(provider);
-    }
-
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        extendBodyBehindAppBar: true,
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: _premiumBgGradient, // Using HomeScreen colors
+    final isSmallScreen = screenHeight < 700;
+    
+    // Get auth state to conditionally show drawer
+    final authProvider = Provider.of<AuthProvider>(context);
+    final bool isLoggedIn = authProvider.isLoggedIn && authProvider.user != null;
+    
+    return Consumer2<ServiceProviderProvider, LocationFilterProvider>(
+      builder: (context, provider, locationProvider, _) {
+        // FIX: Use WidgetsBinding to schedule the sync after build
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (provider.stateFilter != locationProvider.selectedState) {
+            provider.syncWithLocationFilter(locationProvider);
+          }
+        });
+        
+        final allProviders = provider.serviceProviders;
+        final filteredProviders = _getFilteredProviders(allProviders, locationProvider);
+        
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.light.copyWith(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
           ),
-          child: Stack(
-            children: [
-              // Animated Background Particles
-              ...List.generate(30, (index) => _buildAnimatedParticle(index, screenWidth, screenHeight)),
-              
-              // Animated Gradient Overlay
-              Positioned.fill(
-                child: AnimatedOpacity(
-                  opacity: 0.3,
-                  duration: Duration(seconds: 2),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.1),
-                          Colors.transparent,
-                          _primaryRed.withOpacity(0.1),
-                          Colors.transparent,
-                        ],
-                        stops: [0.0, 0.3, 0.7, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Floating Bubbles
-              ...List.generate(8, (index) => _buildFloatingBubble(index, screenWidth, screenHeight)),
-              
-              // Main Content
-              RefreshIndicator(
-                key: _refreshIndicatorKey,
-                color: _goldAccent,
-                backgroundColor: Colors.white,
-                strokeWidth: 3,
-                displacement: 40,
-                onRefresh: () async {
-                  HapticFeedback.mediumImpact();
-                  await provider.loadServiceProviders();
-                },
-                child: _showFilters
-                    ? _buildFiltersView(provider, isTablet)
-                    : _buildMainView(provider, availableProviders, isTablet),
-              ),
-              
-              // Premium Floating Action Button
-              Positioned(
-                bottom: isTablet ? 40 : 30,
-                right: isTablet ? 40 : 30,
-                child: _buildPremiumFloatingActionButton(isTablet),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFloatingBubble(int index, double width, double height) {
-    final size = 50 + (index * 15).toDouble();
-    return Positioned(
-      left: (index * 73) % width,
-      top: (index * 47) % height,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 8 + (index * 2)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
-          return Transform.translate(
-            offset: Offset(0, 20 * (value - 0.5)),
-            child: Opacity(
-              opacity: 0.1 + (value * 0.1),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            extendBodyBehindAppBar: true,
+            appBar: PreferredSize(
+              preferredSize: Size.fromHeight(isTablet ? 160 : 130),
               child: Container(
-                width: size,
-                height: size,
                 decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      Colors.white.withOpacity(0.2),
-                      _primaryRed.withOpacity(0.1),
-                      Colors.transparent,
-                    ],
+                  gradient: _appBarGradient, // Lighter gradient
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(25),
+                    bottomRight: Radius.circular(25),
                   ),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.1),
-                    width: 1,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildAnimatedParticle(int index, double width, double height) {
-    final random = index * 0.1;
-    return Positioned(
-      left: (index * 37) % width,
-      top: (index * 53) % height,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 3 + (index % 3)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
-          return Opacity(
-            opacity: (0.1 + (value * 0.2)) * (0.5 + (index % 3) * 0.1),
-            child: Transform.rotate(
-              angle: value * 6.28,
-              child: Container(
-                width: 2 + (index % 3) * 2,
-                height: 2 + (index % 3) * 2,
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      _goldAccent.withOpacity(0.5),
-                      _primaryGreen.withOpacity(0.3),
-                      Colors.transparent,
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildPremiumAppBar(bool isTablet) {
-    return SliverToBoxAdapter(
-      child: Container(
-        padding: EdgeInsets.fromLTRB(
-          isTablet ? 32 : 24,
-          MediaQuery.of(context).padding.top + (isTablet ? 30 : 20),
-          isTablet ? 32 : 24,
-          isTablet ? 20 : 16,
-        ),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.white.withOpacity(0.1),
-              Colors.white.withOpacity(0.05),
-              Colors.transparent,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(30),
-            bottomRight: Radius.circular(30),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Medium Title with Premium Style
-            ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [
-                  _goldAccent,
-                  _primaryRed,
-                  _primaryGreen,
-                  _softGold,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-              child: Text(
-                'Community  Services',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w800,
-                  fontSize: isTablet ? 40 : 32,
-                  height: 1.2,
-                  color: Colors.white,
-                  letterSpacing: -1,
-                  shadows: [
-                    Shadow(
-                      color: _darkGreen.withOpacity(0.4),
-                      blurRadius: 15,
-                      offset: Offset(0, 3),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
                     ),
                   ],
                 ),
-              ),
-            ),
-            SizedBox(height: isTablet ? 12 : 8),
-            
-            // Animated Subtitle
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: Duration(milliseconds: 1200),
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(
-                    offset: Offset(0, 15 * (1 - value)),
-                    child: child,
-                  ),
-                );
-              },
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isTablet ? 18 : 14,
-                  vertical: isTablet ? 10 : 8,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      _primaryGreen.withOpacity(0.2),
-                      _primaryRed.withOpacity(0.1),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(25),
-                  border: Border.all(
-                    color: _goldAccent.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.auto_awesome_rounded,
-                      color: _goldAccent,
-                      size: isTablet ? 22 : 20,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isTablet ? 20 : 16,
+                      vertical: isTablet ? 12 : 8,
                     ),
-                    SizedBox(width: isTablet ? 10 : 8),
-                    Text(
-                      'Find trusted professionals near you',
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withOpacity(0.95),
-                        fontSize: isTablet ? 16 : 14,
-                        fontWeight: FontWeight.w600,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 3,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Top row with drawer button and title
+                        Row(
+                          children: [
+                            if (isLoggedIn)
+                              IconButton(
+                                icon: Icon(
+                                  Icons.menu_rounded,
+                                  color: Colors.white,
+                                  size: isTablet ? 28 : 24,
+                                ),
+                                onPressed: () => _openDrawer(context),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            Expanded(
+                              child: Text(
+                                'Community Services',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: isTablet ? 24 : 20,
+                                  color: Colors.white,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            SizedBox(width: isLoggedIn ? 40 : 0), // Balance the layout
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 4),
+                        
+                        // Subtitle
+                        Center(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isTablet ? 14 : 10,
+                              vertical: isTablet ? 6 : 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.auto_awesome_rounded,
+                                  color: _goldAccent,
+                                  size: isTablet ? 16 : 14,
+                                ),
+                                SizedBox(width: isTablet ? 6 : 4),
+                                Text(
+                                  'Find trusted professionals near you',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: isTablet ? 13 : 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
-      ),
+            body: Container(
+              decoration: const BoxDecoration(gradient: _premiumBgGradient),
+              child: Stack(
+                children: [
+                  // Background overlay
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.1,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            colors: [Colors.white, _primaryGreen, _primaryRed],
+                            stops: const [0.0, 0.5, 1.0],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // Main Content
+                  RefreshIndicator(
+                    color: _goldAccent,
+                    backgroundColor: Colors.white,
+                    onRefresh: () async {
+                      HapticFeedback.mediumImpact();
+                      _imageCache.clear();
+                      await provider.loadServiceProviders();
+                    },
+                    child: _isFilterView
+                        ? _buildFiltersView(provider, isTablet)
+                        : _buildMainView(provider, filteredProviders, locationProvider, isTablet),
+                  ),
+                  
+                  // Animated Floating Action Button
+                  Positioned(
+                    bottom: isTablet ? 30 : 20,
+                    right: isTablet ? 30 : 20,
+                    child: _buildAnimatedSuggestButton(isTablet),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildPremiumFloatingActionButton(bool isTablet) {
+  Widget _buildAnimatedSuggestButton(bool isTablet) {
     return ScaleTransition(
       scale: _pulseAnimation,
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [_primaryRed, _primaryGreen],
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF42A41), Color(0xFF006A4E)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(35),
-          boxShadow: [
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: const [
             BoxShadow(
-              color: _primaryRed.withOpacity(0.5),
-              blurRadius: 25,
-              offset: Offset(0, 12),
-              spreadRadius: 3,
-            ),
-            BoxShadow(
-              color: _primaryGreen.withOpacity(0.4),
-              blurRadius: 30,
-              offset: Offset(0, 0),
+              color: Color(0xFFF42A41),
+              blurRadius: 20,
+              offset: Offset(0, 8),
+              spreadRadius: 2,
             ),
           ],
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => _showSuggestionDialog(context, isTablet),
-            borderRadius: BorderRadius.circular(35),
-            splashColor: Colors.white.withOpacity(0.3),
+            onTap: () {
+              if (FirebaseAuth.instance.currentUser == null) {
+                _showLoginDialog(context, 'suggest a service provider');
+              } else {
+                _showSuggestionDialog(context, isTablet);
+              }
+            },
+            borderRadius: BorderRadius.circular(30),
+            splashColor: Colors.white30,
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 28 : 24,
-                vertical: isTablet ? 16 : 14,
+                horizontal: isTablet ? 20 : 16,
+                vertical: isTablet ? 12 : 10,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   RotationTransition(
                     turns: _rotateAnimation,
-                    child: Icon(
+                    child: const Icon(
                       Icons.add_circle_rounded,
                       color: Colors.white,
-                      size: isTablet ? 26 : 22,
+                      size: 18,
                     ),
                   ),
-                  SizedBox(width: isTablet ? 12 : 10),
+                  SizedBox(width: isTablet ? 8 : 6),
                   Text(
                     'Suggest',
                     style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w700,
-                      fontSize: isTablet ? 18 : 16,
+                      fontWeight: FontWeight.w600,
+                      fontSize: isTablet ? 14 : 12,
                       color: Colors.white,
-                      letterSpacing: 0.3,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 8,
-                        ),
-                      ],
                     ),
                   ),
                 ],
@@ -676,506 +639,434 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
   }
 
   Widget _buildFiltersView(ServiceProviderProvider provider, bool isTablet) {
+    // Initialize temp filters with current LOCAL applied values
+    _localTempSelectedState ??= _localAppliedState;
+    _localTempSelectedCity ??= _localAppliedCity;
+    _localTempSelectedCategory ??= _localAppliedCategory;
+    _localTempSelectedServiceProvider ??= _localAppliedServiceProvider;
+    
     return CustomScrollView(
       controller: _filterScrollController,
-      physics: BouncingScrollPhysics(),
+      physics: const BouncingScrollPhysics(),
       slivers: [
-        _buildPremiumAppBar(isTablet),
+        SliverToBoxAdapter(child: SizedBox(height: isTablet ? 180 : 150)), // Space for app bar
         
-        // Premium Filters Card
+        // Add global location filter bar (SEPARATE)
         SliverToBoxAdapter(
-          child: Container(
-            margin: EdgeInsets.all(isTablet ? 24 : 16),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: Duration(milliseconds: 800),
-              curve: Curves.elasticOut,
-              builder: (context, value, child) {
-                return Transform.scale(
-                  scale: 0.9 + (0.1 * value),
-                  child: Opacity(
-                    opacity: value,
-                    child: child,
-                  ),
-                );
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white.withOpacity(0.95),
-                      Colors.white.withOpacity(0.9),
-                      Colors.white.withOpacity(0.85),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(45),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _darkGreen.withOpacity(0.3),
-                      blurRadius: 35,
-                      offset: Offset(0, 18),
-                      spreadRadius: -5,
-                    ),
-                    BoxShadow(
-                      color: _primaryRed.withOpacity(0.2),
-                      blurRadius: 45,
-                      offset: Offset(0, -8),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.7),
-                    width: 1.5,
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(45),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                    child: Container(
-                      padding: EdgeInsets.all(isTablet ? 28 : 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Premium Header
-                          Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(isTablet ? 16 : 14),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [_primaryRed, _primaryGreen],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(22),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _primaryRed.withOpacity(0.4),
-                                      blurRadius: 18,
-                                      offset: Offset(0, 8),
-                                    ),
-                                  ],
-                                ),
-                                child: RotationTransition(
-                                  turns: _rotateAnimation,
-                                  child: Icon(
-                                    Icons.tune_rounded,
-                                    color: Colors.white,
-                                    size: isTablet ? 30 : 26,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: isTablet ? 20 : 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    ShaderMask(
-                                      shaderCallback: (bounds) => LinearGradient(
-                                        colors: [_primaryRed, _primaryGreen],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ).createShader(bounds),
-                                      child: Text(
-                                        'Premium Filters',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 24 : 22,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(height: 2),
-                                    Text(
-                                      'Find your perfect match',
-                                      style: GoogleFonts.inter(
-                                        fontSize: isTablet ? 14 : 13,
-                                        color: _textSecondary,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 28 : 24),
-
-                          // State Filter
-                          _buildPremiumDropdown<String>(
-                            value: _tempSelectedState,
-                            label: 'Select State',
-                            icon: Icons.location_on_rounded,
-                            isTablet: isTablet,
-                            gradient: LinearGradient(
-                              colors: [_primaryGreen, _darkGreen],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            items: [
-                              DropdownMenuItem<String>(
-                                value: null,
-                                child: Text('All States', style: GoogleFonts.inter(color: _textSecondary, fontWeight: FontWeight.w600)),
-                              ),
-                              ...CommunityStates.states.map((state) {
-                                return DropdownMenuItem<String>(
-                                  value: state,
-                                  child: Text(state, style: GoogleFonts.inter(color: _textPrimary, fontWeight: FontWeight.w700)),
-                                );
-                              }).toList(),
-                            ],
-                            onChanged: (String? newValue) async {
-                              setState(() {
-                                _tempSelectedState = newValue;
-                                _tempSelectedCity = null;
-                                _hasTempFilters = true;
-                              });
-                              
-                              if (newValue != null) {
-                                final cities = await provider.getCitiesForState(newValue);
-                                if (cities.isEmpty) {
-                                  _showNoCitiesDialog(context, isTablet);
-                                  setState(() {
-                                    _tempSelectedState = null;
-                                    _hasTempFilters = false;
-                                  });
-                                }
-                              }
-                            },
-                          ),
-
-                          // City Filter
-                          if (_tempSelectedState != null) ...[
-                            SizedBox(height: isTablet ? 20 : 16),
-                            FutureBuilder<List<String>>(
-                              future: provider.getCitiesForState(_tempSelectedState!),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return _buildLoadingIndicator(isTablet);
-                                }
-                                
-                                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                                  return SizedBox.shrink();
-                                }
-
-                                return _buildPremiumDropdown<String>(
-                                  value: _tempSelectedCity,
-                                  label: 'Select City',
-                                  icon: Icons.location_city_rounded,
-                                  isTablet: isTablet,
-                                  gradient: LinearGradient(
-                                    colors: [_primaryGreen, _mintGreen],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  items: [
-                                    DropdownMenuItem<String>(
-                                      value: null,
-                                      child: Text('All Cities', style: GoogleFonts.inter(color: _textSecondary, fontWeight: FontWeight.w600)),
-                                    ),
-                                    ...snapshot.data!.map((city) {
-                                      return DropdownMenuItem<String>(
-                                        value: city,
-                                        child: Text(city, style: GoogleFonts.inter(color: _textPrimary, fontWeight: FontWeight.w700)),
-                                      );
-                                    }).toList(),
-                                  ],
-                                  onChanged: (String? newValue) {
-                                    setState(() {
-                                      _tempSelectedCity = newValue;
-                                      _hasTempFilters = true;
-                                    });
-                                  },
-                                );
-                              },
-                            ),
-                          ],
-
-                          // Category Filter
-                          SizedBox(height: isTablet ? 20 : 16),
-                          _buildPremiumDropdown<ServiceCategory>(
-                            value: _tempSelectedCategory,
-                            label: 'Select Category',
-                            icon: Icons.category_rounded,
-                            isTablet: isTablet,
-                            gradient: LinearGradient(
-                              colors: [_primaryRed, _coralRed],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            items: [
-                              DropdownMenuItem<ServiceCategory>(
-                                value: null,
-                                child: Text('All Categories', style: GoogleFonts.inter(color: _textSecondary, fontWeight: FontWeight.w600)),
-                              ),
-                              ...ServiceCategory.values.map((category) {
-                                return DropdownMenuItem<ServiceCategory>(
-                                  value: category,
-                                  child: Row(
-                                    children: [
-                                      Icon(category.icon, color: _primaryRed, size: isTablet ? 22 : 20),
-                                      SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          category.displayName,
-                                          style: GoogleFonts.inter(
-                                            color: _textPrimary,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: isTablet ? 15 : 14,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ],
-                            onChanged: (ServiceCategory? newValue) {
-                              setState(() {
-                                _tempSelectedCategory = newValue;
-                                _tempSelectedServiceProvider = null;
-                                _hasTempFilters = true;
-                              });
-                            },
-                          ),
-
-                          // Service Provider Filter
-                          if (_tempSelectedCategory != null) ...[
-                            SizedBox(height: isTablet ? 20 : 16),
-                            _buildPremiumDropdown<String>(
-                              value: _tempSelectedServiceProvider,
-                              label: 'Select Service Type',
-                              icon: Icons.work_rounded,
-                              isTablet: isTablet,
-                              gradient: LinearGradient(
-                                colors: [_goldAccent, _softGold],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              items: [
-                                DropdownMenuItem<String>(
-                                  value: null,
-                                  child: Text('All Types', style: GoogleFonts.inter(color: _textSecondary, fontWeight: FontWeight.w600)),
-                                ),
-                                ..._tempSelectedCategory!.serviceProviders.map((provider) {
-                                  return DropdownMenuItem<String>(
-                                    value: provider,
-                                    child: Text(
-                                      provider,
-                                      style: GoogleFonts.inter(
-                                        color: _textPrimary,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ],
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _tempSelectedServiceProvider = newValue;
-                                  _hasTempFilters = true;
-                                });
-                              },
-                            ),
-                          ],
-
-                          SizedBox(height: isTablet ? 32 : 28),
-
-                          // Action Buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildPremiumActionButton(
-                                  label: 'Apply',
-                                  icon: Icons.check_circle_rounded,
-                                  gradient: LinearGradient(
-                                    colors: [_primaryGreen, _darkGreen],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  onTap: () => _applyFilters(provider),
-                                  isTablet: isTablet,
-                                ),
-                              ),
-                              SizedBox(width: isTablet ? 14 : 12),
-                              Expanded(
-                                child: _buildPremiumActionButton(
-                                  label: 'Cancel',
-                                  icon: Icons.cancel_rounded,
-                                  gradient: _hasTempFilters 
-                                      ? LinearGradient(colors: [_primaryRed, _coralRed])
-                                      : LinearGradient(colors: [_textLight, _textSecondary]),
-                                  onTap: _cancelFilters,
-                                  isTablet: isTablet,
-                                  isOutlined: true,
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 14 : 12),
-                          
-                          // Clear All Button
-                          AnimatedContainer(
-                            duration: Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                            child: GestureDetector(
-                              onTap: _clearTempFilters,
-                              child: Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: isTablet ? 16 : 14,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: _hasTempFilters 
-                                      ? LinearGradient(colors: [_primaryRed, _coralRed])
-                                      : null,
-                                  color: _hasTempFilters ? null : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(22),
-                                  border: Border.all(
-                                    color: _hasTempFilters ? Colors.transparent : _textLight.withOpacity(0.3),
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.clear_all_rounded,
-                                      color: _hasTempFilters ? Colors.white : _textLight,
-                                      size: isTablet ? 22 : 20,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Clear All',
-                                      style: GoogleFonts.poppins(
-                                        color: _hasTempFilters ? Colors.white : _textLight,
-                                        fontSize: isTablet ? 16 : 15,
-                                        fontWeight: _hasTempFilters ? FontWeight.w700 : FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          child: Consumer<LocationFilterProvider>(
+            builder: (context, locationProvider, _) {
+              return GlobalLocationFilterBar(
+                isTablet: isTablet,
+                onClearTap: () {
+                  // This only clears GLOBAL filter
+                  locationProvider.clearLocationFilter();
+                },
+              );
+            },
           ),
         ),
-        
         SliverToBoxAdapter(
-          child: SizedBox(height: isTablet ? 120 : 100),
+          child: Container(
+            margin: EdgeInsets.all(isTablet ? 20 : 16),
+            child: _buildLocalFilterCard(provider, isTablet),
+          ),
         ),
+        SliverToBoxAdapter(child: SizedBox(height: isTablet ? 80 : 60)),
       ],
     );
   }
 
-  Widget _buildMainView(ServiceProviderProvider provider, List<ServiceProviderModel> availableProviders, bool isTablet) {
-    return CustomScrollView(
-      controller: _scrollController,
-      physics: BouncingScrollPhysics(),
-      slivers: [
-        _buildPremiumAppBar(isTablet),
-        
-        // Premium Search Bar
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.all(isTablet ? 20 : 14),
-            child: _buildPremiumSearchField(provider, isTablet),
-          ),
-        ),
-
-        // Category Tabs
-    /*    SliverToBoxAdapter(
-          child: Container(
-            height: isTablet ? 60 : 50,
-            margin: EdgeInsets.symmetric(horizontal: isTablet ? 20 : 14),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _categories.length,
-              itemBuilder: (context, index) {
-                return _buildCategoryTab(index, isTablet);
+  Widget _buildLocalFilterCard(ServiceProviderProvider provider, bool isTablet) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(isTablet ? 20 : 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [_primaryRed, _primaryGreen],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.tune_rounded, color: Colors.white, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Filters',
+                        style: GoogleFonts.poppins(
+                          fontSize: isTablet ? 18 : 16,
+                          fontWeight: FontWeight.w600,
+                          color: _textPrimary,
+                        ),
+                      ),
+                      Text(
+                        'Apply screen-specific filters',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 13 : 11,
+                          color: _textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // State Dropdown
+            _buildDropdown<String?>(
+              value: _localTempSelectedState,
+              label: 'State',
+              icon: Icons.location_on_rounded,
+              items: [
+                const DropdownMenuItem<String?>(value: null, child: Text('All States')),
+                ...CommunityStates.states.map((state) => 
+                  DropdownMenuItem<String?>(value: state, child: Text(state))
+                ),
+              ],
+              onChanged: (String? newValue) {
+                setState(() {
+                  _localTempSelectedState = newValue;
+                  _localTempSelectedCity = null;
+                });
               },
             ),
-          ),
-        ),  */
-
-        // Filter Toggle Button
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              isTablet ? 20 : 14,
-              isTablet ? 14 : 10,
-              isTablet ? 20 : 14,
-              isTablet ? 12 : 8,
+            
+            if (_localTempSelectedState != null) ...[
+              const SizedBox(height: 12),
+              FutureBuilder<List<String>>(
+                future: provider.getCitiesForState(_localTempSelectedState!),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return _buildDropdown<String?>(
+                    value: _localTempSelectedCity,
+                    label: 'City',
+                    icon: Icons.location_city_rounded,
+                    items: [
+                      const DropdownMenuItem<String?>(value: null, child: Text('All Cities')),
+                      ...snapshot.data!.map((city) => 
+                        DropdownMenuItem<String?>(value: city, child: Text(city))
+                      ),
+                    ],
+                    onChanged: (String? newValue) {
+                      setState(() => _localTempSelectedCity = newValue);
+                    },
+                  );
+                },
+              ),
+            ],
+            
+            const SizedBox(height: 12),
+            
+            // Category Dropdown
+            _buildDropdown<ServiceCategory?>(
+              value: _localTempSelectedCategory,
+              label: 'Category',
+              icon: Icons.category_rounded,
+              items: [
+                const DropdownMenuItem<ServiceCategory?>(value: null, child: Text('All Categories')),
+                ...ServiceCategory.values.map((category) => 
+                  DropdownMenuItem<ServiceCategory?>(
+                    value: category,
+                    child: Row(
+                      children: [
+                        Icon(category.icon, color: _primaryRed, size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            category.displayName,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                ),
+              ],
+              onChanged: (ServiceCategory? newValue) {
+                setState(() {
+                  _localTempSelectedCategory = newValue;
+                  _localTempSelectedServiceProvider = null;
+                });
+              },
             ),
-            child: _buildFilterToggleButton(isTablet, provider.hasActiveFilters),
+            
+            if (_localTempSelectedCategory != null) ...[
+              const SizedBox(height: 12),
+              _buildDropdown<String?>(
+                value: _localTempSelectedServiceProvider,
+                label: 'Service Type',
+                icon: Icons.work_rounded,
+                items: [
+                  const DropdownMenuItem<String?>(value: null, child: Text('All Types')),
+                  ..._localTempSelectedCategory!.serviceProviders.map((provider) => 
+                    DropdownMenuItem<String?>(
+                      value: provider,
+                      child: Text(
+                        provider,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    )
+                  ),
+                ],
+                onChanged: (String? newValue) {
+                  setState(() => _localTempSelectedServiceProvider = newValue);
+                },
+              ),
+            ],
+            
+            const SizedBox(height: 20),
+            
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(
+                    label: 'Apply',
+                    onTap: _applyLocalFilters,
+                    isPrimary: true,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildActionButton(
+                    label: 'Clear',
+                    onTap: _clearLocalFilters,
+                    isPrimary: false,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _applyLocalFilters() async {
+    final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
+    
+    // Build active filters map for display
+    Map<String, dynamic> newActiveFilters = {};
+    
+    // Apply new local filters
+    setState(() {
+      _localAppliedState = _localTempSelectedState;
+      _localAppliedCity = _localTempSelectedCity;
+      _localAppliedCategory = _localTempSelectedCategory;
+      _localAppliedServiceProvider = _localTempSelectedServiceProvider;
+      
+      if (_localAppliedState != null) {
+        newActiveFilters['local_state'] = _localAppliedState;
+      }
+      if (_localAppliedCity != null && _localAppliedCity!.isNotEmpty) {
+        newActiveFilters['local_city'] = _localAppliedCity;
+      }
+      if (_localAppliedCategory != null) {
+        newActiveFilters['local_category'] = _localAppliedCategory!.displayName;
+      }
+      if (_localAppliedServiceProvider != null && _localAppliedServiceProvider!.isNotEmpty) {
+        newActiveFilters['local_service'] = _localAppliedServiceProvider;
+      }
+      
+      _hasLocalFilters = newActiveFilters.isNotEmpty;
+      _activeLocalFilters = newActiveFilters;
+      _isFilterView = false;
+    });
+    
+    // Reload data with new local filters
+    await provider.loadServiceProviders();
+  }
+
+  void _clearLocalFilters() {
+    setState(() {
+      _localTempSelectedState = null;
+      _localTempSelectedCity = null;
+      _localTempSelectedCategory = null;
+      _localTempSelectedServiceProvider = null;
+      _localAppliedState = null;
+      _localAppliedCity = null;
+      _localAppliedCategory = null;
+      _localAppliedServiceProvider = null;
+      _hasLocalFilters = false;
+      _activeLocalFilters.clear();
+      _isFilterView = false;
+    });
+    
+    // Reload data without local filters
+    final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
+    provider.loadServiceProviders();
+  }
+
+  Widget _buildDropdown<T>({
+    required T? value,
+    required String label,
+    required IconData icon,
+    required List<DropdownMenuItem<T>> items,
+    required void Function(T?) onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: DropdownButtonFormField<T>(
+        value: value,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.poppins(fontSize: 12),
+          prefixIcon: Icon(icon, color: _primaryGreen, size: 18),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        ),
+        items: items,
+        onChanged: onChanged,
+        isExpanded: true,
+        icon: Icon(Icons.arrow_drop_down, color: _primaryGreen),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required String label,
+    required VoidCallback onTap,
+    required bool isPrimary,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          gradient: isPrimary
+              ? const LinearGradient(colors: [_primaryGreen, _darkGreen])
+              : const LinearGradient(colors: [Colors.white, Colors.white]),
+          borderRadius: BorderRadius.circular(15),
+          border: isPrimary ? null : Border.all(color: _primaryRed, width: 1.5),
+          boxShadow: isPrimary
+              ? [BoxShadow(color: _primaryGreen.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))]
+              : null,
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: isPrimary ? Colors.white : _primaryRed,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
           ),
         ),
+      ),
+    );
+  }
 
-        // Active Filters
-        _buildActiveFilters(provider, isTablet),
-
-        // Results Header
+  Widget _buildMainView(
+    ServiceProviderProvider provider,
+    List<ServiceProviderModel> availableProviders,
+    LocationFilterProvider locationProvider,
+    bool isTablet,
+  ) {
+    return CustomScrollView(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(child: SizedBox(height: isTablet ? 180 : 150)), // Space for app bar
+        
+        // Add global location filter bar (SEPARATE)
+        SliverToBoxAdapter(
+          child: Consumer<LocationFilterProvider>(
+            builder: (context, locationProvider, _) {
+              return GlobalLocationFilterBar(
+                isTablet: isTablet,
+                onClearTap: () {
+                  // This only clears GLOBAL filter
+                  locationProvider.clearLocationFilter();
+                },
+              );
+            },
+          ),
+        ),
+        
+        // LOCAL Filter Toggle Button
         SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: isTablet ? 20 : 14,
-              vertical: isTablet ? 14 : 10,
+              horizontal: isTablet ? 16 : 12,
+              vertical: 8,
             ),
+            child: _buildLocalFilterToggleButton(isTablet),
+          ),
+        ),
+        
+        // Active LOCAL Filters Display
+        _buildActiveLocalFilters(isTablet),
+        
+        // Search Bar
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.all(isTablet ? 16 : 12),
+            child: _buildSearchField(provider, isTablet),
+          ),
+        ),
+
+        // Category Row
+        SliverToBoxAdapter(
+          child: _buildCategoryRow(provider, isTablet),
+        ),
+      
+        // Results Header
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.all(isTablet ? 16 : 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.auto_awesome_rounded,
-                      color: _goldAccent,
-                      size: isTablet ? 24 : 22,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      'Available',
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 20 : 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Available Services',
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 20 : 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
                 Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: isTablet ? 14 : 12,
-                    vertical: isTablet ? 6 : 4,
+                    horizontal: isTablet ? 12 : 8,
+                    vertical: isTablet ? 4 : 2,
                   ),
                   decoration: BoxDecoration(
-                    gradient: _glassMorphismGradient,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.25),
-                    ),
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(15),
                   ),
                   child: Text(
                     '${availableProviders.length}',
                     style: GoogleFonts.poppins(
-                      fontSize: isTablet ? 15 : 13,
-                      fontWeight: FontWeight.w700,
+                      fontSize: isTablet ? 14 : 12,
+                      fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
                   ),
@@ -1185,136 +1076,42 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
           ),
         ),
 
-        if (provider.isLoading && provider.serviceProviders.isEmpty)
+        // Content based on state
+        if (provider.isLoading && availableProviders.isEmpty)
           _buildLoadingState(isTablet)
         else if (provider.error.isNotEmpty)
-          _buildErrorState(isTablet, provider.error, () {
-            provider.loadServiceProviders();
-          })
-        else if (availableProviders.isEmpty)
-          _buildEmptyState(isTablet, provider)
+          _buildErrorState(isTablet, provider.error)
+        else if (availableProviders.isEmpty && !provider.isLoading)
+          _buildEmptyState(isTablet, provider, locationProvider)
         else
-          _buildServiceProvidersList(provider, availableProviders, isTablet),
+          _buildProvidersList(availableProviders, locationProvider, isTablet),
         
-        SliverToBoxAdapter(
-          child: SizedBox(height: isTablet ? 140 : 120),
-        ),
+        SliverToBoxAdapter(child: SizedBox(height: isTablet ? 100 : 80)),
       ],
     );
   }
 
-/*  Widget _buildCategoryTab(int index, bool isTablet) {
-    final isSelected = _selectedTabIndex == index;
+  Widget _buildLocalFilterToggleButton(bool isTablet) {
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedTabIndex = index;
-        });
+        setState(() => _isFilterView = true);
         HapticFeedback.lightImpact();
       },
       child: Container(
-        margin: EdgeInsets.only(right: isTablet ? 14 : 10),
         padding: EdgeInsets.symmetric(
-          horizontal: isTablet ? 24 : 20,
-          vertical: isTablet ? 14 : 12,
+          horizontal: isTablet ? 16 : 12,
+          vertical: isTablet ? 10 : 8,
         ),
         decoration: BoxDecoration(
-          gradient: isSelected 
-              ? LinearGradient(colors: [_primaryRed, _primaryGreen])
-              : null,
-          color: isSelected ? null : Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(
-            color: isSelected ? Colors.transparent : Colors.white.withOpacity(0.15),
-            width: 1,
-          ),
-          boxShadow: isSelected ? [
+          gradient: _hasLocalFilters
+              ? const LinearGradient(colors: [_primaryRed, _primaryGreen])
+              : const LinearGradient(colors: [_primaryGreen, _darkGreen]),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
             BoxShadow(
-              color: _primaryRed.withOpacity(0.3),
-              blurRadius: 16,
-              offset: Offset(0, 6),
-            ),
-          ] : null,
-        ),
-        child: Center(
-          child: Text(
-            _categories[index],
-            style: GoogleFonts.poppins(
-              fontSize: isTablet ? 16 : 14,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-              color: isSelected ? Colors.white : Colors.white.withOpacity(0.8),
-            ),
-          ),
-        ),
-      ),
-    );
-  } */
-
-  Widget _buildLoadingIndicator(bool isTablet) {
-    return Center(
-      child: Container(
-        padding: EdgeInsets.all(isTablet ? 18 : 14),
-        decoration: BoxDecoration(
-          gradient: _glassMorphismGradient,
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.white.withOpacity(0.25)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: isTablet ? 24 : 20,
-              height: isTablet ? 24 : 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(_goldAccent),
-              ),
-            ),
-            SizedBox(width: isTablet ? 14 : 10),
-            Text(
-              'Loading...',
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: isTablet ? 16 : 14,
-                shadows: [
-                  Shadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPremiumActionButton({
-    required String label,
-    required IconData icon,
-    required LinearGradient gradient,
-    required VoidCallback onTap,
-    required bool isTablet,
-    bool isOutlined = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: isTablet ? 16 : 14,
-        ),
-        decoration: BoxDecoration(
-          gradient: isOutlined ? null : gradient,
-          color: isOutlined ? Colors.transparent : null,
-          borderRadius: BorderRadius.circular(22),
-          border: isOutlined ? Border.all(color: Colors.white.withOpacity(0.4), width: 1.5) : null,
-          boxShadow: isOutlined ? null : [
-            BoxShadow(
-              color: gradient.colors.first.withOpacity(0.3),
-              blurRadius: 16,
-              offset: Offset(0, 8),
+              color: (_hasLocalFilters ? _primaryRed : _primaryGreen).withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -1322,1596 +1119,265 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              icon,
-              color: isOutlined ? Colors.white : Colors.white,
-              size: isTablet ? 22 : 20,
+              _hasLocalFilters ? Icons.filter_alt_rounded : Icons.tune_rounded,
+              color: Colors.white,
+              size: isTablet ? 18 : 16,
             ),
-            SizedBox(width: 6),
+            const SizedBox(width: 6),
             Text(
-              label,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: isTablet ? 16 : 14,
-                fontWeight: FontWeight.w700,
-                shadows: [
-                  Shadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPremiumSearchField(ServiceProviderProvider provider, bool isTablet) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 700),
-      curve: Curves.elasticOut,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: 0.96 + (0.04 * value),
-          child: Opacity(
-            opacity: value,
-            child: child,
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(35),
-          boxShadow: [
-            BoxShadow(
-              color: _primaryGreen.withOpacity(0.25),
-              blurRadius: 25,
-              offset: Offset(0, 12),
-              spreadRadius: -4,
-            ),
-            BoxShadow(
-              color: _primaryRed.withOpacity(0.15),
-              blurRadius: 30,
-              offset: Offset(0, 0),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(35),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withOpacity(0.95),
-                    Colors.white.withOpacity(0.9),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: TextField(
-                controller: _searchController,
-                style: GoogleFonts.inter(
-                  fontSize: isTablet ? 16 : 14,
-                  color: _textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Search services...',
-                  hintStyle: GoogleFonts.inter(
-                    color: _textLight.withOpacity(0.7),
-                    fontSize: isTablet ? 15 : 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  prefixIcon: Container(
-                    margin: EdgeInsets.all(isTablet ? 14 : 12),
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryGreen, _darkGreen],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _primaryGreen.withOpacity(0.3),
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.search_rounded,
-                      color: Colors.white,
-                      size: isTablet ? 24 : 22,
-                    ),
-                  ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: Container(
-                            padding: EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: _primaryRed.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.close_rounded,
-                              color: _primaryRed,
-                              size: isTablet ? 22 : 20,
-                            ),
-                          ),
-                          onPressed: () {
-                            _searchController.clear();
-                            provider.setSearchQuery('');
-                            HapticFeedback.lightImpact();
-                          },
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  filled: true,
-                  fillColor: Colors.transparent,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: isTablet ? 28 : 24,
-                    vertical: isTablet ? 22 : 18,
-                  ),
-                ),
-                onChanged: (value) {
-                  provider.setSearchQuery(value);
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterToggleButton(bool isTablet, bool hasActiveFilters) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _showFilters = true;
-          _syncTempWithAppliedFilters(Provider.of<ServiceProviderProvider>(context, listen: false));
-        });
-        HapticFeedback.lightImpact();
-      },
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(milliseconds: 500),
-        curve: Curves.easeOutBack,
-        builder: (context, value, child) {
-          return Transform.scale(
-            scale: 0.96 + (0.04 * value),
-            child: Opacity(
-              opacity: value,
-              child: child,
-            ),
-          );
-        },
-        child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.symmetric(
-            horizontal: isTablet ? 24 : 20,
-            vertical: isTablet ? 18 : 15,
-          ),
-          decoration: BoxDecoration(
-            gradient: hasActiveFilters 
-                ? LinearGradient(colors: [_primaryRed, _primaryGreen])
-                : LinearGradient(colors: [_primaryGreen, _darkGreen]),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: (hasActiveFilters ? _primaryRed : _primaryGreen).withOpacity(0.3),
-                blurRadius: 20,
-                offset: Offset(0, 10),
-                spreadRadius: -2,
-              ),
-              BoxShadow(
-                color: (hasActiveFilters ? _goldAccent : _darkGreen).withOpacity(0.2),
-                blurRadius: 28,
-                offset: Offset(0, 0),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              RotationTransition(
-                turns: _rotateAnimation,
-                child: Icon(
-                  hasActiveFilters ? Icons.filter_alt_rounded : Icons.tune_rounded,
-                  color: Colors.white,
-                  size: isTablet ? 26 : 22,
-                ),
-              ),
-              SizedBox(width: isTablet ? 12 : 8),
-              Text(
-                hasActiveFilters ? 'Edit Filters' : 'Show Filters',
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: isTablet ? 18 : 16,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 4,
-                    ),
-                  ],
-                ),
-              ),
-              if (hasActiveFilters) ...[
-                SizedBox(width: isTablet ? 12 : 8),
-                Container(
-                  padding: EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    '${_getActiveFilterCount(Provider.of<ServiceProviderProvider>(context, listen: false))}',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: isTablet ? 15 : 13,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  int _getActiveFilterCount(ServiceProviderProvider provider) {
-    int count = 0;
-    if (provider.selectedState != null) count++;
-    if (provider.selectedCity != null) count++;
-    if (provider.selectedCategory != null) count++;
-    if (provider.selectedServiceProvider != null) count++;
-    return count;
-  }
-
-  Widget _buildPremiumDropdown<T>({
-    required T? value,
-    required String label,
-    required IconData icon,
-    required bool isTablet,
-    required List<DropdownMenuItem<T>> items,
-    required Function(T?) onChanged,
-    required LinearGradient gradient,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(25),
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.95),
-            Colors.white.withOpacity(0.9),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: gradient.colors.first.withOpacity(0.15),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: DropdownButtonFormField<T>(
-        value: value,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: GoogleFonts.poppins(
-            color: gradient.colors.first,
-            fontSize: isTablet ? 14 : 13,
-            fontWeight: FontWeight.w600,
-          ),
-          prefixIcon: Container(
-            margin: EdgeInsets.all(isTablet ? 12 : 10),
-            padding: EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: gradient,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: gradient.colors.first.withOpacity(0.3),
-                  blurRadius: 8,
-                ),
-              ],
-            ),
-            child: Icon(icon, color: Colors.white, size: isTablet ? 22 : 20),
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.transparent,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: isTablet ? 24 : 20,
-            vertical: isTablet ? 18 : 14,
-          ),
-        ),
-        items: items,
-        onChanged: onChanged,
-        style: GoogleFonts.inter(
-          fontSize: isTablet ? 16 : 14,
-          color: _textPrimary,
-          fontWeight: FontWeight.w700,
-        ),
-        dropdownColor: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        icon: RotationTransition(
-          turns: _rotateAnimation,
-          child: Icon(
-            Icons.arrow_drop_down_circle_rounded,
-            color: gradient.colors.first,
-            size: isTablet ? 26 : 22,
-          ),
-        ),
-        isExpanded: true,
-      ),
-    );
-  }
-
-  Widget _buildActiveFilters(ServiceProviderProvider provider, bool isTablet) {
-    final activeFilters = <Widget>[];
-    
-    if (provider.selectedState != null) {
-      activeFilters.add(
-        _buildFilterChip(
-          label: provider.selectedState!,
-          icon: Icons.location_on_rounded,
-          gradient: LinearGradient(
-            colors: [_primaryGreen, _darkGreen],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          onRemove: () => provider.setSelectedState(null),
-          isTablet: isTablet,
-        ),
-      );
-    }
-    
-    if (provider.selectedCity != null) {
-      activeFilters.add(
-        _buildFilterChip(
-          label: provider.selectedCity!,
-          icon: Icons.location_city_rounded,
-          gradient: LinearGradient(
-            colors: [_primaryGreen, _mintGreen],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          onRemove: () => provider.setSelectedCity(null),
-          isTablet: isTablet,
-        ),
-      );
-    }
-    
-    if (provider.selectedCategory != null) {
-      activeFilters.add(
-        _buildFilterChip(
-          label: provider.selectedCategory!.displayName,
-          icon: provider.selectedCategory!.icon,
-          gradient: LinearGradient(
-            colors: [_primaryRed, _coralRed],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          onRemove: () => provider.setSelectedCategory(null),
-          isTablet: isTablet,
-        ),
-      );
-    }
-    
-    if (provider.selectedServiceProvider != null) {
-      activeFilters.add(
-        _buildFilterChip(
-          label: provider.selectedServiceProvider!,
-          icon: Icons.work_rounded,
-          gradient: LinearGradient(
-            colors: [_goldAccent, _softGold],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          onRemove: () => provider.setSelectedServiceProvider(null),
-          isTablet: isTablet,
-        ),
-      );
-    }
-
-    if (activeFilters.isEmpty) {
-      return SliverToBoxAdapter(child: SizedBox.shrink());
-    }
-
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: isTablet ? 20 : 14,
-          vertical: isTablet ? 10 : 6,
-        ),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: activeFilters,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip({
-    required String label,
-    required IconData icon,
-    required LinearGradient gradient,
-    required VoidCallback onRemove,
-    required bool isTablet,
-  }) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 250),
-      curve: Curves.elasticOut,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: 0.85 + (0.15 * value),
-          child: child,
-        );
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isTablet ? 16 : 14,
-          vertical: isTablet ? 8 : 6,
-        ),
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(
-              color: gradient.colors.first.withOpacity(0.3),
-              blurRadius: 12,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white, size: isTablet ? 20 : 18),
-            SizedBox(width: 6),
-            Text(
-              label,
+              _hasLocalFilters ? 'Edit Filters' : 'Filters',
               style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontSize: isTablet ? 14 : 12,
-                fontWeight: FontWeight.w600,
-                shadows: [
-                  Shadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 4,
-                  ),
-                ],
+                fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(width: 6),
-            GestureDetector(
-              onTap: onRemove,
-              child: Container(
-                padding: EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25),
+            if (_hasLocalFilters) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.close_rounded,
-                  color: Colors.white,
-                  size: isTablet ? 16 : 14,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPremiumServiceProviderCard(
-    ServiceProviderModel provider,
-    String? userId,
-    bool isTablet,
-    int index,
-  ) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 500 + (index * 80)),
-      curve: Curves.elasticOut,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: 0.92 + (0.08 * value),
-          child: Opacity(
-            opacity: value,
-            child: child,
-          ),
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.symmetric(
-          horizontal: isTablet ? 20 : 14,
-          vertical: 8,
-        ),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(40),
-          boxShadow: [
-            BoxShadow(
-              color: _primaryGreen.withOpacity(0.25),
-              blurRadius: 30,
-              offset: Offset(0, 16),
-              spreadRadius: -4,
-            ),
-            BoxShadow(
-              color: _primaryRed.withOpacity(0.15),
-              blurRadius: 40,
-              offset: Offset(0, -8),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(40),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withOpacity(0.95),
-                    Colors.white.withOpacity(0.9),
-                    Colors.white.withOpacity(0.85),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ServiceProviderDetailScreen(providerId: provider.id!),
-                      ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(40),
-                  splashColor: _primaryGreen.withOpacity(0.15),
-                  highlightColor: Colors.transparent,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header
-                      Container(
-                        padding: EdgeInsets.fromLTRB(
-                          isTablet ? 24 : 20,
-                          isTablet ? 20 : 16,
-                          isTablet ? 24 : 20,
-                          isTablet ? 14 : 10,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              _primaryGreen.withOpacity(0.08),
-                              _primaryRed.withOpacity(0.08),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            if (provider.isVerified)
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 14 : 12,
-                                  vertical: isTablet ? 6 : 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [_goldAccent, _softGold],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _goldAccent.withOpacity(0.3),
-                                      blurRadius: 10,
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.verified_rounded, color: Colors.white, size: isTablet ? 18 : 16),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Verified',
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontSize: isTablet ? 12 : 10,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                            _buildPremiumLikeButton(provider, userId, isTablet),
-                          ],
-                        ),
-                      ),
-
-                      // Main Content
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          isTablet ? 24 : 20,
-                          0,
-                          isTablet ? 24 : 20,
-                          isTablet ? 24 : 20,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Profile Section
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                TweenAnimationBuilder<double>(
-                                  tween: Tween(begin: 0, end: 1),
-                                  duration: Duration(milliseconds: 700 + (index * 80)),
-                                  curve: Curves.elasticOut,
-                                  builder: (context, value, child) {
-                                    return Transform.scale(
-                                      scale: 0.85 + (0.15 * value),
-                                      child: child,
-                                    );
-                                  },
-                                  child: Container(
-                                    width: isTablet ? 100 : 80,
-                                    height: isTablet ? 100 : 80,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        colors: [_primaryRed, _primaryGreen],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 3,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _primaryGreen.withOpacity(0.3),
-                                          blurRadius: 18,
-                                          spreadRadius: 2,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Padding(
-                                      padding: EdgeInsets.all(2),
-                                      child: ClipOval(
-                                        child: _buildProviderImage(provider, isTablet),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: isTablet ? 20 : 16),
-                                
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      ShaderMask(
-                                        shaderCallback: (bounds) => LinearGradient(
-                                          colors: [_primaryRed, _primaryGreen],
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                        ).createShader(bounds),
-                                        child: Text(
-                                          provider.fullName,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 22 : 20,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.white,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: isTablet ? 10 : 8,
-                                          vertical: isTablet ? 4 : 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [_primaryGreen, _darkGreen],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          borderRadius: BorderRadius.circular(15),
-                                        ),
-                                        child: Text(
-                                          provider.companyName,
-                                          style: GoogleFonts.inter(
-                                            fontSize: isTablet ? 16 : 14,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            SizedBox(height: isTablet ? 20 : 16),
-
-                            // Category and Service Type
-                            Container(
-                              padding: EdgeInsets.all(isTablet ? 18 : 14),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    _primaryGreen.withOpacity(0.08),
-                                    _primaryRed.withOpacity(0.08),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(25),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.15),
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: EdgeInsets.all(6),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [_primaryGreen, _darkGreen],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          borderRadius: BorderRadius.circular(14),
-                                        ),
-                                        child: Icon(
-                                          provider.serviceCategory.icon,
-                                          color: Colors.white,
-                                          size: isTablet ? 22 : 20,
-                                        ),
-                                      ),
-                                      SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Category',
-                                              style: GoogleFonts.inter(
-                                                fontSize: isTablet ? 12 : 10,
-                                                color: _textLight,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            Text(
-                                              provider.serviceCategory.displayName,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: isTablet ? 18 : 16,
-                                                fontWeight: FontWeight.w700,
-                                                color: _primaryGreen,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: isTablet ? 14 : 10),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: EdgeInsets.all(6),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [_primaryRed, _coralRed],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          borderRadius: BorderRadius.circular(14),
-                                        ),
-                                        child: Icon(
-                                          Icons.work_rounded,
-                                          color: Colors.white,
-                                          size: isTablet ? 22 : 20,
-                                        ),
-                                      ),
-                                      SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Service Type',
-                                              style: GoogleFonts.inter(
-                                                fontSize: isTablet ? 12 : 10,
-                                                color: _textLight,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            Text(
-                                              provider.serviceProvider,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: isTablet ? 18 : 16,
-                                                fontWeight: FontWeight.w700,
-                                                color: _primaryRed,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            SizedBox(height: isTablet ? 16 : 12),
-
-                            // Location and Contact
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildPremiumInfoTile(
-                                    icon: Icons.location_on_rounded,
-                                    label: 'Location',
-                                    value: '${provider.city}',
-                                    gradient: LinearGradient(
-                                      colors: [_primaryGreen, _darkGreen],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    isTablet: isTablet,
-                                  ),
-                                ),
-                                SizedBox(width: isTablet ? 12 : 8),
-                                Expanded(
-                                  child: _buildPremiumInfoTile(
-                                    icon: Icons.phone_rounded,
-                                    label: 'Contact',
-                                    value: provider.phone,
-                                    gradient: LinearGradient(
-                                      colors: [_primaryRed, _coralRed],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    isTablet: isTablet,
-                                    isClickable: true,
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            SizedBox(height: isTablet ? 16 : 12),
-
-                            // Status and Rating
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isTablet ? 18 : 14,
-                                    vertical: isTablet ? 8 : 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: provider.isAvailable
-                                        ? LinearGradient(colors: [_primaryGreen, _darkGreen])
-                                        : LinearGradient(colors: [_primaryRed, _coralRed]),
-                                    borderRadius: BorderRadius.circular(25),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: (provider.isAvailable ? _primaryGreen : _primaryRed).withOpacity(0.3),
-                                        blurRadius: 12,
-                                        offset: Offset(0, 6),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        provider.isAvailable
-                                            ? Icons.check_circle_rounded
-                                            : Icons.remove_circle_rounded,
-                                        color: Colors.white,
-                                        size: isTablet ? 20 : 18,
-                                      ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        provider.isAvailable ? 'Available' : 'Not Available',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 14 : 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isTablet ? 14 : 10,
-                                    vertical: isTablet ? 6 : 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [_goldAccent, _softGold],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(25),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _goldAccent.withOpacity(0.3),
-                                        blurRadius: 12,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.star_rounded,
-                                        color: Colors.white,
-                                        size: isTablet ? 22 : 20,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        provider.rating.toStringAsFixed(1),
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 18 : 16,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            SizedBox(height: isTablet ? 20 : 16),
-
-                            // View Details Button
-                            GestureDetector(
-                              onTap: () {
-                                HapticFeedback.mediumImpact();
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ServiceProviderDetailScreen(providerId: provider.id!),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: isTablet ? 16 : 14,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [_primaryRed, _primaryGreen],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(30),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _primaryRed.withOpacity(0.3),
-                                      blurRadius: 18,
-                                      offset: Offset(0, 8),
-                                      spreadRadius: -2,
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'View Details',
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontSize: isTablet ? 18 : 16,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    SizedBox(width: isTablet ? 12 : 8),
-                                    Icon(
-                                      Icons.arrow_forward_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 20 : 18,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPremiumInfoTile({
-    required IconData icon,
-    required String label,
-    required String value,
-    required LinearGradient gradient,
-    required bool isTablet,
-    bool isClickable = false,
-  }) {
-    return GestureDetector(
-      onTap: isClickable ? () {
-        // Implement call functionality
-      } : null,
-      child: Container(
-        padding: EdgeInsets.all(isTablet ? 14 : 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              gradient.colors.first.withOpacity(0.1),
-              gradient.colors.last.withOpacity(0.05),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: gradient.colors.first.withOpacity(0.25),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                gradient: gradient,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: Colors.white, size: isTablet ? 20 : 18),
-            ),
-            SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 11 : 9,
-                      color: _textLight,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    value,
-                    style: GoogleFonts.poppins(
-                      fontSize: isTablet ? 16 : 14,
-                      color: gradient.colors.first,
-                      fontWeight: FontWeight.w700,
-                      decoration: isClickable ? TextDecoration.underline : null,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPremiumLikeButton(ServiceProviderModel provider, String? userId, bool isTablet) {
-    final serviceProviderProvider = Provider.of<ServiceProviderProvider>(context, listen: false);
-    bool isLiked = provider.isLikedByUser(userId ?? '');
-    
-    return GestureDetector(
-      onTap: () {
-        if (userId == null || userId.isEmpty) {
-          _showPremiumSnackBar(
-            'Please login to like',
-            isError: true,
-          );
-          return;
-        }
-        
-        HapticFeedback.lightImpact();
-        serviceProviderProvider.toggleLike(provider.id!, userId);
-      },
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 1, end: isLiked ? 1.15 : 1),
-        duration: Duration(milliseconds: 250),
-        curve: Curves.elasticOut,
-        builder: (context, value, child) {
-          return Transform.scale(
-            scale: value,
-            child: child,
-          );
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: isTablet ? 14 : 12,
-            vertical: isTablet ? 6 : 4,
-          ),
-          decoration: BoxDecoration(
-            gradient: isLiked
-                ? LinearGradient(colors: [_primaryRed, _coralRed])
-                : LinearGradient(colors: [Colors.white.withOpacity(0.25), Colors.white.withOpacity(0.15)]),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isLiked ? Colors.transparent : Colors.white.withOpacity(0.25),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isLiked ? _primaryRed.withOpacity(0.3) : Colors.transparent,
-                blurRadius: 12,
-                offset: Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isLiked ? Icons.favorite : Icons.favorite_border,
-                color: isLiked ? Colors.white : Colors.white,
-                size: isTablet ? 18 : 16,
-              ),
-              if (provider.totalLikes > 0) ...[
-                SizedBox(width: 4),
-                Text(
-                  '${provider.totalLikes}',
+                child: Text(
+                  '${_activeLocalFilters.length}',
                   style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 14 : 12,
+                    color: _primaryGreen,
+                    fontSize: isTablet ? 10 : 8,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
                   ),
                 ),
-              ],
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildProviderImage(ServiceProviderModel provider, bool isTablet) {
-    if (provider.profileImageBase64 != null && provider.profileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = provider.profileImageBase64!;
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage(isTablet);
-          },
-        );
-      } catch (e) {
-        return _buildDefaultProfileImage(isTablet);
+  Widget _buildActiveLocalFilters(bool isTablet) {
+    if (_activeLocalFilters.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    final filters = <Widget>[];
+    
+    _activeLocalFilters.forEach((key, value) {
+      IconData icon = Icons.filter_alt_rounded;
+      String label = value.toString();
+      
+      switch (key) {
+        case 'local_state':
+          icon = Icons.location_on_rounded;
+          label = 'State: $value';
+          break;
+        case 'local_city':
+          icon = Icons.location_city_rounded;
+          label = 'City: $value';
+          break;
+        case 'local_category':
+          icon = Icons.category_rounded;
+          label = 'Category: $value';
+          break;
+        case 'local_service':
+          icon = Icons.work_rounded;
+          label = 'Service: $value';
+          break;
       }
-    }
-    return _buildDefaultProfileImage(isTablet);
+      
+      filters.add(_buildLocalFilterChip(
+        label: label,
+        icon: icon,
+        onRemove: () {
+          // Remove this specific local filter
+          setState(() {
+            switch (key) {
+              case 'local_state':
+                _localAppliedState = null;
+                _localTempSelectedState = null;
+                break;
+              case 'local_city':
+                _localAppliedCity = null;
+                _localTempSelectedCity = null;
+                break;
+              case 'local_category':
+                _localAppliedCategory = null;
+                _localTempSelectedCategory = null;
+                _localAppliedServiceProvider = null;
+                _localTempSelectedServiceProvider = null;
+                break;
+              case 'local_service':
+                _localAppliedServiceProvider = null;
+                _localTempSelectedServiceProvider = null;
+                break;
+            }
+            _activeLocalFilters.remove(key);
+            _hasLocalFilters = _activeLocalFilters.isNotEmpty;
+          });
+          
+          // Reload data
+          final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
+          provider.loadServiceProviders();
+        },
+      ));
+    });
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: 4),
+        child: Wrap(spacing: 6, runSpacing: 6, children: filters),
+      ),
+    );
   }
 
-  Widget _buildDefaultProfileImage(bool isTablet) {
+  Widget _buildLocalFilterChip({
+    required String label,
+    required IconData icon,
+    required VoidCallback onRemove,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [_primaryGreen, _darkGreen]),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 12),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: onRemove,
+            child: const Icon(Icons.close, color: Colors.white, size: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchField(ServiceProviderProvider provider, bool isTablet) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_lightGreen, _creamWhite],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3)),
+        ],
       ),
-      child: Center(
-        child: Icon(
-          Icons.person_rounded,
-          color: _primaryGreen,
-          size: isTablet ? 45 : 40,
+      child: TextField(
+        controller: _searchController,
+        style: GoogleFonts.inter(fontSize: isTablet ? 14 : 12),
+        decoration: InputDecoration(
+          hintText: 'Search services...',
+          hintStyle: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: isTablet ? 14 : 12),
+          prefixIcon: Icon(Icons.search_rounded, color: _primaryGreen, size: isTablet ? 20 : 18),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close, color: Colors.grey, size: 16),
+                  onPressed: () {
+                    _searchController.clear();
+                    provider.setSearchQuery('');
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 16 : 12,
+            vertical: isTablet ? 12 : 8,
+          ),
         ),
+        onChanged: (value) {
+          _searchDebounce?.cancel();
+          _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+            provider.setSearchQuery(value);
+          });
+        },
       ),
     );
   }
 
-  Widget _buildLoadingState(bool isTablet) {
-    return SliverFillRemaining(
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: Duration(seconds: 2),
-              curve: Curves.easeInOut,
-              builder: (context, value, child) {
-                return RotationTransition(
-                  turns: AlwaysStoppedAnimation(value),
-                  child: Container(
-                    width: isTablet ? 140 : 120,
-                    height: isTablet ? 140 : 120,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryRed, _primaryGreen],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: _primaryRed.withOpacity(0.3),
-                          blurRadius: 30,
-                          spreadRadius: 3,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: isTablet ? 110 : 90,
-                        height: isTablet ? 110 : 90,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: SizedBox(
-                            width: isTablet ? 60 : 50,
-                            height: isTablet ? 60 : 50,
-                            child: CircularProgressIndicator(
-                              color: _primaryGreen,
-                              strokeWidth: 4,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
+  Widget _buildCategoryRow(ServiceProviderProvider provider, bool isTablet) {
+    return SizedBox(
+      height: isTablet ? 40 : 36,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12),
+        itemCount: ServiceCategory.values.length,
+        itemBuilder: (context, index) {
+          final category = ServiceCategory.values[index];
+          final isSelected = provider.selectedCategory == category;
+          
+          return Padding(
+            padding: EdgeInsets.only(right: isTablet ? 6 : 4),
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                provider.setSelectedCategory(isSelected ? null : category);
               },
-            ),
-            SizedBox(height: isTablet ? 40 : 30),
-            ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [_primaryRed, _primaryGreen],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-              child: Text(
-                'Loading...',
-                style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 30 : 26,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 12 : 8,
+                  vertical: isTablet ? 6 : 4,
                 ),
-              ),
-            ),
-            SizedBox(height: isTablet ? 16 : 12),
-            ScaleTransition(
-              scale: _pulseAnimation,
-              child: Text(
-                'Finding best services for you',
-                style: GoogleFonts.inter(
-                  fontSize: isTablet ? 18 : 16,
-                  color: Colors.white.withOpacity(0.8),
-                  fontWeight: FontWeight.w500,
+                decoration: BoxDecoration(
+                  gradient: isSelected
+                      ? const LinearGradient(colors: [_primaryRed, _primaryGreen])
+                      : null,
+                  color: isSelected ? null : Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(15),
+                  border: isSelected ? null : Border.all(color: Colors.white.withOpacity(0.3)),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorState(bool isTablet, String error, VoidCallback onRetry) {
-    return SliverFillRemaining(
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 40 : 30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: Duration(milliseconds: 700),
-                curve: Curves.elasticOut,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: 0.85 + (0.15 * value),
-                    child: Container(
-                      padding: EdgeInsets.all(isTablet ? 32 : 28),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_primaryRed.withOpacity(0.15), _primaryRed.withOpacity(0.05)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.error_outline_rounded,
-                        size: isTablet ? 80 : 70,
-                        color: _primaryRed,
-                      ),
+                child: Center(
+                  child: Text(
+                    _getCategoryShortName(category),
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 12 : 10,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected ? Colors.white : Colors.white,
                     ),
-                  );
-                },
-              ),
-              SizedBox(height: isTablet ? 40 : 30),
-              ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [_primaryRed, _coralRed],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ).createShader(bounds),
-                child: Text(
-                  'Oops!',
-                  style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 32 : 28,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
                   ),
                 ),
               ),
-              SizedBox(height: isTablet ? 16 : 12),
-              Text(
-                error,
-                style: GoogleFonts.inter(
-                  fontSize: isTablet ? 18 : 16,
-                  color: Colors.white.withOpacity(0.8),
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: isTablet ? 40 : 30),
-              GestureDetector(
-                onTap: onRetry,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: 1),
-                  duration: Duration(milliseconds: 400),
-                  curve: Curves.elasticOut,
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: 0.92 + (0.08 * value),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isTablet ? 50 : 40,
-                          vertical: isTablet ? 18 : 16,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [_primaryRed, _primaryGreen],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _primaryRed.withOpacity(0.3),
-                              blurRadius: 20,
-                              offset: Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.refresh_rounded, color: Colors.white, size: isTablet ? 26 : 22),
-                            SizedBox(width: 12),
-                            Text(
-                              'Try Again',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: isTablet ? 20 : 18,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildEmptyState(bool isTablet, ServiceProviderProvider provider) {
-    return SliverFillRemaining(
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 40 : 30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: Duration(milliseconds: 700),
-                curve: Curves.elasticOut,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: 0.85 + (0.15 * value),
-                    child: Container(
-                      padding: EdgeInsets.all(isTablet ? 32 : 28),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_primaryGreen.withOpacity(0.15), _primaryRed.withOpacity(0.15)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.search_off_rounded,
-                        size: isTablet ? 80 : 70,
-                        color: _primaryGreen,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              SizedBox(height: isTablet ? 40 : 30),
-              ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [_primaryGreen, _darkGreen],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ).createShader(bounds),
-                child: Text(
-                  'No Services Found',
-                  style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 30 : 26,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              SizedBox(height: isTablet ? 16 : 12),
-              Text(
-                'Try adjusting filters or suggest a new service',
-                style: GoogleFonts.inter(
-                  fontSize: isTablet ? 18 : 16,
-                  color: Colors.white.withOpacity(0.8),
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              if (provider.hasActiveFilters) ...[
-                SizedBox(height: isTablet ? 30 : 24),
-                GestureDetector(
-                  onTap: () {
-                    provider.clearFilters();
-                    HapticFeedback.lightImpact();
-                  },
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: 1),
-                    duration: Duration(milliseconds: 400),
-                    curve: Curves.elasticOut,
-                    builder: (context, value, child) {
-                      return Transform.scale(
-                        scale: 0.92 + (0.08 * value),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isTablet ? 50 : 40,
-                            vertical: isTablet ? 18 : 16,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [_primaryRed, _coralRed],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _primaryRed.withOpacity(0.3),
-                                blurRadius: 18,
-                                offset: Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.clear_all_rounded, color: Colors.white, size: isTablet ? 26 : 22),
-                              SizedBox(width: 12),
-                              Text(
-                                'Clear Filters',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: isTablet ? 20 : 18,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
+  String _getCategoryShortName(ServiceCategory category) {
+    switch (category) {
+      case ServiceCategory.accountantsAndTaxPreparers:
+        return 'Tax';
+      case ServiceCategory.legalServices:
+        return 'Legal';
+      case ServiceCategory.healthcareNeeds:
+        return 'Health';
+      case ServiceCategory.religious:
+        return 'Religious';
+      case ServiceCategory.halalGroceryStores:
+        return 'Grocery';
+      case ServiceCategory.halalDeshiRestaurants:
+        return 'Restaurant';
+      case ServiceCategory.realEstateAgents:
+        return 'Real Estate';
+      case ServiceCategory.handymanServices:
+        return 'Handyman';
+    }
   }
 
-  Widget _buildServiceProvidersList(
-    ServiceProviderProvider provider,
-    List<ServiceProviderModel> availableProviders,
+  Widget _buildProvidersList(
+    List<ServiceProviderModel> providers,
+    LocationFilterProvider locationProvider,
     bool isTablet,
   ) {
     final userId = Provider.of<AuthProvider>(context).user?.id;
@@ -2919,130 +1385,577 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
-          return _buildPremiumServiceProviderCard(
-            availableProviders[index],
-            userId,
-            isTablet,
-            index,
-          );
+          return _buildProviderCard(providers[index], userId, locationProvider, isTablet, index);
         },
-        childCount: availableProviders.length,
+        childCount: providers.length,
       ),
     );
   }
 
-  void _showNoCitiesDialog(BuildContext context, bool isTablet) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.all(isTablet ? 40 : 20),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 1),
-            duration: Duration(milliseconds: 400),
-            curve: Curves.elasticOut,
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: 0.85 + (0.15 * value),
-                child: child,
+  // ✅ FINAL FIXED: Provider card with dynamic height
+ /* Widget _buildProviderCard(
+    ServiceProviderModel provider,
+    String? userId,
+    LocationFilterProvider locationProvider,
+    bool isTablet,
+    int index,
+  ) {
+    final categoryGradient = _getCategoryGradient(provider.serviceCategory);
+    
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 16 : 12,
+        vertical: 6,
+      ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.95, end: 1.0),
+        duration: Duration(milliseconds: 200 + (index * 30)),
+        curve: Curves.easeOut,
+        builder: (context, scale, child) {
+          return Transform.scale(
+            scale: scale,
+            child: GestureDetector(
+              onTap: () {
+                if (userId == null || userId.isEmpty) {
+                  _showLoginDialog(context, 'view details');
+                  return;
+                }
+                HapticFeedback.mediumImpact();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ServiceProviderDetailScreen(providerId: provider.id!),
+                  ),
+                );
+              },
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+                  child: Stack(
+                    children: [
+                      // Premium Gradient Background
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              _primaryGreen,
+                              _darkGreen,
+                              _primaryRed,
+                              _coralRed,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            stops: const [0.0, 0.3, 0.7, 1.0],
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header Row
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Profile Image
+                                  Container(
+                                    width: isTablet ? 70 : 60,
+                                    height: isTablet ? 70 : 60,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 8,
+                                        ),
+                                      ],
+                                    ),
+                                    child: _buildProviderImage(provider),
+                                  ),
+                                  
+                                  const SizedBox(width: 12),
+                                  
+                                  // Name and Company
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                provider.fullName,
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: isTablet ? 18 : 16,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.white,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (provider.isVerified)
+                                              Container(
+                                                margin: const EdgeInsets.only(left: 4),
+                                                padding: const EdgeInsets.all(2),
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.blue,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.check,
+                                                  color: Colors.white,
+                                                  size: 10,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          provider.companyName,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: isTablet ? 13 : 11,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white.withOpacity(0.9),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              
+                              const SizedBox(height: 12),
+                              
+                              // Location and Distance
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    color: _goldAccent,
+                                    size: isTablet ? 16 : 14,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      provider.city ?? provider.state ?? 'Location',
+                                      style: GoogleFonts.inter(
+                                        fontSize: isTablet ? 13 : 11,
+                                        color: Colors.white,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (provider.latitude != null && provider.longitude != null) ...[
+                                    const Spacer(),
+                                    DistanceBadge(
+                                      latitude: provider.latitude!,
+                                      longitude: provider.longitude!,
+                                      isTablet: isTablet,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              
+                              const SizedBox(height: 8),
+                              
+                              // Category and Service Type
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      provider.serviceCategory.icon,
+                                      color: _goldAccent,
+                                      size: isTablet ? 16 : 14,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        provider.serviceProvider ?? 'Service',
+                                        style: GoogleFonts.inter(
+                                          fontSize: isTablet ? 12 : 10,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              const SizedBox(height: 12),
+                              
+                              // Contact Buttons
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildContactButton(
+                                      icon: Icons.phone,
+                                      label: 'Call',
+                                      onTap: () {
+                                        // Add phone call functionality
+                                      },
+                                      isTablet: isTablet,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _buildContactButton(
+                                      icon: Icons.email,
+                                      label: 'Email',
+                                      onTap: () {
+                                        // Add email functionality
+                                      },
+                                      isTablet: isTablet,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // Like Button
+                                  _buildCompactLikeButton(provider, userId, isTablet),
+                                ],
+                              ),
+                              
+                              const SizedBox(height: 12),
+                              
+                              // View Details Button
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isTablet ? 10 : 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFF42A41), Color(0xFF006A4E)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'View Details',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: isTablet ? 13 : 11,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  */
+
+  // ✅ UPDATED: Provider card with only green gradients
+ Widget _buildProviderCard(
+  ServiceProviderModel provider,
+  String? userId,
+  LocationFilterProvider locationProvider,
+  bool isTablet,
+  int index,
+) {
+  final categoryGradient = _getCategoryGradient(provider.serviceCategory);
+  
+  return Padding(
+    padding: EdgeInsets.symmetric(
+      horizontal: isTablet ? 16 : 12,
+      vertical: 6,
+    ),
+    child: TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.95, end: 1.0),
+      duration: Duration(milliseconds: 200 + (index * 30)),
+      curve: Curves.easeOut,
+      builder: (context, scale, child) {
+        return Transform.scale(
+          scale: scale,
+          child: GestureDetector(
+            onTap: () {
+              if (userId == null || userId.isEmpty) {
+                _showLoginDialog(context, 'view details');
+                return;
+              }
+              HapticFeedback.mediumImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ServiceProviderDetailScreen(providerId: provider.id!),
+                ),
               );
             },
             child: Container(
+              width: double.infinity,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.white, _creamWhite, _lightGreen],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(40),
-                boxShadow: [
+                borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+                boxShadow: const [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 40,
-                    spreadRadius: 3,
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
-              child: Padding(
-                padding: EdgeInsets.all(isTablet ? 48 : 40),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+                child: Stack(
                   children: [
+                    // Premium Green Gradient Background (NO RED)
                     Container(
-                      padding: EdgeInsets.all(isTablet ? 24 : 20),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [_primaryRed.withOpacity(0.1), _primaryRed.withOpacity(0.05)],
+                          colors: [
+                            _primaryGreen,
+                            _darkGreen,
+                            const Color(0xFF2E7D32), // Darker green
+                            const Color(0xFF1B5E20), // Even darker green
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.location_off_rounded,
-                        color: _primaryRed,
-                        size: isTablet ? 70 : 60,
-                      ),
-                    ),
-                    SizedBox(height: isTablet ? 30 : 24),
-                    ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: [_primaryRed, _coralRed],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds),
-                      child: Text(
-                        'Not Available',
-                        style: GoogleFonts.poppins(
-                          fontSize: isTablet ? 32 : 28,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                          stops: const [0.0, 0.3, 0.7, 1.0],
                         ),
                       ),
-                    ),
-                    SizedBox(height: isTablet ? 16 : 12),
-                    Text(
-                      'No providers in this state yet. Please select another.',
-                      style: GoogleFonts.inter(
-                        fontSize: isTablet ? 18 : 16,
-                        color: _textPrimary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: isTablet ? 30 : 24),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(
-                          vertical: isTablet ? 18 : 16,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [_primaryRed, _coralRed],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _primaryRed.withOpacity(0.3),
-                              blurRadius: 18,
-                              offset: Offset(0, 8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Header Row
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Profile Image
+                                Container(
+                                  width: isTablet ? 70 : 60,
+                                  height: isTablet ? 70 : 60,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
+                                  ),
+                                  child: _buildProviderImage(provider),
+                                ),
+                                
+                                const SizedBox(width: 12),
+                                
+                                // Name and Company
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              provider.fullName,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: isTablet ? 18 : 16,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if (provider.isVerified)
+                                            Container(
+                                              margin: const EdgeInsets.only(left: 4),
+                                              padding: const EdgeInsets.all(2),
+                                              decoration: const BoxDecoration(
+                                                color: Colors.blue,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.check,
+                                                color: Colors.white,
+                                                size: 10,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        provider.companyName,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isTablet ? 13 : 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white.withOpacity(0.9),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            
+                            const SizedBox(height: 12),
+                            
+                            // Location and Distance
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.location_on,
+                                  color: _goldAccent,
+                                  size: isTablet ? 16 : 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    provider.city ?? provider.state ?? 'Location',
+                                    style: GoogleFonts.inter(
+                                      fontSize: isTablet ? 13 : 11,
+                                      color: Colors.white,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (provider.latitude != null && provider.longitude != null) ...[
+                                  const Spacer(),
+                                  DistanceBadge(
+                                    latitude: provider.latitude!,
+                                    longitude: provider.longitude!,
+                                    isTablet: isTablet,
+                                  ),
+                                ],
+                              ],
+                            ),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // Category and Service Type
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    provider.serviceCategory.icon,
+                                    color: _goldAccent,
+                                    size: isTablet ? 16 : 14,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      provider.serviceProvider ?? 'Service',
+                                      style: GoogleFonts.inter(
+                                        fontSize: isTablet ? 12 : 10,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 12),
+                            
+                            // Contact Buttons
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildContactButton(
+                                    icon: Icons.phone,
+                                    label: 'Call',
+                                    onTap: () {
+                                      // Add phone call functionality
+                                    },
+                                    isTablet: isTablet,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildContactButton(
+                                    icon: Icons.email,
+                                    label: 'Email',
+                                    onTap: () {
+                                      // Add email functionality
+                                    },
+                                    isTablet: isTablet,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Like Button
+                                _buildCompactLikeButton(provider, userId, isTablet),
+                              ],
+                            ),
+                            
+                            const SizedBox(height: 12),
+                            
+                            // View Details Button (Green gradient only)
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(
+                                vertical: isTablet ? 10 : 8,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [_primaryGreen, _darkGreen],
+                                ),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'View Details',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: isTablet ? 13 : 11,
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            'OK',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: isTablet ? 22 : 20,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
                         ),
                       ),
                     ),
@@ -3053,6 +1966,395 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
           ),
         );
       },
+    ),
+  );
+}
+  
+  
+
+
+
+
+  // Helper method for contact buttons
+  Widget _buildContactButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required bool isTablet,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          vertical: isTablet ? 8 : 6,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: _goldAccent, size: isTablet ? 14 : 12),
+            SizedBox(width: 4),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: isTablet ? 11 : 9,
+                fontWeight: FontWeight.w500,
+                color: _goldAccent,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Compact Like Button
+/*  Widget _buildCompactLikeButton(ServiceProviderModel provider, String? userId, bool isTablet) {
+    return Consumer<ServiceProviderProvider>(
+      builder: (context, providerState, _) {
+        final currentProvider = providerState.allProviders.firstWhere(
+          (p) => p.id == provider.id,
+          orElse: () => provider,
+        );
+        
+        final isLiked = currentProvider.isLikedByUser(userId ?? '');
+        final totalLikes = currentProvider.totalLikes;
+        
+        return GestureDetector(
+          onTap: () {
+            if (userId == null || userId.isEmpty) {
+              _showLoginDialog(context, 'like');
+              return;
+            }
+            HapticFeedback.lightImpact();
+            providerState.toggleLike(provider.id!, userId);
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 10 : 8,
+              vertical: isTablet ? 8 : 6,
+            ),
+            decoration: BoxDecoration(
+              gradient: isLiked
+                  ? LinearGradient(
+                      colors: [_primaryRed, _coralRed],
+                    )
+                  : LinearGradient(
+                      colors: [Colors.white.withOpacity(0.15), Colors.white.withOpacity(0.1)],
+                    ),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isLiked ? Colors.transparent : Colors.white24,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isLiked ? Icons.favorite : Icons.favorite_border,
+                  color: isLiked ? Colors.white : _goldAccent,
+                  size: isTablet ? 14 : 12,
+                ),
+                if (totalLikes > 0) ...[
+                  const SizedBox(width: 2),
+                  Text(
+                    _formatLikes(totalLikes),
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 10 : 9,
+                      fontWeight: FontWeight.w600,
+                      color: isLiked ? Colors.white : _goldAccent,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+*/
+
+// Updated Like Button with proper 100+ formatting
+Widget _buildCompactLikeButton(ServiceProviderModel provider, String? userId, bool isTablet) {
+  return Consumer<ServiceProviderProvider>(
+    builder: (context, providerState, _) {
+      final currentProvider = providerState.allProviders.firstWhere(
+        (p) => p.id == provider.id,
+        orElse: () => provider,
+      );
+      
+      final isLiked = currentProvider.isLikedByUser(userId ?? '');
+      final totalLikes = currentProvider.totalLikes;
+      
+      return GestureDetector(
+        onTap: () {
+          if (userId == null || userId.isEmpty) {
+            _showLoginDialog(context, 'like');
+            return;
+          }
+          HapticFeedback.lightImpact();
+          providerState.toggleLike(provider.id!, userId);
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 10 : 8,
+            vertical: isTablet ? 8 : 6,
+          ),
+          decoration: BoxDecoration(
+            gradient: isLiked
+                ? LinearGradient(
+                    colors: [_primaryRed, _coralRed],
+                  )
+                : LinearGradient(
+                    colors: [Colors.white.withOpacity(0.15), Colors.white.withOpacity(0.1)],
+                  ),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isLiked ? Colors.transparent : Colors.white24,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isLiked ? Icons.favorite : Icons.favorite_border,
+                color: isLiked ? Colors.white : _goldAccent,
+                size: isTablet ? 14 : 12,
+              ),
+              if (totalLikes > 0) ...[
+                const SizedBox(width: 4),
+                Text(
+                  _formatLikes(totalLikes),
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 11 : 10,
+                    fontWeight: FontWeight.w600,
+                    color: isLiked ? Colors.white : _goldAccent,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+// Updated formatLikes to handle 100+ properly
+String _formatLikes(int count) {
+  if (count < 1000) {
+    return count.toString(); // Shows exact number for 0-999
+  } else if (count < 1000000) {
+    return '${(count / 1000).toStringAsFixed(1)}K'; // Shows 1.2K, 45.6K, etc.
+  } else {
+    return '${(count / 1000000).toStringAsFixed(1)}M'; // Shows 1.2M, 3.4M, etc.
+  }
+}
+
+  // Helper method to get gradient based on category
+  LinearGradient _getCategoryGradient(ServiceCategory category) {
+    switch (category) {
+      case ServiceCategory.accountantsAndTaxPreparers:
+        return const LinearGradient(colors: [Color(0xFF3498DB), Color(0xFF2980B9)]);
+      case ServiceCategory.legalServices:
+        return const LinearGradient(colors: [Color(0xFF9B59B6), Color(0xFF8E44AD)]);
+      case ServiceCategory.healthcareNeeds:
+        return const LinearGradient(colors: [Color(0xFF2ECC71), Color(0xFF27AE60)]);
+      case ServiceCategory.religious:
+        return const LinearGradient(colors: [Color(0xFFF1C40F), Color(0xFFF39C12)]);
+      case ServiceCategory.halalGroceryStores:
+        return const LinearGradient(colors: [Color(0xFFE67E22), Color(0xFFD35400)]);
+      case ServiceCategory.halalDeshiRestaurants:
+        return const LinearGradient(colors: [Color(0xFFE74C3C), Color(0xFFC0392B)]);
+      case ServiceCategory.realEstateAgents:
+        return const LinearGradient(colors: [Color(0xFF1ABC9C), Color(0xFF16A085)]);
+      case ServiceCategory.handymanServices:
+        return const LinearGradient(colors: [Color(0xFF95A5A6), Color(0xFF7F8C8D)]);
+    }
+  }
+
+ /* String _formatLikes(int count) {
+    if (count < 1000) return count.toString();
+    if (count < 1000000) return '${(count / 1000).toStringAsFixed(1)}K';
+    return '${(count / 1000000).toStringAsFixed(1)}M';
+  }  */
+
+  Widget _buildLoadingState(bool isTablet) {
+    return SliverFillRemaining(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: isTablet ? 50 : 40,
+              height: isTablet ? 50 : 40,
+              child: const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading services...',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: isTablet ? 16 : 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(bool isTablet, String error) {
+    return SliverFillRemaining(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, color: Colors.white, size: isTablet ? 60 : 50),
+            const SizedBox(height: 16),
+            Text(
+              'Something went wrong',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: isTablet ? 18 : 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: GoogleFonts.inter(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: isTablet ? 13 : 11,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool isTablet, ServiceProviderProvider provider, LocationFilterProvider locationProvider) {
+    String emptyMessage = 'No services found';
+    if (locationProvider.isFilterActive && _hasLocalFilters) {
+      emptyMessage = 'No services in ${locationProvider.selectedState} with your filters';
+    } else if (locationProvider.isFilterActive) {
+      emptyMessage = 'No services in ${locationProvider.selectedState}';
+    } else if (_hasLocalFilters) {
+      emptyMessage = 'No services match your filters';
+    }
+    
+    return SliverFillRemaining(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, color: Colors.white, size: isTablet ? 70 : 60),
+            const SizedBox(height: 16),
+            Text(
+              emptyMessage,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: isTablet ? 20 : 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try adjusting your filters',
+              style: GoogleFonts.inter(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: isTablet ? 14 : 12,
+              ),
+            ),
+            if (provider.hasActiveFilters || locationProvider.isFilterActive || _hasLocalFilters) ...[
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (provider.hasActiveFilters)
+                    _buildClearButton('Clear Search', () {
+                      provider.clearFilters();
+                      _searchController.clear();
+                    }, isTablet),
+                  if (locationProvider.isFilterActive)
+                    _buildClearButton('Clear State', () {
+                      locationProvider.clearLocationFilter();
+                    }, isTablet),
+                  if (_hasLocalFilters)
+                    _buildClearButton('Clear Filters', _clearLocalFilters, isTablet),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClearButton(String label, VoidCallback onTap, bool isTablet) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 12 : 8,
+            vertical: isTablet ? 6 : 4,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: isTablet ? 11 : 9,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLoginDialog(BuildContext context, String feature) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('Login Required'),
+        content: Text('Please login to $feature'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: _primaryGreen),
+            child: const Text('Login'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -3065,475 +2367,214 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
         builder: (context, setState) {
           return Dialog(
             backgroundColor: Colors.transparent,
-            insetPadding: EdgeInsets.all(isTablet ? 40 : 20),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: Duration(milliseconds: 400),
-              curve: Curves.elasticOut,
-              builder: (context, value, child) {
-                return Transform.scale(
-                  scale: 0.85 + (0.15 * value),
-                  child: child,
-                );
-              },
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: 700,
-                  maxHeight: MediaQuery.of(context).size.height * 0.85,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.white, _creamWhite, _lightGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(50),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 50,
-                      spreadRadius: 3,
+            insetPadding: EdgeInsets.all(isTablet ? 30 : 16),
+            child: Container(
+              width: isTablet ? 500 : null,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_primaryRed, _primaryGreen],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                     ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    // Header
-                    Container(
-                      padding: EdgeInsets.all(isTablet ? 30 : 24),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_primaryRed, _primaryGreen],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.add_circle, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Suggest Service',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: isTablet ? 18 : 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(50)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _primaryRed.withOpacity(0.3),
-                            blurRadius: 20,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(isTablet ? 16 : 14),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: RotationTransition(
-                              turns: _rotateAnimation,
-                              child: Icon(
-                                Icons.add_circle_rounded,
-                                color: Colors.white,
-                                size: isTablet ? 32 : 28,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: isTablet ? 20 : 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Suggest Service',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: isTablet ? 30 : 26,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black.withOpacity(0.15),
-                                        blurRadius: 8,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Help us grow! 🌟',
-                                  style: GoogleFonts.inter(
-                                    fontSize: isTablet ? 18 : 16,
-                                    color: Colors.white.withOpacity(0.9),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: Container(
-                              padding: EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(Icons.close_rounded, color: Colors.white, size: isTablet ? 28 : 24),
-                            ),
-                          ),
-                        ],
-                      ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
                     ),
-
-                    // Scrollable Content
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.all(isTablet ? 30 : 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Info Card
-                            Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [_primaryGreen.withOpacity(0.1), _primaryRed.withOpacity(0.1)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(25),
-                                border: Border.all(
-                                  color: _primaryGreen.withOpacity(0.25),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [_primaryGreen, _darkGreen],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
+                  ),
+                  
+                  // Body
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: [
+                          _buildSuggestionField(
+                            controller: _suggestFullNameController,
+                            label: 'Full Name',
+                            icon: Icons.person,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSuggestionField(
+                            controller: _suggestCompanyNameController,
+                            label: 'Company',
+                            icon: Icons.business,
+                            required: false,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSuggestionField(
+                            controller: _suggestPhoneController,
+                            label: 'Phone',
+                            icon: Icons.phone,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSuggestionField(
+                            controller: _suggestEmailController,
+                            label: 'Email',
+                            icon: Icons.email,
+                          ),
+                          const SizedBox(height: 8),
+                          
+                          // Location Picker
+                          _buildLocationPickerField(setState, isTablet),
+                          const SizedBox(height: 8),
+                          
+                          // Category Dropdown
+                          _buildSuggestionDropdown<ServiceCategory>(
+                            value: _suggestSelectedCategory,
+                            label: 'Category',
+                            icon: Icons.category,
+                            items: ServiceCategory.values.map((category) {
+                              return DropdownMenuItem<ServiceCategory>(
+                                value: category,
+                                child: Row(
+                                  children: [
+                                    Icon(category.icon, color: _primaryRed, size: 14),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        category.displayName,
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                        style: const TextStyle(fontSize: 13),
                                       ),
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _primaryGreen.withOpacity(0.3),
-                                          blurRadius: 10,
-                                        ),
-                                      ],
                                     ),
-                                    child: Icon(
-                                      Icons.info_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 28 : 24,
-                                    ),
-                                  ),
-                                  SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Pending Review',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 18 : 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: _primaryGreen,
-                                          ),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Admin will verify your suggestion',
-                                          style: GoogleFonts.inter(
-                                            fontSize: isTablet ? 14 : 12,
-                                            color: _textLight,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            SizedBox(height: isTablet ? 30 : 24),
-
-                            // Form Fields
-                            _buildPremiumSuggestionTextField(
-                              controller: _suggestFullNameController,
-                              label: 'Full Name',
-                              isRequired: true,
-                              icon: Icons.person_rounded,
-                              gradient: LinearGradient(
-                                colors: [_primaryGreen, _darkGreen],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              isTablet: isTablet,
-                            ),
-                            SizedBox(height: isTablet ? 20 : 16),
-
-                            _buildPremiumSuggestionTextField(
-                              controller: _suggestCompanyNameController,
-                              label: 'Company',
-                              isRequired: false,
-                              icon: Icons.business_rounded,
-                              gradient: LinearGradient(
-                                colors: [_primaryRed, _coralRed],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              isTablet: isTablet,
-                            ),
-                            SizedBox(height: isTablet ? 20 : 16),
-
-                            _buildPremiumSuggestionTextField(
-                              controller: _suggestPhoneController,
-                              label: 'Phone',
-                              isRequired: true,
-                              icon: Icons.phone_rounded,
-                              gradient: LinearGradient(
-                                colors: [_primaryGreen, _mintGreen],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              keyboardType: TextInputType.phone,
-                              isTablet: isTablet,
-                            ),
-                            SizedBox(height: isTablet ? 20 : 16),
-
-                            _buildPremiumSuggestionTextField(
-                              controller: _suggestEmailController,
-                              label: 'Email',
-                              isRequired: true,
-                              icon: Icons.email_rounded,
-                              gradient: LinearGradient(
-                                colors: [_goldAccent, _softGold],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              keyboardType: TextInputType.emailAddress,
-                              isTablet: isTablet,
-                            ),
-                            SizedBox(height: isTablet ? 20 : 16),
-
-                            // State Dropdown
-                            _buildPremiumSuggestionDropdown(
-                              value: _suggestSelectedState,
-                              label: 'State',
-                              isRequired: true,
-                              icon: Icons.location_on_rounded,
-                              gradient: LinearGradient(
-                                colors: [_primaryGreen, _darkGreen],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              isTablet: isTablet,
-                              items: [
-                                ...CommunityStates.states.map((state) {
-                                  return DropdownMenuItem<String>(
-                                    value: state,
-                                    child: Text(state, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: isTablet ? 15 : 14)),
-                                  );
-                                }).toList(),
-                              ],
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _suggestSelectedState = newValue;
-                                });
-                              },
-                            ),
-                            SizedBox(height: isTablet ? 20 : 16),
-
-                            _buildPremiumSuggestionTextField(
-                              controller: _suggestCityController,
-                              label: 'City',
-                              isRequired: true,
-                              icon: Icons.location_city_rounded,
-                              gradient: LinearGradient(
-                                colors: [_primaryGreen, _mintGreen],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              isTablet: isTablet,
-                            ),
-                            SizedBox(height: isTablet ? 20 : 16),
-
-                            // Category Dropdown
-                            _buildPremiumSuggestionDropdown<ServiceCategory>(
-                              value: _suggestSelectedCategory,
-                              label: 'Category',
-                              isRequired: true,
-                              icon: Icons.category_rounded,
-                              gradient: LinearGradient(
-                                colors: [_primaryRed, _coralRed],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              isTablet: isTablet,
-                              items: ServiceCategory.values.map((category) {
-                                return DropdownMenuItem<ServiceCategory>(
-                                  value: category,
-                                  child: Row(
-                                    children: [
-                                      Icon(category.icon, color: _primaryRed, size: isTablet ? 22 : 20),
-                                      SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          category.displayName,
-                                          style: GoogleFonts.inter(
-                                            fontSize: isTablet ? 16 : 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _suggestSelectedCategory = value;
+                                _suggestSelectedServiceProvider = null;
+                                _suggestAvailableServiceProviders = value?.serviceProviders ?? [];
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          
+                          // Service Type Dropdown
+                          if (_suggestSelectedCategory != null)
+                            _buildSuggestionDropdown<String>(
+                              value: _suggestSelectedServiceProvider,
+                              label: 'Service Type',
+                              icon: Icons.work,
+                              items: _suggestAvailableServiceProviders.map((provider) {
+                                return DropdownMenuItem<String>(
+                                  value: provider,
+                                  child: Text(
+                                    provider,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                    style: const TextStyle(fontSize: 13),
                                   ),
                                 );
                               }).toList(),
-                              onChanged: (ServiceCategory? newValue) {
-                                setState(() {
-                                  _suggestSelectedCategory = newValue;
-                                  _suggestSelectedServiceProvider = null;
-                                  _suggestAvailableServiceProviders = newValue?.serviceProviders ?? [];
-                                });
-                              },
+                              onChanged: (value) => setState(() => _suggestSelectedServiceProvider = value),
                             ),
-
-                            // Service Provider Dropdown
-                            if (_suggestSelectedCategory != null) ...[
-                              SizedBox(height: isTablet ? 20 : 16),
-                              _buildPremiumSuggestionDropdown(
-                                value: _suggestSelectedServiceProvider,
-                                label: 'Service Type',
-                                isRequired: true,
-                                icon: Icons.work_rounded,
-                                gradient: LinearGradient(
-                                  colors: [_goldAccent, _softGold],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                isTablet: isTablet,
-                                items: _suggestAvailableServiceProviders.map((provider) {
-                                  return DropdownMenuItem<String>(
-                                    value: provider,
-                                    child: Text(
-                                      provider,
-                                      style: GoogleFonts.inter(
-                                        fontSize: isTablet ? 16 : 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    _suggestSelectedServiceProvider = newValue;
-                                  });
-                                },
-                              ),
-                            ],
-
-                            SizedBox(height: isTablet ? 30 : 24),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Footer Buttons
-                    Container(
-                      padding: EdgeInsets.all(isTablet ? 30 : 24),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(50)),
-                        border: Border(top: BorderSide(color: _primaryGreen.withOpacity(0.15), width: 1.5)),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: isTablet ? 18 : 16,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(25),
-                                  border: Border.all(color: _primaryRed, width: 2),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _primaryRed.withOpacity(0.15),
-                                      blurRadius: 15,
-                                      offset: Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'Cancel',
-                                    style: GoogleFonts.poppins(
-                                      color: _primaryRed,
-                                      fontSize: isTablet ? 20 : 18,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: isTablet ? 16 : 12),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: _isSubmittingSuggestion ? null : () => _submitSuggestion(context, isTablet, setState),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: isTablet ? 18 : 16,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: _isSubmittingSuggestion 
-                                      ? LinearGradient(colors: [_textLight, _textSecondary])
-                                      : LinearGradient(colors: [_primaryGreen, _darkGreen]),
-                                  borderRadius: BorderRadius.circular(25),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _primaryGreen.withOpacity(0.3),
-                                      blurRadius: 18,
-                                      offset: Offset(0, 8),
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: _isSubmittingSuggestion
-                                      ? SizedBox(
-                                          width: isTablet ? 30 : 26,
-                                          height: isTablet ? 30 : 26,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(Icons.send_rounded, color: Colors.white, size: isTablet ? 24 : 22),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              'Submit',
-                                              style: GoogleFonts.poppins(
-                                                color: Colors.white,
-                                                fontSize: isTablet ? 20 : 18,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
-                  ],
+                  ),
+                  
+                  // Footer
+                 Container(
+  padding: const EdgeInsets.all(12),
+  decoration: BoxDecoration(
+    border: Border(top: BorderSide(color: Colors.grey.shade200)),
+  ),
+  child: Row(
+    children: [
+      // Cancel Button - Now matches Submit button design
+      Expanded(
+        child: ElevatedButton(
+          onPressed: () => Navigator.pop(context),
+          style: ElevatedButton.styleFrom(
+          //  backgroundColor: Colors.grey.shade300,
+          backgroundColor: _primaryRed,
+            foregroundColor: Colors.grey.shade800,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            elevation: 2,
+          ),
+          child: Text(
+            'Cancel',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+      
+      const SizedBox(width: 8),
+      
+      // Submit Button - Kept exactly as is
+      Expanded(
+        child: ElevatedButton(
+          onPressed: _isSubmittingSuggestion ? null : () => _submitSuggestion(context, setState),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _primaryGreen,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: _isSubmittingSuggestion
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : Text(
+                  'Submit',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
                 ),
+        ),
+      ),
+    ],
+  ),
+),
+                ],
               ),
             ),
           );
@@ -3542,247 +2583,205 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
     );
   }
 
-  Widget _buildPremiumSuggestionTextField({
-    required TextEditingController controller,
-    required String label,
-    required bool isRequired,
-    required IconData icon,
-    required LinearGradient gradient,
-    TextInputType keyboardType = TextInputType.text,
-    required bool isTablet,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(25),
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.95),
-            Colors.white.withOpacity(0.9),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: gradient.colors.first.withOpacity(0.15),
-            blurRadius: 16,
-            offset: Offset(0, 8),
+  Widget _buildLocationPickerField(StateSetter setState, bool isTablet) {
+    return GestureDetector(
+      onTap: () async {
+        final result = await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => OSMLocationPicker(
+            initialLatitude: _suggestLatitude,
+            initialLongitude: _suggestLongitude,
+            initialAddress: _suggestFullAddress,
+            initialState: _suggestSelectedState,
+            initialCity: _suggestSelectedCity,
+            onLocationSelected: (lat, lng, address, state, city) {
+              setState(() {
+                _suggestLatitude = lat;
+                _suggestLongitude = lng;
+                _suggestFullAddress = address;
+                _suggestSelectedState = state;
+                _suggestSelectedCity = city;
+                _suggestAddressController.text = address;
+              });
+            },
           ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        style: GoogleFonts.inter(
-          fontSize: isTablet ? 16 : 14,
-          color: _textPrimary,
-          fontWeight: FontWeight.w600,
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.all(isTablet ? 12 : 10),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+          color: _suggestLatitude != null ? const Color(0xFFE8F5E9) : null,
         ),
-        decoration: InputDecoration(
-          labelText: isRequired ? '$label *' : label,
-          labelStyle: GoogleFonts.poppins(
-            fontSize: isTablet ? 14 : 13,
-            color: gradient.colors.first,
-            fontWeight: FontWeight.w600,
-          ),
-          prefixIcon: Container(
-            margin: EdgeInsets.all(isTablet ? 14 : 12),
-            padding: EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: gradient,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: gradient.colors.first.withOpacity(0.25),
-                  blurRadius: 8,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF006A4E), Color(0xFF004D38)],
                 ),
-              ],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                _suggestLatitude != null ? Icons.location_on : Icons.add_location,
+                color: Colors.white,
+                size: isTablet ? 16 : 14,
+              ),
             ),
-            child: Icon(icon, color: Colors.white, size: isTablet ? 22 : 20),
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.transparent,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: isTablet ? 24 : 20,
-            vertical: isTablet ? 18 : 14,
-          ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Location *',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 12 : 10,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF006A4E),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _suggestFullAddress ?? 'Tap to select location on map',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 12 : 10,
+                      color: _suggestFullAddress != null ? Colors.black87 : Colors.grey[600],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: const Color(0xFF006A4E),
+              size: isTablet ? 14 : 12,
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildPremiumSuggestionDropdown<T>({
-    required T? value,
+  Widget _buildSuggestionField({
+    required TextEditingController controller,
     required String label,
-    required bool isRequired,
     required IconData icon,
-    required LinearGradient gradient,
-    required bool isTablet,
-    required List<DropdownMenuItem<T>> items,
-    required Function(T?) onChanged,
+    bool required = true,
   }) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(25),
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.95),
-            Colors.white.withOpacity(0.9),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: TextFormField(
+        controller: controller,
+        style: GoogleFonts.inter(fontSize: 13),
+        decoration: InputDecoration(
+          labelText: required ? '$label *' : label,
+          labelStyle: GoogleFonts.poppins(fontSize: 11),
+          prefixIcon: Icon(icon, color: _primaryGreen, size: 16),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: gradient.colors.first.withOpacity(0.15),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestionDropdown<T>({
+    required T? value,
+    required String label,
+    required IconData icon,
+    required List<DropdownMenuItem<T>> items,
+    required void Function(T?) onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: DropdownButtonFormField<T>(
         value: value,
         decoration: InputDecoration(
-          labelText: isRequired ? '$label *' : label,
-          labelStyle: GoogleFonts.poppins(
-            fontSize: isTablet ? 14 : 13,
-            color: gradient.colors.first,
-            fontWeight: FontWeight.w600,
-          ),
-          prefixIcon: Container(
-            margin: EdgeInsets.all(isTablet ? 14 : 12),
-            padding: EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: gradient,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: gradient.colors.first.withOpacity(0.25),
-                  blurRadius: 8,
-                ),
-              ],
-            ),
-            child: Icon(icon, color: Colors.white, size: isTablet ? 22 : 20),
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.transparent,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: isTablet ? 24 : 20,
-            vertical: isTablet ? 14 : 12,
-          ),
+          labelText: '$label *',
+          labelStyle: GoogleFonts.poppins(fontSize: 11),
+          prefixIcon: Icon(icon, color: _primaryGreen, size: 16),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         ),
         items: items,
         onChanged: onChanged,
-        style: GoogleFonts.inter(
-          fontSize: isTablet ? 16 : 14,
-          color: _textPrimary,
-          fontWeight: FontWeight.w600,
-        ),
-        dropdownColor: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        icon: RotationTransition(
-          turns: _rotateAnimation,
-          child: Icon(
-            Icons.arrow_drop_down_circle_rounded,
-            color: gradient.colors.first,
-            size: isTablet ? 26 : 22,
-          ),
-        ),
         isExpanded: true,
+        icon: const Icon(Icons.arrow_drop_down, color: _primaryGreen, size: 18),
       ),
     );
   }
 
-  Future<void> _submitSuggestion(BuildContext context, bool isTablet, StateSetter setState) async {
+  Future<void> _submitSuggestion(BuildContext context, StateSetter setState) async {
     // Validation
     if (_suggestFullNameController.text.isEmpty) {
-      _showPremiumSnackBar('Enter full name', isError: true);
+      _showSnackBar('Enter full name');
       return;
     }
-
     if (_suggestPhoneController.text.isEmpty) {
-      _showPremiumSnackBar('Enter phone number', isError: true);
+      _showSnackBar('Enter phone number');
       return;
     }
-
     if (_suggestEmailController.text.isEmpty) {
-      _showPremiumSnackBar('Enter email', isError: true);
+      _showSnackBar('Enter email');
       return;
     }
-
+    if (_suggestLatitude == null || _suggestLongitude == null) {
+      _showSnackBar('Select location on map');
+      return;
+    }
     if (_suggestSelectedState == null) {
-      _showPremiumSnackBar('Select state', isError: true);
+      _showSnackBar('Select location with valid state');
       return;
     }
-
-    if (_suggestCityController.text.isEmpty) {
-      _showPremiumSnackBar('Enter city', isError: true);
-      return;
-    }
-
     if (_suggestSelectedCategory == null) {
-      _showPremiumSnackBar('Select category', isError: true);
+      _showSnackBar('Select category');
       return;
     }
-
     if (_suggestSelectedServiceProvider == null) {
-      _showPremiumSnackBar('Select service type', isError: true);
+      _showSnackBar('Select service type');
       return;
     }
 
     setState(() => _isSubmittingSuggestion = true);
 
     try {
-      final currentUser = _auth.currentUser;
-      final providerProvider = Provider.of<ServiceProviderProvider>(context, listen: false);
+      final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
       
-      final suggestedServiceProvider = ServiceProviderModel(
+      final suggestedProvider = ServiceProviderModel(
         fullName: _suggestFullNameController.text.trim(),
         companyName: _suggestCompanyNameController.text.trim(),
         phone: _suggestPhoneController.text.trim(),
         email: _suggestEmailController.text.trim(),
-        address: '',
+        address: _suggestFullAddress ?? '',
         state: _suggestSelectedState!,
-        city: _suggestCityController.text.trim(),
+        city: _suggestSelectedCity ?? '',
         serviceCategory: _suggestSelectedCategory!,
         serviceProvider: _suggestSelectedServiceProvider!,
         subServiceProvider: null,
         profileImageBase64: null,
-        description: 'Suggested by user - pending admin review',
+        description: 'Suggested by user - pending review',
         website: '',
         businessHours: '',
         yearsOfExperience: '',
-        languagesSpoken: ['English'],
+        languagesSpoken: const ['English'],
         serviceTags: [],
         serviceAreas: [],
         isVerified: false,
         isAvailable: false,
         isDeleted: false,
-        createdBy: currentUser?.uid ?? 'anonymous',
+        createdBy: FirebaseAuth.instance.currentUser?.uid ?? 'anonymous',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         licenseNumber: '',
@@ -3790,290 +2789,65 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
         consultationFee: null,
         acceptsInsurance: false,
         acceptedPaymentMethods: [],
+        latitude: _suggestLatitude,
+        longitude: _suggestLongitude,
       );
 
-      final success = await providerProvider.addServiceProvider(suggestedServiceProvider);
+      final success = await provider.addServiceProvider(suggestedProvider);
       
-      if (success) {
+      if (success && mounted) {
         Navigator.pop(context);
-        _showPremiumSuccessDialog(context, isTablet);
+        _showSuccessDialog(context);
         
         // Clear form
         _suggestFullNameController.clear();
         _suggestCompanyNameController.clear();
         _suggestPhoneController.clear();
         _suggestEmailController.clear();
-        _suggestCityController.clear();
+        _suggestAddressController.clear();
         setState(() {
+          _suggestLatitude = null;
+          _suggestLongitude = null;
+          _suggestFullAddress = null;
           _suggestSelectedState = null;
+          _suggestSelectedCity = null;
           _suggestSelectedCategory = null;
           _suggestSelectedServiceProvider = null;
         });
-      } else {
-        _showPremiumSnackBar('Failed to submit', isError: true);
       }
     } catch (e) {
-      _showPremiumSnackBar('Error: $e', isError: true);
+      _showSnackBar('Error: $e');
     } finally {
-      setState(() => _isSubmittingSuggestion = false);
+      if (mounted) setState(() => _isSubmittingSuggestion = false);
     }
   }
 
-  void _showPremiumSuccessDialog(BuildContext context, bool isTablet) {
+  void _showSuccessDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.all(isTablet ? 40 : 20),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 1),
-            duration: Duration(milliseconds: 600),
-            curve: Curves.elasticOut,
-            builder: (context, scale, child) {
-              return Transform.scale(
-                scale: scale,
-                child: child,
-              );
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.white, _mintCream, _peachBlossom],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(60),
-                boxShadow: [
-                  BoxShadow(
-                    color: _emeraldGreen.withOpacity(0.3),
-                    blurRadius: 40,
-                    offset: Offset(0, 20),
-                    spreadRadius: 3,
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(isTablet ? 50 : 40),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Success Animation
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: 1),
-                      duration: Duration(milliseconds: 800),
-                      curve: Curves.elasticOut,
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: 0.85 + (0.15 * value),
-                          child: Container(
-                            padding: EdgeInsets.all(isTablet ? 28 : 24),
-                            decoration: BoxDecoration(
-                              gradient: _auroraGradient,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _emeraldGreen.withOpacity(0.4),
-                                  blurRadius: 30,
-                                  spreadRadius: 3,
-                                ),
-                              ],
-                            ),
-                            child: RotationTransition(
-                              turns: _rotateAnimation,
-                              child: Icon(
-                                Icons.check_circle_rounded,
-                                color: Colors.white,
-                                size: isTablet ? 80 : 70,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    SizedBox(height: isTablet ? 40 : 30),
-                    
-                    // Welcome Text
-                    ShaderMask(
-                      shaderCallback: (bounds) => _auroraGradient.createShader(bounds),
-                      child: Text(
-                        'Thank You! 🎉',
-                        style: GoogleFonts.poppins(
-                          fontSize: isTablet ? 40 : 34,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: isTablet ? 20 : 16),
-                    
-                    // Success Message
-                    Text(
-                      'Your suggestion has been submitted!',
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 22 : 20,
-                        fontWeight: FontWeight.w700,
-                        color: _sapphireBlue,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: isTablet ? 24 : 20),
-                    
-                    // Admin Contact Card
-                    Container(
-                      padding: EdgeInsets.all(isTablet ? 24 : 20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_sapphireBlue.withOpacity(0.1), _amethystPurple.withOpacity(0.1)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(35),
-                        border: Border.all(
-                          color: _sapphireBlue.withOpacity(0.25),
-                          width: 2,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              gradient: _royalGradient,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _amethystPurple.withOpacity(0.3),
-                                  blurRadius: 15,
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.admin_panel_settings_rounded,
-                              color: Colors.white,
-                              size: isTablet ? 40 : 35,
-                            ),
-                          ),
-                          SizedBox(height: isTablet ? 16 : 12),
-                          Text(
-                            'Admin will contact you soon',
-                            style: GoogleFonts.poppins(
-                              fontSize: isTablet ? 20 : 18,
-                              fontWeight: FontWeight.w700,
-                              color: _sapphireBlue,
-                            ),
-                          ),
-                          SizedBox(height: isTablet ? 6 : 4),
-                          Text(
-                            'for verification steps',
-                            style: GoogleFonts.inter(
-                              fontSize: isTablet ? 16 : 14,
-                              color: _textLight,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: isTablet ? 20 : 16),
-                    
-                    Text(
-                      'Thank you for contributing! 🌟',
-                      style: GoogleFonts.inter(
-                        fontSize: isTablet ? 18 : 16,
-                        color: _amethystPurple,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: isTablet ? 40 : 30),
-                    
-                    // Close Button
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(
-                          vertical: isTablet ? 20 : 18,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: _auroraGradient,
-                          borderRadius: BorderRadius.circular(35),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _emeraldGreen.withOpacity(0.3),
-                              blurRadius: 20,
-                              offset: Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Awesome!',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: isTablet ? 24 : 22,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('Thank You!'),
+        content: const Text('Your suggestion has been submitted. Admin will review it soon.'),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(backgroundColor: _successGreen),
+            child: const Text('OK'),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  void _showPremiumSnackBar(String message, {bool isError = false}) {
+  void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Container(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: isError
-                ? LinearGradient(colors: [_primaryRed, _coralRed])
-                : LinearGradient(colors: [_primaryGreen, _darkGreen]),
-            borderRadius: BorderRadius.circular(25),
-            boxShadow: [
-              BoxShadow(
-                color: (isError ? _primaryRed : _primaryGreen).withOpacity(0.3),
-                blurRadius: 12,
-                offset: Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(
-                isError ? Icons.error_rounded : Icons.check_circle_rounded,
-                color: Colors.white,
-                size: 24,
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        content: Text(message),
+        backgroundColor: _primaryRed,
         behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(16),
-        duration: Duration(seconds: 2),
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 2),
       ),
     );
   }

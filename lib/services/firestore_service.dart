@@ -1,3 +1,4 @@
+// services/firestore_service.dart
 import 'package:bangla_hub/constants/app_constants.dart';
 import 'package:bangla_hub/models/business_model.dart';
 import 'package:bangla_hub/models/event_model.dart';
@@ -119,37 +120,74 @@ class FirestoreService {
   }
 
   // Get events with filtering
-  Stream<List<EventModel>> getUpcomingEvents({String? category}) {
-    var query = _firestore
-        .collection(AppConstants.eventsCollection)
-        .where('status', isEqualTo: 'approved')
-        .where('eventDate', isGreaterThanOrEqualTo: Timestamp.now())
-        .orderBy('eventDate');
+ // services/firestore_service.dart (update the getUpcomingEvents and getPastEvents methods)
 
-    if (category != null && category.isNotEmpty) {
-      query = query.where('category', isEqualTo: category);
-    }
+Stream<List<EventModel>> getUpcomingEvents({
+  String? category,
+  String? stateFilter,
+}) {
+  print('🔍 getUpcomingEvents called with category: $category, stateFilter: $stateFilter');
+  
+  var query = _firestore
+      .collection(AppConstants.eventsCollection)
+      .where('status', isEqualTo: 'approved')
+      .where('eventDate', isGreaterThanOrEqualTo: Timestamp.now())
+      .orderBy('eventDate');
 
-    return query.snapshots().map((snapshot) => snapshot.docs
-        .map((doc) => EventModel.fromMap(doc.data(), doc.id))
-        .toList());
+  if (category != null && category.isNotEmpty && category != 'all') {
+    query = query.where('category', isEqualTo: category);
+    print('📍 Applied category filter: $category');
   }
 
-  Stream<List<EventModel>> getPastEvents({String? category}) {
-    var query = _firestore
-        .collection(AppConstants.eventsCollection)
-        .where('status', isEqualTo: 'approved')
-        .where('eventDate', isLessThan: Timestamp.now())
-        .orderBy('eventDate', descending: true);
-
-    if (category != null && category.isNotEmpty) {
-      query = query.where('category', isEqualTo: category);
-    }
-
-    return query.snapshots().map((snapshot) => snapshot.docs
-        .map((doc) => EventModel.fromMap(doc.data(), doc.id))
-        .toList());
+  if (stateFilter != null && stateFilter.isNotEmpty) {
+    query = query.where('state', isEqualTo: stateFilter);
+    print('📍 Applied state filter: $stateFilter');
   }
+
+  return query.snapshots().map((snapshot) {
+    print('📊 Found ${snapshot.docs.length} upcoming events');
+    if (snapshot.docs.isNotEmpty) {
+      snapshot.docs.take(3).forEach((doc) {
+        final data = doc.data();
+        print('  - Event: ${data['title']}, State: ${data['state']}');
+      });
+    }
+    return snapshot.docs
+        .map((doc) => EventModel.fromMap(doc.data(), doc.id))
+        .toList();
+  });
+}
+
+Stream<List<EventModel>> getPastEvents({
+  String? category,
+  String? stateFilter,
+}) {
+  print('🔍 getPastEvents called with category: $category, stateFilter: $stateFilter');
+  
+  var query = _firestore
+      .collection(AppConstants.eventsCollection)
+      .where('status', isEqualTo: 'approved')
+      .where('eventDate', isLessThan: Timestamp.now())
+      .orderBy('eventDate', descending: true);
+
+  if (category != null && category.isNotEmpty && category != 'all') {
+    query = query.where('category', isEqualTo: category);
+    print('📍 Applied category filter: $category');
+  }
+
+  if (stateFilter != null && stateFilter.isNotEmpty) {
+    query = query.where('state', isEqualTo: stateFilter);
+    print('📍 Applied state filter: $stateFilter');
+  }
+
+  return query.snapshots().map((snapshot) {
+    print('📊 Found ${snapshot.docs.length} past events');
+    return snapshot.docs
+        .map((doc) => EventModel.fromMap(doc.data(), doc.id))
+        .toList();
+  });
+}
+
 
   Stream<List<EventModel>> getPendingEvents() {
     return _firestore
@@ -174,17 +212,25 @@ class FirestoreService {
   }
 
   // Search events with minimum 2 characters requirement
-  Stream<List<EventModel>> searchEvents(String query, {String? category}) {
+  Stream<List<EventModel>> searchEvents(String query, {
+    String? category,
+    String? stateFilter,
+  }) {
     if (query.length < 2) {
       return Stream.value([]); // Return empty if less than 2 characters
     }
 
-    var collection = _firestore.collection(AppConstants.eventsCollection)
+    var collection = _firestore
+        .collection(AppConstants.eventsCollection)
         .where('status', isEqualTo: 'approved')
         .where('eventDate', isGreaterThanOrEqualTo: Timestamp.now());
 
-    if (category != null && category.isNotEmpty) {
+    if (category != null && category.isNotEmpty && category != 'all') {
       collection = collection.where('category', isEqualTo: category);
+    }
+
+    if (stateFilter != null && stateFilter.isNotEmpty) {
+      collection = collection.where('state', isEqualTo: stateFilter);
     }
 
     return collection.snapshots().map((snapshot) {
@@ -220,186 +266,134 @@ class FirestoreService {
   }
 
   // Add these methods to your FirestoreService class
-
-// Interested Users Operations
-Future<void> addInterestedUser(String eventId, String userId) async {
-  try {
-    final batch = _firestore.batch();
-    
-    // Add user to event's interested subcollection
-    final eventInterestedRef = _firestore
-        .collection(AppConstants.eventsCollection)
-        .doc(eventId)
-        .collection('interested_users')
-        .doc(userId);
-    
-    batch.set(eventInterestedRef, {
-      'userId': userId,
-      'interestedAt': FieldValue.serverTimestamp(),
-    });
-    
-    // Increment totalInterested count in event document
-    final eventRef = _firestore
-        .collection(AppConstants.eventsCollection)
-        .doc(eventId);
-    
-    batch.update(eventRef, {
-      'totalInterested': FieldValue.increment(1),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    
-    // Add event to user's interested events subcollection
-    final userInterestedRef = _firestore
-        .collection(AppConstants.usersCollection)
-        .doc(userId)
-        .collection('interested_events')
-        .doc(eventId);
-    
-    batch.set(userInterestedRef, {
-      'eventId': eventId,
-      'interestedAt': FieldValue.serverTimestamp(),
-    });
-    
-    await batch.commit();
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error adding interested user: $e');
-    }
-    rethrow;
-  }
-}
-
-Future<void> removeInterestedUser(String eventId, String userId) async {
-  try {
-    final batch = _firestore.batch();
-    
-    // Remove user from event's interested subcollection
-    final eventInterestedRef = _firestore
-        .collection(AppConstants.eventsCollection)
-        .doc(eventId)
-        .collection('interested_users')
-        .doc(userId);
-    
-    batch.delete(eventInterestedRef);
-    
-    // Decrement totalInterested count in event document
-    final eventRef = _firestore
-        .collection(AppConstants.eventsCollection)
-        .doc(eventId);
-    
-    batch.update(eventRef, {
-      'totalInterested': FieldValue.increment(-1),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    
-    // Remove event from user's interested events subcollection
-    final userInterestedRef = _firestore
-        .collection(AppConstants.usersCollection)
-        .doc(userId)
-        .collection('interested_events')
-        .doc(eventId);
-    
-    batch.delete(userInterestedRef);
-    
-    await batch.commit();
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error removing interested user: $e');
-    }
-    rethrow;
-  }
-}
-
-Future<bool> isUserInterested(String eventId, String userId) async {
-  try {
-    final doc = await _firestore
-        .collection(AppConstants.eventsCollection)
-        .doc(eventId)
-        .collection('interested_users')
-        .doc(userId)
-        .get();
-    
-    return doc.exists;
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error checking if user is interested: $e');
-    }
-    return false;
-  }
-}
-
-Stream<List<String>> getInterestedUsers(String eventId) {
-  return _firestore
-      .collection(AppConstants.eventsCollection)
-      .doc(eventId)
-      .collection('interested_users')
-      .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => doc.data()['userId'] as String)
-          .toList());
-}
-
-Stream<List<String>> getUserInterestedEvents(String userId) {
-  return _firestore
-      .collection(AppConstants.usersCollection)
-      .doc(userId)
-      .collection('interested_events')
-      .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => doc.data()['eventId'] as String)
-          .toList());
-}
-
-  // Community Services Operations
-/*  Stream<List<ServiceProviderModel>> getServicesByCategory(String category) { 
-    return _firestore
-        .collection(AppConstants.servicesCollection)
-        .where('category', isEqualTo: category)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ServiceProviderModel.fromMap(doc.data(), doc.id))
-            .toList());
-  }  */
-
-/*  Future<void> addServiceProvider(ServiceProviderModel service) async {
+  // Interested Users Operations
+  Future<void> addInterestedUser(String eventId, String userId) async {
     try {
-      await _firestore
-          .collection(AppConstants.servicesCollection)
-          .doc(service.id)
-          .set(service.toMap());
+      final batch = _firestore.batch();
+      
+      // Add user to event's interested subcollection
+      final eventInterestedRef = _firestore
+          .collection(AppConstants.eventsCollection)
+          .doc(eventId)
+          .collection('interested_users')
+          .doc(userId);
+      
+      batch.set(eventInterestedRef, {
+        'userId': userId,
+        'interestedAt': FieldValue.serverTimestamp(),
+      });
+      
+      // Increment totalInterested count in event document
+      final eventRef = _firestore
+          .collection(AppConstants.eventsCollection)
+          .doc(eventId);
+      
+      batch.update(eventRef, {
+        'totalInterested': FieldValue.increment(1),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      // Add event to user's interested events subcollection
+      final userInterestedRef = _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(userId)
+          .collection('interested_events')
+          .doc(eventId);
+      
+      batch.set(userInterestedRef, {
+        'eventId': eventId,
+        'interestedAt': FieldValue.serverTimestamp(),
+      });
+      
+      await batch.commit();
     } catch (e) {
       if (kDebugMode) {
-        print('Error adding service: $e');
-      }
-      rethrow;
-    }
-  }  */
-
-  // Job Operations
-/*  Future<void> createJobPosting(JobPostingModel job) async {
-    try {
-      await _firestore
-          .collection(AppConstants.jobsCollection)
-          .doc(job.id)
-          .set(job.toMap());
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error creating job: $e');
+        print('Error adding interested user: $e');
       }
       rethrow;
     }
   }
 
-  Stream<List<JobPostingModel>> getJobPostings() {
+  Future<void> removeInterestedUser(String eventId, String userId) async {
+    try {
+      final batch = _firestore.batch();
+      
+      // Remove user from event's interested subcollection
+      final eventInterestedRef = _firestore
+          .collection(AppConstants.eventsCollection)
+          .doc(eventId)
+          .collection('interested_users')
+          .doc(userId);
+      
+      batch.delete(eventInterestedRef);
+      
+      // Decrement totalInterested count in event document
+      final eventRef = _firestore
+          .collection(AppConstants.eventsCollection)
+          .doc(eventId);
+      
+      batch.update(eventRef, {
+        'totalInterested': FieldValue.increment(-1),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      // Remove event from user's interested events subcollection
+      final userInterestedRef = _firestore
+          .collection(AppConstants.usersCollection)
+          .doc(userId)
+          .collection('interested_events')
+          .doc(eventId);
+      
+      batch.delete(userInterestedRef);
+      
+      await batch.commit();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error removing interested user: $e');
+      }
+      rethrow;
+    }
+  }
+
+  Future<bool> isUserInterested(String eventId, String userId) async {
+    try {
+      final doc = await _firestore
+          .collection(AppConstants.eventsCollection)
+          .doc(eventId)
+          .collection('interested_users')
+          .doc(userId)
+          .get();
+      
+      return doc.exists;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking if user is interested: $e');
+      }
+      return false;
+    }
+  }
+
+  Stream<List<String>> getInterestedUsers(String eventId) {
     return _firestore
-        .collection(AppConstants.jobsCollection)
-        .where('isActive', isEqualTo: true)
-        .orderBy('postedAt', descending: true)
+        .collection(AppConstants.eventsCollection)
+        .doc(eventId)
+        .collection('interested_users')
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => JobPostingModel.fromMap(doc.data(), doc.id))
+            .map((doc) => doc.data()['userId'] as String)
             .toList());
-  }  */
+  }
+
+  Stream<List<String>> getUserInterestedEvents(String userId) {
+    return _firestore
+        .collection(AppConstants.usersCollection)
+        .doc(userId)
+        .collection('interested_events')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => doc.data()['eventId'] as String)
+            .toList());
+  }
 
   // Business Partner Operations
   Future<void> createBusinessPartnerRequest(BusinessPartnerRequest request) async {
@@ -451,18 +445,4 @@ Stream<List<String>> getUserInterestedEvents(String userId) {
             .map((doc) => BusinessModel.fromMap(doc.data(), doc.id))
             .toList());
   }
-
-  // Search Operations
-/*  Stream<List<ServiceProviderModel>> searchServices(String query) {
-    return _firestore
-        .collection(AppConstants.servicesCollection)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ServiceProviderModel.fromMap(doc.data(), doc.id))
-            .where((service) =>
-                service.name.toLowerCase().contains(query.toLowerCase()) ||
-                service.description.toLowerCase().contains(query.toLowerCase()) ||
-                service.category.toLowerCase().contains(query.toLowerCase()))
-            .toList());
-  }   */
 }

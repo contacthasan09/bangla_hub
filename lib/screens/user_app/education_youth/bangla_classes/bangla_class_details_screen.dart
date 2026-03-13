@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:bangla_hub/models/education_models.dart';
-import 'package:bangla_hub/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,7 +8,6 @@ import 'package:intl/intl.dart';
 
 class BanglaClassDetailsScreen extends StatefulWidget {
   final BanglaClass banglaClass;
-  final UserModel? user;
   final ScrollController scrollController;
   final Color primaryOrange;
   final Color successGreen;
@@ -23,7 +21,6 @@ class BanglaClassDetailsScreen extends StatefulWidget {
   const BanglaClassDetailsScreen({
     Key? key,
     required this.banglaClass,
-    this.user,
     required this.scrollController,
     required this.primaryOrange,
     required this.successGreen,
@@ -39,8 +36,11 @@ class BanglaClassDetailsScreen extends StatefulWidget {
   _BanglaClassDetailsScreenState createState() => _BanglaClassDetailsScreenState();
 }
 
-class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> with TickerProviderStateMixin {
+class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   late AnimationController _animationController;
+  late List<AnimationController> _sectionControllers;
   
   final Color _darkOrange = Color(0xFFF57C00);
   final Color _textPrimary = Color(0xFF1E2A3A);
@@ -48,20 +48,92 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
   final Color _borderLight = Color(0xFFE0E7E9);
   final Color _creamWhite = Color(0xFFFAF7F2);
   final Color _shadowColor = Color(0x1A000000);
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
 
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 500),
     );
-    _animationController.forward();
+    
+    // Initialize section animation controllers
+    _sectionControllers = List.generate(10, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(milliseconds: 300 + (index * 50)),
+      );
+    });
+    
+    // Start animations if app is visible
+    if (_appLifecycleState == AppLifecycleState.resumed) {
+      _startAnimations();
+    }
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App is visible - start animations
+      _startAnimations();
+    } else {
+      // App is not visible - stop animations to save resources
+      _stopAnimations();
+    }
+  }
+  
+  void _startAnimations() {
+    if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
+      _animationController.forward();
+      
+      // Start section animations staggered
+      for (var i = 0; i < _sectionControllers.length; i++) {
+        Future.delayed(Duration(milliseconds: i * 50), () {
+          if (mounted && _appLifecycleState == AppLifecycleState.resumed) {
+            _sectionControllers[i].forward();
+          }
+        });
+      }
+    }
+  }
+  
+  void _stopAnimations() {
+    _animationController.stop();
+    
+    // Stop section animations
+    for (var controller in _sectionControllers) {
+      controller.stop();
+    }
   }
 
   @override
   void dispose() {
+    print('🗑️ BanglaClassDetailsScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // ✅ Dispose animation controllers
     _animationController.dispose();
+    
+    // ✅ Dispose section controllers
+    for (var controller in _sectionControllers) {
+      controller.dispose();
+    }
+    
+    // Note: widget.scrollController is passed from parent, don't dispose here
+    
     super.dispose();
   }
 
@@ -69,9 +141,13 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
     final Uri uri = Uri.parse('mailto:$email');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
-      _showPremiumSnackBar('Opening email app...');
+      if (mounted) {
+        _showPremiumSnackBar('Opening email app...');
+      }
     } else {
-      _showPremiumSnackBar('Could not launch email app', isError: true);
+      if (mounted) {
+        _showPremiumSnackBar('Could not launch email app', isError: true);
+      }
     }
   }
 
@@ -88,14 +164,20 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
     try {
       if (await canLaunchUrl(phoneUri)) {
         await launchUrl(phoneUri);
-        _showPremiumSnackBar('Opening phone dialer...');
+        if (mounted) {
+          _showPremiumSnackBar('Opening phone dialer...');
+        }
       }
     } catch (e) {
-      _showPremiumSnackBar('Could not launch phone dialer', isError: true);
+      if (mounted) {
+        _showPremiumSnackBar('Could not launch phone dialer', isError: true);
+      }
     }
   }
 
   void _showPremiumSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
@@ -147,10 +229,11 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
     );
   }
 
-  Widget _buildUserProfileImage(UserModel? user, {bool isLarge = false}) {
-    if (user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty) {
+  // NEW: Build instructor poster image from banglaClass.postedByProfileImageBase64
+  Widget _buildInstructorPosterImage({bool isLarge = false}) {
+    if (widget.banglaClass.postedByProfileImageBase64 != null && widget.banglaClass.postedByProfileImageBase64!.isNotEmpty) {
       try {
-        String base64String = user.profileImageUrl!;
+        String base64String = widget.banglaClass.postedByProfileImageBase64!;
         
         if (base64String.contains('base64,')) {
           base64String = base64String.split('base64,').last;
@@ -193,10 +276,10 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
   @override
   Widget build(BuildContext context) {
     final banglaClass = widget.banglaClass;
-    final user = widget.user;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     final isFull = banglaClass.enrolledStudents >= banglaClass.maxStudents;
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
@@ -206,6 +289,27 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_rounded, 
+              color: Colors.white, 
+              size: isTablet ? 28 : 24,
+            ),
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+            splashRadius: isTablet ? 28 : 24,
+            constraints: BoxConstraints(
+              minWidth: isTablet ? 48 : 40,
+              minHeight: isTablet ? 48 : 40,
+            ),
+          ),
+          leadingWidth: isTablet ? 60 : 50,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+          toolbarHeight: isTablet ? 70 : 60,
+        ),
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -223,7 +327,7 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                   // Header Section
                   SliverToBoxAdapter(
                     child: Container(
-                      height: isTablet ? 300 : 250,
+                      width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [widget.primaryOrange, widget.redAccent, _darkOrange],
@@ -233,87 +337,103 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                       ),
                       child: SafeArea(
                         bottom: false,
+                        top: true,
                         child: Padding(
-                          padding: EdgeInsets.all(isTablet ? 24 : 20),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Premium Pattern Line
-                              Container(
-                                height: 4,
-                                width: 60,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [widget.goldAccent, widget.greenAccent, widget.goldAccent],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 40 : 24,
+                            vertical: isTablet ? 16 : 12,
+                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Premium Pattern Line
+                                  Container(
+                                    height: 4,
+                                    width: 60,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [widget.goldAccent, widget.greenAccent, widget.goldAccent],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
                                   ),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Instructor Name
-                              ShaderMask(
-                                shaderCallback: (bounds) => LinearGradient(
-                                  colors: [Colors.white, widget.goldAccent],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ).createShader(bounds),
-                                child: Text(
-                                  banglaClass.instructorName,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: isTablet ? 32 : 28,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              SizedBox(height: isTablet ? 8 : 6),
-                              
-                              // Organization
-                              Text(
-                                banglaClass.organizationName ?? 'Independent Instructor',
-                                style: GoogleFonts.poppins(
-                                  fontSize: isTablet ? 20 : 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
-                              ),
-                              
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Verified Badge
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 16 : 14,
-                                  vertical: isTablet ? 8 : 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(30),
-                                  border: Border.all(color: Colors.white.withOpacity(0.3)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.verified_rounded, color: widget.goldAccent, size: isTablet ? 18 : 16),
-                                    SizedBox(width: isTablet ? 8 : 6),
-                                    Text(
-                                      'VERIFIED CLASS',
+                                  SizedBox(height: isTablet ? 12 : 8),
+                                  
+                                  // Instructor Name
+                                  ShaderMask(
+                                    shaderCallback: (bounds) => LinearGradient(
+                                      colors: [Colors.white, widget.goldAccent],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ).createShader(bounds),
+                                    child: Text(
+                                      banglaClass.instructorName,
                                       style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 14 : 12,
-                                        fontWeight: FontWeight.w700,
+                                        fontSize: isTablet ? 32 : 24,
+                                        fontWeight: FontWeight.w800,
                                         color: Colors.white,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  SizedBox(height: isTablet ? 4 : 2),
+                                  
+                                  // Organization
+                                  Text(
+                                    banglaClass.organizationName ?? 'Independent Instructor',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: isTablet ? 18 : 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  
+                                  // Verified Badge
+                                  if (banglaClass.isVerified) ...[
+                                    SizedBox(height: isTablet ? 10 : 8),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isTablet ? 14 : 12,
+                                        vertical: isTablet ? 6 : 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(30),
+                                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.verified_rounded, 
+                                            color: widget.goldAccent, 
+                                            size: isTablet ? 16 : 14
+                                          ),
+                                          SizedBox(width: isTablet ? 6 : 4),
+                                          Text(
+                                            'VERIFIED CLASS',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: isTablet ? 13 : 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
-                                ),
-                              ),
-                            ],
+                                ],
+                              );
+                            },
                           ),
                         ),
                       ),
@@ -325,34 +445,15 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                     child: Container(
                       padding: EdgeInsets.all(isTablet ? 24 : 20),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          // Back Button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _shadowColor,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: Icon(Icons.arrow_back_rounded, color: _textPrimary, size: isTablet ? 22 : 20),
-                            ),
-                          ),
-                          
                           SizedBox(height: isTablet ? 20 : 16),
                           
-                          // User Profile and Instructor Info
+                          // User Profile and Instructor Info - Using class's stored user info
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // User Profile Image
+                              // User Profile Image from banglaClass.postedByProfileImageBase64
                               Container(
                                 width: isTablet ? 80 : 70,
                                 height: isTablet ? 80 : 70,
@@ -368,7 +469,7 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                                   ],
                                 ),
                                 child: ClipOval(
-                                  child: _buildUserProfileImage(user, isLarge: true),
+                                  child: _buildInstructorPosterImage(isLarge: true),
                                 ),
                               ),
                               
@@ -379,8 +480,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // User Name
-                                    if (user != null)
+                                    // User Name from banglaClass.postedByName
+                                    if (banglaClass.postedByName != null && banglaClass.postedByName!.isNotEmpty)
                                       Container(
                                         margin: EdgeInsets.only(bottom: 8),
                                         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -394,7 +495,7 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                                             Icon(Icons.person_rounded, color: widget.primaryOrange, size: 14),
                                             SizedBox(width: 4),
                                             Text(
-                                              user.fullName,
+                                              banglaClass.postedByName!,
                                               style: GoogleFonts.poppins(
                                                 color: widget.primaryOrange,
                                                 fontSize: isTablet ? 14 : 12,
@@ -499,6 +600,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                               ),
                             ),
                             isTablet: isTablet,
+                            shouldAnimate: shouldAnimate,
+                            index: 0,
                           ),
                           
                           SizedBox(height: isTablet ? 32 : 24),
@@ -533,6 +636,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                                 ),
                               ),
                               isTablet: isTablet,
+                              shouldAnimate: shouldAnimate,
+                              index: 1,
                             ),
                           
                           if (banglaClass.qualifications != null && banglaClass.qualifications!.isNotEmpty)
@@ -588,6 +693,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                               ),
                             ),
                             isTablet: isTablet,
+                            shouldAnimate: shouldAnimate,
+                            index: 2,
                           ),
                           
                           SizedBox(height: isTablet ? 32 : 24),
@@ -657,6 +764,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                               ),
                             ),
                             isTablet: isTablet,
+                            shouldAnimate: shouldAnimate,
+                            index: 3,
                           ),
                           
                           SizedBox(height: isTablet ? 32 : 24),
@@ -723,6 +832,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                                 ),
                               ),
                               isTablet: isTablet,
+                              shouldAnimate: shouldAnimate,
+                              index: 4,
                             ),
                           
                           if (banglaClass.culturalActivities.isNotEmpty)
@@ -765,6 +876,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                                 ),
                               ),
                               isTablet: isTablet,
+                              shouldAnimate: shouldAnimate,
+                              index: 5,
                             ),
                           
                           if (banglaClass.schedule != null && banglaClass.schedule!.isNotEmpty)
@@ -832,6 +945,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                               ),
                             ),
                             isTablet: isTablet,
+                            shouldAnimate: shouldAnimate,
+                            index: 6,
                           ),
                           
                           SizedBox(height: isTablet ? 32 : 24),
@@ -884,6 +999,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                               ),
                             ),
                             isTablet: isTablet,
+                            shouldAnimate: shouldAnimate,
+                            index: 7,
                           ),
                           
                           if (isFull) ...[
@@ -958,6 +1075,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
                               ),
                             ),
                             isTablet: isTablet,
+                            shouldAnimate: shouldAnimate,
+                            index: 8,
                           ),
                           
                           SizedBox(height: isTablet ? 40 : 32),
@@ -1138,8 +1257,10 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
     required Color color,
     required Widget child,
     required bool isTablet,
+    required bool shouldAnimate,
+    required int index,
   }) {
-    return Column(
+    final Widget sectionContent = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -1166,6 +1287,24 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen> wit
         SizedBox(height: isTablet ? 12 : 10),
         child,
       ],
+    );
+    
+    if (!shouldAnimate || index >= _sectionControllers.length) {
+      return sectionContent;
+    }
+    
+    return FadeTransition(
+      opacity: _sectionControllers[index],
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.05),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: _sectionControllers[index],
+          curve: Curves.easeOut,
+        )),
+        child: sectionContent,
+      ),
     );
   }
 

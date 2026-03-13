@@ -229,6 +229,16 @@ class TutoringService {
   List<String> availableDays;
   List<String> availableTimes;
   List<String> languagesSpoken;
+
+          // Add these fields to store user information directly
+  String? postedByUserId; // Keep the user ID for reference
+  String? postedByName; // Store user's full name
+  String? postedByEmail; // Store user's email
+  String? postedByProfileImageBase64; // Store user's profile image
+
+    final double? latitude;
+  final double? longitude;
+
   
   // Status fields
   bool isVerified;
@@ -273,6 +283,15 @@ class TutoringService {
     required this.availableDays,
     required this.availableTimes,
     this.languagesSpoken = const ['English', 'Bengali'],
+
+                    this.postedByUserId,
+    this.postedByName,
+    this.postedByEmail,
+    this.postedByProfileImageBase64,
+
+    this.latitude,
+    this.longitude,
+
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -316,6 +335,15 @@ class TutoringService {
       'availableDays': availableDays,
       'availableTimes': availableTimes,
       'languagesSpoken': languagesSpoken,
+
+                              'postedByUserId': postedByUserId ?? '',
+      'postedByName': postedByName ?? '',
+      'postedByEmail': postedByEmail ?? '',
+      'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
+
+            'latitude': latitude,
+      'longitude': longitude,
+
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -386,7 +414,17 @@ class TutoringService {
       galleryImagesBase64: List<String>.from(data['galleryImagesBase64'] ?? []),
       availableDays: List<String>.from(data['availableDays'] ?? []),
       availableTimes: List<String>.from(data['availableTimes'] ?? []),
+
       languagesSpoken: List<String>.from(data['languagesSpoken'] ?? []),
+
+                              postedByUserId: data['postedByUserId'] ?? '',
+      postedByName: data['postedByName'] ?? '',
+      postedByEmail: data['postedByEmail'] ?? '',
+      postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
+
+            latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
+
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
@@ -517,6 +555,15 @@ class AdmissionsGuidance {
   List<String>? successStories;
   List<String> servicesOffered;
   List<String> languagesSpoken;
+
+          // Add these fields to store user information directly
+  String? postedByUserId; // Keep the user ID for reference
+  String? postedByName; // Store user's full name
+  String? postedByEmail; // Store user's email
+  String? postedByProfileImageBase64; // Store user's profile image
+
+      final double? latitude;
+  final double? longitude;
   
   // Status fields
   bool isVerified;
@@ -559,6 +606,15 @@ class AdmissionsGuidance {
     this.successStories,
     required this.servicesOffered,
     this.languagesSpoken = const ['English', 'Bengali'],
+
+                    this.postedByUserId,
+    this.postedByName,
+    this.postedByEmail,
+    this.postedByProfileImageBase64,
+
+        this.latitude,
+    this.longitude,
+
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -597,6 +653,15 @@ class AdmissionsGuidance {
       'successStories': successStories ?? [],
       'servicesOffered': servicesOffered,
       'languagesSpoken': languagesSpoken,
+
+                              'postedByUserId': postedByUserId ?? '',
+      'postedByName': postedByName ?? '',
+      'postedByEmail': postedByEmail ?? '',
+      'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
+
+            'latitude': latitude,
+      'longitude': longitude,
+
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -650,6 +715,15 @@ class AdmissionsGuidance {
       successStories: List<String>.from(data['successStories'] ?? []),
       servicesOffered: List<String>.from(data['servicesOffered'] ?? []),
       languagesSpoken: List<String>.from(data['languagesSpoken'] ?? []),
+
+                              postedByUserId: data['postedByUserId'] ?? '',
+      postedByName: data['postedByName'] ?? '',
+      postedByEmail: data['postedByEmail'] ?? '',
+      postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
+
+                  latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
+
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
@@ -784,6 +858,15 @@ class BanglaClass {
   String? profileImageBase64;
   List<String>? galleryImagesBase64;
   List<String> languagesSpoken;
+
+          // Add these fields to store user information directly
+  String? postedByUserId; // Keep the user ID for reference
+  String? postedByName; // Store user's full name
+  String? postedByEmail; // Store user's email
+  String? postedByProfileImageBase64; // Store user's profile image
+
+      final double? latitude;
+  final double? longitude;
   
   // Status fields
   bool isVerified;
@@ -829,6 +912,15 @@ class BanglaClass {
     this.profileImageBase64,
     this.galleryImagesBase64,
     this.languagesSpoken = const ['English', 'Bengali'],
+
+                    this.postedByUserId,
+    this.postedByName,
+    this.postedByEmail,
+    this.postedByProfileImageBase64,
+
+        this.latitude,
+    this.longitude,
+
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -871,6 +963,15 @@ class BanglaClass {
       'profileImageBase64': profileImageBase64 ?? '',
       'galleryImagesBase64': galleryImagesBase64 ?? [],
       'languagesSpoken': languagesSpoken,
+
+                              'postedByUserId': postedByUserId ?? '',
+      'postedByName': postedByName ?? '',
+      'postedByEmail': postedByEmail ?? '',
+      'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
+
+            'latitude': latitude,
+      'longitude': longitude,
+
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -932,6 +1033,15 @@ class BanglaClass {
       profileImageBase64: data['profileImageBase64'],
       galleryImagesBase64: List<String>.from(data['galleryImagesBase64'] ?? []),
       languagesSpoken: List<String>.from(data['languagesSpoken'] ?? []),
+
+                              postedByUserId: data['postedByUserId'] ?? '',
+      postedByName: data['postedByName'] ?? '',
+      postedByEmail: data['postedByEmail'] ?? '',
+      postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
+
+                  latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
+
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
@@ -1082,6 +1192,15 @@ class SportsClub {
   String? logoImageBase64;
   List<String>? galleryImagesBase64;
   List<String> amenities; // e.g., Changing rooms, Parking, Equipment rental
+
+          // Add these fields to store user information directly
+  String? postedByUserId; // Keep the user ID for reference
+  String? postedByName; // Store user's full name
+  String? postedByEmail; // Store user's email
+  String? postedByProfileImageBase64; // Store user's profile image
+
+      final double? latitude;
+  final double? longitude;
   
   // Status fields
   bool isVerified;
@@ -1128,6 +1247,15 @@ class SportsClub {
     this.logoImageBase64,
     this.galleryImagesBase64,
     this.amenities = const [],
+
+                    this.postedByUserId,
+    this.postedByName,
+    this.postedByEmail,
+    this.postedByProfileImageBase64,
+
+        this.latitude,
+    this.longitude,
+
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -1171,6 +1299,14 @@ class SportsClub {
       'logoImageBase64': logoImageBase64 ?? '',
       'galleryImagesBase64': galleryImagesBase64 ?? [],
       'amenities': amenities,
+                              'postedByUserId': postedByUserId ?? '',
+      'postedByName': postedByName ?? '',
+      'postedByEmail': postedByEmail ?? '',
+      'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
+
+            'latitude': latitude,
+      'longitude': longitude,
+
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -1238,6 +1374,14 @@ class SportsClub {
       logoImageBase64: data['logoImageBase64'],
       galleryImagesBase64: List<String>.from(data['galleryImagesBase64'] ?? []),
       amenities: List<String>.from(data['amenities'] ?? []),
+                              postedByUserId: data['postedByUserId'] ?? '',
+      postedByName: data['postedByName'] ?? '',
+      postedByEmail: data['postedByEmail'] ?? '',
+      postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
+
+                  latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
+      
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,

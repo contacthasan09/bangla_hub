@@ -1,3 +1,4 @@
+// services/education_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/education_models.dart';
 
@@ -499,7 +500,7 @@ class EducationService {
           .collection(collection)
           .doc(id)
           .update({
-            'totalViews': FieldValue.increment(1),
+            fieldName: FieldValue.increment(1),
             'updatedAt': FieldValue.serverTimestamp(),
           });
     } catch (e) {

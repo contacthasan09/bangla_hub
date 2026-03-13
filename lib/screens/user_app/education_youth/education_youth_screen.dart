@@ -1,78 +1,175 @@
 import 'package:bangla_hub/models/user_model.dart';
 import 'package:bangla_hub/providers/auth_provider.dart';
-import 'package:bangla_hub/screens/user_app/education_youth/admissions_guidance/admissions_guidance_screen.dart';
-import 'package:bangla_hub/screens/user_app/education_youth/bangla_classes/bangla_classes_screen.dart';
-import 'package:bangla_hub/screens/user_app/education_youth/sports_clubs/sports_clubs_screen.dart';
-import 'package:bangla_hub/screens/user_app/education_youth/tutoring/tutoring_screen.dart';
+import 'package:bangla_hub/screens/auth/login_screen.dart';
+import 'package:bangla_hub/screens/user_app/entrepreneurship/business_partner_request/business_partner_requests_screen.dart';
+import 'package:bangla_hub/screens/user_app/entrepreneurship/job_posting/job_postings_screen.dart';
+import 'package:bangla_hub/screens/user_app/entrepreneurship/networing_partner/networking_partners_screen.dart';
+import 'package:bangla_hub/screens/user_app/entrepreneurship/others_job_sites/others_job_sites_screen.dart';
+import 'package:bangla_hub/screens/user_app/entrepreneurship/small_business_promotion/small_business_promotion_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:bangla_hub/main.dart'; // Import for navigatorKey
 
-class EducationScreen extends StatelessWidget {
-  // Remove drawer parameters completely
-   EducationScreen({Key? key}) : super(key: key);
+class EntrepreneurshipScreen extends StatelessWidget {
+  EntrepreneurshipScreen({Key? key}) : super(key: key);
 
-  // Premium Color Palette - Education Theme
-  final Color _primaryBlue = Color(0xFF1976D2);
-  final Color _darkBlue = Color(0xFF0D47A1);
-  final Color _lightBlue = Color(0xFFE3F2FD);
-  final Color _softBlue = Color(0xFF64B5F6);
+  // Premium Color Palette
+  final Color _primaryGreen = Color(0xFF006A4E);
+  final Color _darkGreen = Color(0xFF004D38);
+  final Color _lightGreen = Color(0xFFE8F5E9);
+  final Color _softGreen = Color(0xFF98D8C8);
   final Color _offWhite = Color(0xFFF8F8F8);
   final Color _creamWhite = Color(0xFFFFF9E6);
   final Color _goldAccent = Color(0xFFFFD700);
-  final Color _purpleAccent = Color(0xFF8E24AA);
-  final Color _tealAccent = Color(0xFF00897B);
+  final Color _softGold = Color(0xFFFFD966);
+  final Color _coralRed = Color(0xFFFF6B6B);
+  final Color _primaryRed = Color(0xFFF42A41);
+  final Color _deepRed = Color(0xFFC62828);
+  final Color _charcoal = Color(0xFF2C3E50);
   final Color _textPrimary = Color(0xFF1A2B3C);
   final Color _textSecondary = Color(0xFF5D6D7E);
   final Color _shadowColor = Color(0x1A000000);
   
-  // Gradient for header (keeping the same blue gradient)
+  // Light background for main content
+  final Color _mainContentBg = Color(0xFFFFFFFF);
+  final Color _cardBg = Color(0xFFFFFFFF);
+  final Color _sectionBg = Color(0xFFFAFAFA);
+  
+  // Gradient for header
   final LinearGradient _headerGradient = LinearGradient(
     colors: [
-      Color(0xFF1976D2), // _primaryBlue
-      Color(0xFF0D47A1), // _darkBlue
-      Color(0xFF1565C0), // Medium blue
+      Color(0xFF006A4E), // _primaryGreen
+      Color(0xFF004D38), // _darkGreen
+      Color(0xFF2E7D32), // Darker green
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  // Gradient for feature cards
-  final LinearGradient _cardGradient = LinearGradient(
-    colors: [
-      Colors.white,
-      Color(0xFFFDF8F2), // Cream white
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  // Method to open drawer using the global key from HomeScreen
+  // ✅ Robust drawer opening method
   void _openDrawer(BuildContext context) {
-    // Try to find the parent Scaffold and open its drawer
-    final ScaffoldState? scaffoldState = Scaffold.maybeOf(context);
-    if (scaffoldState != null && scaffoldState.hasDrawer) {
-      scaffoldState.openDrawer();
-    } else {
-      // If direct access fails, show a message
+    try {
+      final ScaffoldState? scaffoldState = Scaffold.maybeOf(
+        Navigator.of(context, rootNavigator: true).context
+      );
+      
+      if (scaffoldState != null && scaffoldState.hasDrawer) {
+        scaffoldState.openDrawer();
+        return;
+      }
+      
+      final ScaffoldState? currentScaffold = Scaffold.maybeOf(context);
+      if (currentScaffold != null && currentScaffold.hasDrawer) {
+        currentScaffold.openDrawer();
+        return;
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Opening menu...'),
-          duration: Duration(milliseconds: 500),
-          backgroundColor: _primaryBlue,
+          content: Text('Menu is available from the home screen'),
+          duration: Duration(milliseconds: 800),
+          backgroundColor: _primaryGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
-      // Fallback: Try to use the root Navigator to find the scaffold
-      try {
-        // This is a hack, but might work in some cases
-        final ScaffoldState? rootScaffold = Scaffold.maybeOf(
-          Navigator.of(context, rootNavigator: true).context
+    } catch (e) {
+      print('Could not open drawer: $e');
+    }
+  }
+
+  // ✅ FIXED: Proper logout method for drawer with safety
+  Future<void> _handleLogoutFromDrawer(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    BuildContext? dialogContext;
+
+    // Show loading dialog with safety
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        dialogContext = context;
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Container(
+              padding: const EdgeInsets.all(30),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_primaryGreen, _primaryRed],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Logging out...',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
-        rootScaffold?.openDrawer();
-      } catch (e) {
-        print('Could not open drawer: $e');
+      },
+    );
+
+    try {
+      await authProvider.signOut();
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('selected_tab_index');
+      print('📊 Cleared saved tab index on logout');
+
+      // Safety timeout - force close dialog after 2 seconds
+      Future.delayed(const Duration(seconds: 2), () {
+        if (dialogContext != null && Navigator.canPop(dialogContext!)) {
+          Navigator.of(dialogContext!, rootNavigator: true).pop();
+        }
+      });
+
+      // Close dialog if it's still open
+      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.of(dialogContext!, rootNavigator: true).pop();
       }
+
+      // Navigate using global navigator key
+      navigatorKey.currentState?.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+
+    } catch (e) {
+      // Close dialog on error
+      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.of(dialogContext!, rootNavigator: true).pop();
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout failed: $e'),
+          backgroundColor: _primaryRed,
+        ),
+      );
     }
   }
 
@@ -83,24 +180,25 @@ class EducationScreen extends StatelessWidget {
     final isTablet = screenWidth >= 600;
     final isSmallScreen = screenHeight < 700;
     
-    // Responsive sizes
-    final double expandedHeight = isTablet ? 220 : (isSmallScreen ? 160 : 200);
-    final double collapsedHeight = isTablet ? 120 : (isSmallScreen ? 90 : 100);
-    final double titleFontSize = isTablet ? 32 : (isSmallScreen ? 22 : 26);
-    final double collapsedTitleFontSize = isTablet ? 20 : (isSmallScreen ? 16 : 18);
-    final double subtitleFontSize = isTablet ? 16 : (isSmallScreen ? 12 : 14);
-    final double horizontalPadding = isTablet ? 32 : 24;
-    final double cardPadding = isTablet ? 24 : (isSmallScreen ? 16 : 20);
-    final double iconContainerSize = isTablet ? 60 : (isSmallScreen ? 45 : 50);
-    final double iconInnerSize = isTablet ? 28 : (isSmallScreen ? 22 : 24);
+    // Get auth state to conditionally show drawer
+    final authProvider = Provider.of<AuthProvider>(context);
+    final bool isLoggedIn = authProvider.isLoggedIn && authProvider.user != null;
     
-    // Return a Container instead of Scaffold
-    // This allows the parent Scaffold's drawer to work
+    // Responsive sizes
+    final double expandedHeight = isTablet ? 180 : (isSmallScreen ? 150 : 160);
+    final double collapsedHeight = isTablet ? 70 : (isSmallScreen ? 56 : 60);
+    final double titleFontSize = isTablet ? 32 : 26;
+    final double subtitleFontSize = isTablet ? 16 : (isSmallScreen ? 13 : 14);
+    final double horizontalPadding = isTablet ? 32 : 24;
+    final double cardPadding = isTablet ? 20 : (isSmallScreen ? 14 : 16);
+    final double iconContainerSize = isTablet ? 55 : (isSmallScreen ? 42 : 48);
+    final double iconInnerSize = isTablet ? 26 : (isSmallScreen ? 20 : 22);
+    
     return Container(
-      color: _primaryBlue,
+      color: _primaryGreen,
       child: CustomScrollView(
         slivers: [
-          // Sliver App Bar with Menu Button
+          // Sliver App Bar with conditional drawer button
           SliverAppBar(
             expandedHeight: expandedHeight,
             collapsedHeight: collapsedHeight,
@@ -109,110 +207,84 @@ class EducationScreen extends StatelessWidget {
             snap: false,
             elevation: 0,
             backgroundColor: Colors.transparent,
-            leading: IconButton(
-              icon: Icon(Icons.menu, color: Colors.white),
-              onPressed: () => _openDrawer(context),
-            ),
-            flexibleSpace: LayoutBuilder(
-              builder: (context, constraints) {
-                // Calculate if we're expanded or collapsed
-                final double availableHeight = constraints.biggest.height;
-                final bool isCollapsed = availableHeight <= collapsedHeight + 10;
-                
-                return FlexibleSpaceBar(
-                  titlePadding: EdgeInsets.zero,
-                  // Only show title in collapsed state
-                  title: isCollapsed 
-                      ? Container(
-                          padding: EdgeInsets.only(
-                            left: horizontalPadding,
-                            bottom: 12,
+            // ✅ ONLY show drawer button when user is logged in
+            leading: isLoggedIn 
+                ? IconButton(
+                    icon: Icon(Icons.menu, color: Colors.white, size: isTablet ? 28 : 24),
+                    onPressed: () => _openDrawer(context),
+                  )
+                : null, // Hide for guests
+            centerTitle: true,
+            flexibleSpace: FlexibleSpaceBar(
+              centerTitle: true,
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: _headerGradient,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(isTablet ? 30 : 24),
+                    bottomRight: Radius.circular(isTablet ? 30 : 24),
+                  ),
+                ),
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: horizontalPadding,
+                      right: horizontalPadding,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Entrepreneurship',
+                          style: GoogleFonts.poppins(
+                            fontSize: titleFontSize,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        
+                        SizedBox(height: isSmallScreen ? 8 : 12),
+                        
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 12 : 16,
+                            vertical: isSmallScreen ? 6 : 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.25),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
                           ),
                           child: Text(
-                            'Education & Youth',
+                            'Empowering Bengali entrepreneurs',
                             style: GoogleFonts.poppins(
-                              fontSize: collapsedTitleFontSize,
-                              fontWeight: FontWeight.w700,
+                              fontSize: subtitleFontSize,
                               color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
                             ),
+                            textAlign: TextAlign.center,
                           ),
-                        )
-                      : null, // No title when expanded, we show full header in background
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: _headerGradient,
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(isTablet ? 40 : 30),
-                        bottomRight: Radius.circular(isTablet ? 40 : 30),
-                      ),
-                    ),
-                    child: SafeArea(
-                      bottom: false,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          left: horizontalPadding,
-                          right: horizontalPadding,
-                          top: kToolbarHeight + (isSmallScreen ? 10 : 16),
                         ),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // Main Title - Only visible when expanded
-                                if (!isCollapsed) ...[
-                                  FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      'Education & Youth',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: titleFontSize,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: isSmallScreen ? 4 : 8),
-                                  
-                                  // Subtitle - Only visible when expanded
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isSmallScreen ? 10 : 12,
-                                      vertical: isSmallScreen ? 4 : 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: Colors.white.withOpacity(0.25),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'Learning, growth, and development',
-                                      style: GoogleFonts.inter(
-                                        fontSize: subtitleFontSize,
-                                        color: Colors.white.withOpacity(0.95),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  // Add a small bottom padding to ensure no overflow
-                                  SizedBox(height: isSmallScreen ? 8 : 12),
-                                ],
-                              ],
-                            );
-                          },
-                        ),
-                      ),
+                      ],
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
           
@@ -220,11 +292,18 @@ class EducationScreen extends StatelessWidget {
           SliverToBoxAdapter(
             child: Container(
               decoration: BoxDecoration(
-                color: _offWhite,
+                color: _mainContentBg,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(isTablet ? 50 : 40),
-                  topRight: Radius.circular(isTablet ? 50 : 40),
+                  topLeft: Radius.circular(isTablet ? 40 : 30),
+                  topRight: Radius.circular(isTablet ? 40 : 30),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, -2),
+                  ),
+                ],
               ),
               child: Padding(
                 padding: EdgeInsets.all(horizontalPadding),
@@ -233,27 +312,27 @@ class EducationScreen extends StatelessWidget {
                   children: [
                     // Section Title
                     Padding(
-                      padding: EdgeInsets.only(left: 8, bottom: 16),
+                      padding: EdgeInsets.only(left: 8, bottom: 12),
                       child: Row(
                         children: [
                           Container(
                             width: 4,
-                            height: isTablet ? 28 : 24,
+                            height: isTablet ? 24 : 20,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [_primaryBlue, _softBlue],
+                                colors: [_primaryGreen, _softGreen],
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                               ),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
-                          SizedBox(width: 12),
+                          SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Educational Opportunities',
+                              'Business Opportunities',
                               style: GoogleFonts.poppins(
-                                fontSize: isTablet ? 22 : 18,
+                                fontSize: isTablet ? 20 : 16,
                                 fontWeight: FontWeight.w700,
                                 color: _textPrimary,
                               ),
@@ -261,19 +340,19 @@ class EducationScreen extends StatelessWidget {
                           ),
                           Container(
                             padding: EdgeInsets.symmetric(
-                              horizontal: isTablet ? 14 : 10,
-                              vertical: isTablet ? 6 : 4,
+                              horizontal: isTablet ? 12 : 8,
+                              vertical: isTablet ? 4 : 3,
                             ),
                             decoration: BoxDecoration(
-                              color: _lightBlue,
-                              borderRadius: BorderRadius.circular(20),
+                              color: _lightGreen,
+                              borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
-                              '4 Features',
+                              '5 Features',
                               style: GoogleFonts.inter(
-                                fontSize: isTablet ? 14 : 12,
+                                fontSize: isTablet ? 12 : 10,
                                 fontWeight: FontWeight.w600,
-                                color: _primaryBlue,
+                                color: _primaryGreen,
                               ),
                             ),
                           ),
@@ -281,15 +360,62 @@ class EducationScreen extends StatelessWidget {
                       ),
                     ),
                     
-                    // 1. Tutoring & Homework Help - Premium Card
+                    // 1. Networking Business Partners
+                    _buildPremiumFeatureCard(
+                      icon: Icons.store_rounded,
+                      iconColor: _primaryGreen,
+                      gradientColors: [_primaryGreen, _darkGreen],
+                      title: 'Networking Business Partners',
+                      description: 'Directory of Bengali-owned businesses ready to connect',
+                      badgeColor: _primaryGreen,
+                      isTablet: isTablet,
+                      isSmallScreen: isSmallScreen,
+                      cardPadding: cardPadding,
+                      iconContainerSize: iconContainerSize,
+                      iconInnerSize: iconInnerSize,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => NetworkingPartnersScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: isSmallScreen ? 12 : 16),
+                    
+                    // 2. Job Postings
+                    _buildPremiumFeatureCard(
+                      icon: Icons.monetization_on_rounded,
+                      iconColor: _coralRed,
+                      gradientColors: [_coralRed, _deepRed],
+                      title: 'Job Postings',
+                      description: 'Find job opportunities in Bengali-owned businesses',
+                      badgeColor: _coralRed,
+                      isTablet: isTablet,
+                      isSmallScreen: isSmallScreen,
+                      cardPadding: cardPadding,
+                      iconContainerSize: iconContainerSize,
+                      iconInnerSize: iconInnerSize,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => JobPostingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: isSmallScreen ? 12 : 16),
+                    
+                    // 3. Small Business Promotion
                     _buildPremiumFeatureCard(
                       icon: Icons.school_rounded,
-                      iconColor: _primaryBlue,
-                      gradientColors: [_primaryBlue, _darkBlue],
-                      title: 'Tutoring & Homework Help',
-                      description: 'Academic support and subject tutoring',
-                  //    badgeText: 'Tutors',
-                      badgeColor: _primaryBlue,
+                      iconColor: _softGold,
+                      gradientColors: [_softGold, _goldAccent],
+                      title: 'Small Business Promotion',
+                      description: 'Promote your small business to the community',
+                      badgeColor: _goldAccent,
                       isTablet: isTablet,
                       isSmallScreen: isSmallScreen,
                       cardPadding: cardPadding,
@@ -299,22 +425,21 @@ class EducationScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => TutoringScreen(),
+                            builder: (context) => SmallBusinessPromotionScreen(),
                           ),
                         );
-                      },
+                      },  
                     ),
                     SizedBox(height: isSmallScreen ? 12 : 16),
                     
-                    // 2. School & College Admissions Guidance - Premium Card
+                    // 4. Find Business Partners
                     _buildPremiumFeatureCard(
-                      icon: Icons.business_center_rounded,
-                      iconColor: Color(0xFF4CAF50),
-                      gradientColors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                      title: 'School & College Admissions Guidance',
-                      description: 'Guidance for educational admissions',
-                  //    badgeText: 'Guidance',
-                      badgeColor: Color(0xFF4CAF50),
+                      icon: Icons.network_check_rounded,
+                      iconColor: _softGreen,
+                      gradientColors: [_softGreen, _primaryGreen],
+                      title: 'Find Business Partners',
+                      description: 'Connect with collaborators and co-founders',
+                      badgeColor: _softGreen,
                       isTablet: isTablet,
                       isSmallScreen: isSmallScreen,
                       cardPadding: cardPadding,
@@ -324,22 +449,21 @@ class EducationScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => AdmissionsGuidanceScreen(),
+                            builder: (context) => BusinessPartnerRequestsScreen(),
                           ),
                         );
-                      },
+                      },  
                     ),
                     SizedBox(height: isSmallScreen ? 12 : 16),
                     
-                    // 3. Bangla Language & Culture Classes - Premium Card
+                    // 5. Other Job Sites
                     _buildPremiumFeatureCard(
-                      icon: Icons.language_rounded,
-                      iconColor: Color(0xFFFF9800),
-                      gradientColors: [Color(0xFFFF9800), Color(0xFFF57C00)],
-                      title: 'Bangla Language & Culture Classes',
-                      description: 'Learn Bengali language and culture',
-                  //    badgeText: 'Language',
-                      badgeColor: Color(0xFFFF9800),
+                      icon: Icons.work_outline_rounded,
+                      iconColor: _charcoal,
+                      gradientColors: [_charcoal, Color(0xFF1A2B3C)],
+                      title: 'Other Job Sites',
+                      description: 'Explore external job platforms and opportunities',
+                      badgeColor: _charcoal,
                       isTablet: isTablet,
                       isSmallScreen: isSmallScreen,
                       cardPadding: cardPadding,
@@ -349,122 +473,93 @@ class EducationScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => BanglaClassesScreen(),
+                            builder: (context) => OthersJobSitesScreen(),
                           ),
                         );
-                      },
-                    ),
-                    SizedBox(height: isSmallScreen ? 12 : 16),
-                    
-                    // 4. Local Sports - Premium Card
-                    _buildPremiumFeatureCard(
-                      icon: Icons.sports_rounded,
-                      iconColor: Color(0xFFF44336),
-                      gradientColors: [Color(0xFFF44336), Color(0xFFD32F2F)],
-                      title: 'Local Sports Clubs',
-                      description: 'Cricket, Soccer, and sports activities',
-                   //   badgeText: 'Sports',
-                      badgeColor: Color(0xFFF44336),
-                      isTablet: isTablet,
-                      isSmallScreen: isSmallScreen,
-                      cardPadding: cardPadding,
-                      iconContainerSize: iconContainerSize,
-                      iconInnerSize: iconInnerSize,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SportsClubsScreen(),
-                          ),
-                        );
-                      },
+                      },  
                     ),
                     
-                    SizedBox(height: isTablet ? 40 : 32),
+                    SizedBox(height: isTablet ? 40 : 35),
                     
-                    // Premium Footer - Information Section
+                    // Premium Footer
                     Container(
                       padding: EdgeInsets.all(cardPadding),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [_lightBlue, _creamWhite],
+                          colors: [_lightGreen, _creamWhite],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(isTablet ? 30 : 24),
+                        borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
                         border: Border.all(
-                          color: _primaryBlue.withOpacity(0.2),
-                          width: 1.5,
+                          color: _primaryGreen.withOpacity(0.15),
+                          width: 1,
                         ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: isTablet ? 60 : 48,
-                                height: isTablet ? 60 : 48,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [_primaryBlue, _darkBlue],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _primaryBlue.withOpacity(0.3),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: Icon(
-                                    Icons.info_rounded,
-                                    color: Colors.white,
-                                    size: isTablet ? 28 : 24,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: isTablet ? 20 : 16),
-                              Expanded(
-                                child: Text(
-                                  'Important Information',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: isTablet ? 18 : 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: _primaryBlue,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: isTablet ? 16 : 12),
-                          Text(
-                            'All educational services are provided by verified professionals from the Bengali community. New listings require admin approval before being visible.',
-                            style: GoogleFonts.inter(
-                              fontSize: isTablet ? 15 : (isSmallScreen ? 12 : 14),
-                              color: _textSecondary,
-                              height: 1.5,
-                            ),
-                          ),
-                          SizedBox(height: isTablet ? 16 : 12),
-                          Wrap(
-                            spacing: 16,
-                            runSpacing: 8,
-                            children: [
-                              _buildInfoBullet('Verified tutors and instructors', isTablet, isSmallScreen),
-                              _buildInfoBullet('Background checked professionals', isTablet, isSmallScreen),
-                              _buildInfoBullet('Competitive rates and packages', isTablet, isSmallScreen),
-                            ],
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
                           ),
                         ],
                       ),
-                    ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: isTablet ? 50 : 42,
+                            height: isTablet ? 50 : 42,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [_primaryGreen, _darkGreen],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(isTablet ? 16 : 14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _primaryGreen.withOpacity(0.3),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.lightbulb_rounded,
+                                color: Colors.white,
+                                size: isTablet ? 24 : 20,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: isTablet ? 16 : 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Supporting Bengali Entrepreneurs',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: isTablet ? 16 : 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: _primaryGreen,
+                                  ),
+                                ),
+                                SizedBox(height: isTablet ? 4 : 2),
+                                Text(
+                                  'Connect with verified business owners and find opportunities in your community',
+                                  style: GoogleFonts.inter(
+                                    fontSize: isTablet ? 12 : 11,
+                                    color: _textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ), 
                     
-                    SizedBox(height: isTablet ? 40 : 30),
+                    SizedBox(height: isTablet ? 30 : 20),
                   ],
                 ),
               ),
@@ -481,7 +576,6 @@ class EducationScreen extends StatelessWidget {
     required List<Color> gradientColors,
     required String title,
     required String description,
-  //  required String badgeText,
     required Color badgeColor,
     required bool isTablet,
     required bool isSmallScreen,
@@ -494,20 +588,23 @@ class EducationScreen extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(isTablet ? 30 : 24),
-          gradient: _cardGradient,
+          borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
+          gradient: LinearGradient(
+            colors: [_lightGreen, _creamWhite],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           boxShadow: [
             BoxShadow(
-              color: _shadowColor,
-              blurRadius: 15,
-              offset: Offset(0, 8),
-              spreadRadius: -5,
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+              spreadRadius: 0,
             ),
             BoxShadow(
-              color: gradientColors.first.withOpacity(0.1),
-              blurRadius: 20,
-              offset: Offset(0, 5),
-              spreadRadius: -5,
+              color: gradientColors.first.withOpacity(0.08),
+              blurRadius: 12,
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -515,7 +612,7 @@ class EducationScreen extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(isTablet ? 30 : 24),
+            borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
             splashColor: gradientColors.first.withOpacity(0.1),
             highlightColor: Colors.transparent,
             child: Padding(
@@ -532,12 +629,12 @@ class EducationScreen extends StatelessWidget {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(isTablet ? 20 : 18),
+                      borderRadius: BorderRadius.circular(isTablet ? 16 : 14),
                       boxShadow: [
                         BoxShadow(
                           color: gradientColors.first.withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: Offset(0, 5),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
                         ),
                       ],
                     ),
@@ -549,7 +646,7 @@ class EducationScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(width: isTablet ? 20 : 16),
+                  SizedBox(width: isTablet ? 16 : 12),
                   
                   // Content
                   Expanded(
@@ -562,7 +659,7 @@ class EducationScreen extends StatelessWidget {
                               child: Text(
                                 title,
                                 style: GoogleFonts.poppins(
-                                  fontSize: isTablet ? 18 : (isSmallScreen ? 14 : 16),
+                                  fontSize: isTablet ? 16 : (isSmallScreen ? 14 : 15),
                                   fontWeight: FontWeight.w700,
                                   color: _textPrimary,
                                 ),
@@ -570,38 +667,15 @@ class EducationScreen extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          /*  SizedBox(width: 8),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: isTablet ? 10 : 8,
-                                vertical: isTablet ? 6 : 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: badgeColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: badgeColor.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                badgeText,
-                                style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 12 : (isSmallScreen ? 9 : 10),
-                                  fontWeight: FontWeight.w700,
-                                  color: badgeColor,
-                                ),
-                              ),
-                            ), */
                           ],
                         ),
-                        SizedBox(height: isSmallScreen ? 4 : 6),
+                        SizedBox(height: isSmallScreen ? 2 : 4),
                         Text(
                           description,
                           style: GoogleFonts.inter(
-                            fontSize: isTablet ? 15 : (isSmallScreen ? 12 : 14),
+                            fontSize: isTablet ? 13 : (isSmallScreen ? 11 : 12),
                             color: _textSecondary,
-                            height: 1.4,
+                            height: 1.3,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -612,17 +686,17 @@ class EducationScreen extends StatelessWidget {
                   
                   // Arrow Icon
                   Container(
-                    width: isTablet ? 40 : 32,
-                    height: isTablet ? 40 : 32,
+                    width: isTablet ? 36 : 28,
+                    height: isTablet ? 36 : 28,
                     decoration: BoxDecoration(
                       color: gradientColors.first.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(isTablet ? 14 : 12),
+                      borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                     ),
                     child: Center(
                       child: Icon(
                         Icons.arrow_forward_rounded,
                         color: gradientColors.first,
-                        size: isTablet ? 22 : 18,
+                        size: isTablet ? 18 : 15,
                       ),
                     ),
                   ),
@@ -632,27 +706,6 @@ class EducationScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-  
-  Widget _buildInfoBullet(String text, bool isTablet, bool isSmallScreen) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          Icons.check_circle_rounded,
-          color: _primaryBlue,
-          size: isTablet ? 18 : 16,
-        ),
-        SizedBox(width: 6),
-        Text(
-          text,
-          style: GoogleFonts.inter(
-            fontSize: isTablet ? 14 : (isSmallScreen ? 11 : 13),
-            color: _textSecondary,
-          ),
-        ),
-      ],
     );
   }
 }

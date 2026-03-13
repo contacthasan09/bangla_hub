@@ -1,8 +1,12 @@
 // lib/screens/user_app/job_sites/others_job_sites_screen.dart
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:bangla_hub/models/job_sites_browse_model.dart';
+import 'package:bangla_hub/providers/auth_provider.dart';
 import 'package:bangla_hub/providers/job_sites_browse_provider.dart';
+import 'package:bangla_hub/screens/auth/login_screen.dart';
+import 'package:bangla_hub/screens/auth/signup_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,7 +20,7 @@ class OthersJobSitesScreen extends StatefulWidget {
 }
 
 class _OthersJobSitesScreenState extends State<OthersJobSitesScreen> 
-    with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+    with TickerProviderStateMixin, AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   
   // Premium Color Palette - Charcoal Theme
   final Color _charcoal = Color(0xFF2C3E50); // Main charcoal
@@ -124,11 +128,193 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
   late Animation<double> _pulseAnimation;
   late AnimationController _rotateController;
   
+  // Particle animation controllers
+  late List<AnimationController> _particleControllers;
+  late List<AnimationController> _bubbleControllers;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  
   // Flag to track if initialization has been attempted
   bool _initializationAttempted = false;
   
   // Cache for failed image loads to prevent retry loops
   final Set<String> _failedImageLoads = {};
+  
+  // Search debounce timer
+  Timer? _searchDebounceTimer;
+
+  void _showLoginRequiredDialog(BuildContext context, String feature) {
+    final Color _primaryRed = Color(0xFFF42A41);
+    final Color _primaryGreen = Color(0xFF006A4E);
+    final Color _goldAccent = Color(0xFFFFD700);
+    
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 30,
+                offset: Offset(0, 15),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with gradient - reduced size
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_primaryRed, _primaryGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.lock_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Login Required',
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'You need to login to $feature',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Create an account or sign in to access full details',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 16),
+                    
+                    // Login Button - reduced size
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LoginScreen(),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryGreen,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Login',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    
+                    // Sign Up Button - reduced size
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RegisterScreen(role: 'user'),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _primaryGreen,
+                          side: BorderSide(color: _primaryGreen, width: 2),
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Create Account',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    
+                    // Continue Browsing - slightly reduced size
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'Continue Browsing',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -136,6 +322,10 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _tabController = TabController(length: JobSiteCategory.values.length, vsync: this);
     
     // Initialize animations
@@ -157,7 +347,7 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
     _pulseController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
+    );
     
     _pulseAnimation = CurvedAnimation(
       parent: _pulseController,
@@ -167,20 +357,87 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
     _rotateController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
+    );
     
-    _fadeController.forward();
-    _slideController.forward();
+    // Initialize particle controllers
+    _particleControllers = List.generate(30, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 3 + (index % 3)),
+      )..repeat(reverse: true);
+    });
+    
+    _bubbleControllers = List.generate(8, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 8 + (index * 2)),
+      )..repeat(reverse: true);
+    });
+    
+    // Start animations if app is visible
+    if (_appLifecycleState == AppLifecycleState.resumed) {
+      _startAnimations();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      _startAnimations();
+    } else {
+      _stopAnimations();
+    }
+  }
+
+  void _startAnimations() {
+    if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
+      _fadeController.forward();
+      _slideController.forward();
+      _pulseController.repeat(reverse: true);
+      _rotateController.repeat(reverse: true);
+      // Particle and bubble controllers already running via repeat
+    }
+  }
+
+  void _stopAnimations() {
+    _fadeController.stop();
+    _slideController.stop();
+    _pulseController.stop();
+    _rotateController.stop();
   }
 
   @override
   void dispose() {
+    print('🗑️ OthersJobSitesScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // ✅ Cancel debounce timer
+    _searchDebounceTimer?.cancel();
+    
+    // ✅ Dispose all controllers
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
     _rotateController.dispose();
     _tabController.dispose();
     _searchController.dispose();
+    
+    // ✅ Dispose particle controllers
+    for (var controller in _particleControllers) {
+      controller.dispose();
+    }
+    
+    // ✅ Dispose bubble controllers
+    for (var controller in _bubbleControllers) {
+      controller.dispose();
+    }
+    
     super.dispose();
   }
 
@@ -208,15 +465,15 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
   Widget _buildAnimatedParticle(int index) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final controller = _particleControllers[index % _particleControllers.length];
     
     return Positioned(
       left: (index * 37) % screenWidth,
       top: (index * 53) % screenHeight,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 3 + (index % 3)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          final value = controller.value;
           return Opacity(
             opacity: (0.1 + (value * 0.2)) * (0.5 + (index % 3) * 0.1),
             child: Transform.rotate(
@@ -246,15 +503,15 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final size = 50 + (index * 15).toDouble();
+    final controller = _bubbleControllers[index % _bubbleControllers.length];
     
     return Positioned(
       left: (index * 73) % screenWidth,
       top: (index * 47) % screenHeight,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 8 + (index * 2)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          final value = controller.value;
           return Transform.translate(
             offset: Offset(0, 20 * (value - 0.5)),
             child: Opacity(
@@ -463,41 +720,16 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
           ),
         ),
       ),
-      leading: Container(
-        margin: EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _secondaryGold.withOpacity(0.3), width: 1.5),
-        ),
-        child: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: Colors.white, size: isTablet ? 28 : 24),
-          onPressed: () => Navigator.pop(context),
-        ),
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back_rounded, color: Colors.white, fontWeight: FontWeight.bold, size: isTablet ? 28 : 24),
+        onPressed: () => Navigator.pop(context),
       ),
-      actions: [
-        Container(
-          margin: EdgeInsets.only(right: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _secondaryGold.withOpacity(0.3), width: 1.5),
-          ),
-          child: IconButton(
-            icon: RotationTransition(
-              turns: _rotateController,
-              child: Icon(Icons.refresh_rounded, color: _secondaryGold, size: 20),
-            ),
-            onPressed: () => _refreshSites(context, provider),
-            tooltip: 'Refresh',
-            constraints: BoxConstraints(minWidth: 40, minHeight: 40),
-          ),
-        ),
-      ],
     );
   }
 
   Widget _buildLoadingState(bool isTablet) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -510,34 +742,34 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
               return RotationTransition(
                 turns: AlwaysStoppedAnimation(value),
                 child: Container(
-                  width: isTablet ? 140 : 120,
-                  height: isTablet ? 140 : 120,
+                  width: isTablet ? 100 : 80,
+                  height: isTablet ? 100 : 80,
                   decoration: BoxDecoration(
                     gradient: _royalGradient,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
                         color: _charcoal.withOpacity(0.3),
-                        blurRadius: 30,
-                        spreadRadius: 3,
+                        blurRadius: 20,
+                        spreadRadius: 2,
                       ),
                     ],
                   ),
                   child: Center(
                     child: Container(
-                      width: isTablet ? 110 : 90,
-                      height: isTablet ? 110 : 90,
+                      width: isTablet ? 80 : 60,
+                      height: isTablet ? 80 : 60,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
                       child: Center(
                         child: SizedBox(
-                          width: isTablet ? 60 : 50,
-                          height: isTablet ? 60 : 50,
+                          width: isTablet ? 40 : 30,
+                          height: isTablet ? 40 : 30,
                           child: CircularProgressIndicator(
                             color: _charcoal,
-                            strokeWidth: 4,
+                            strokeWidth: 3,
                           ),
                         ),
                       ),
@@ -547,36 +779,47 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
               );
             },
           ),
-          SizedBox(height: isTablet ? 40 : 30),
+          SizedBox(height: isTablet ? 24 : 16),
           ShaderMask(
             shaderCallback: (bounds) => _gemstoneGradient.createShader(bounds),
             child: Text(
               'Loading Job Sites...',
               style: GoogleFonts.poppins(
-                fontSize: isTablet ? 30 : 26,
+                fontSize: isTablet ? 24 : 20,
                 fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
             ),
           ),
-          SizedBox(height: isTablet ? 16 : 12),
-          ScaleTransition(
-            scale: _pulseAnimation,
-            child: Text(
-              'Discover the best opportunities for you',
-              style: GoogleFonts.inter(
-                fontSize: isTablet ? 18 : 16,
-                color: _textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+          SizedBox(height: isTablet ? 12 : 8),
+          shouldAnimate
+              ? ScaleTransition(
+                  scale: _pulseAnimation,
+                  child: Text(
+                    'Discover the best opportunities',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 15 : 13,
+                      color: _textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                )
+              : Text(
+                  'Discover the best opportunities',
+                  style: GoogleFonts.inter(
+                    fontSize: isTablet ? 15 : 13,
+                    color: _textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
         ],
       ),
     );
   }
 
   Widget _buildErrorState(JobSitesBrowseProvider provider, bool isTablet) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Center(
       child: Padding(
         padding: EdgeInsets.all(isTablet ? 40 : 24),
@@ -663,10 +906,12 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          RotationTransition(
-                            turns: _rotateController,
-                            child: Icon(Icons.refresh_rounded, color: Colors.white, size: isTablet ? 26 : 22),
-                          ),
+                          shouldAnimate
+                              ? RotationTransition(
+                                  turns: _rotateController,
+                                  child: Icon(Icons.refresh_rounded, color: Colors.white, size: isTablet ? 26 : 22),
+                                )
+                              : Icon(Icons.refresh_rounded, color: Colors.white, size: isTablet ? 26 : 22),
                           SizedBox(width: 12),
                           Text(
                             'Try Again',
@@ -727,7 +972,12 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: isTablet ? 16 : 14),
               ),
               onChanged: (value) {
-                provider.setSearchQuery(value);
+                _searchDebounceTimer?.cancel();
+                _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+                  if (mounted) {
+                    provider.setSearchQuery(value);
+                  }
+                });
               },
             ),
           ),
@@ -867,6 +1117,8 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
   }
 
   Widget _buildContent(JobSitesBrowseProvider provider, bool isTablet) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     if (provider.filteredSites.isEmpty) {
       return SliverFillRemaining(
         child: Center(
@@ -989,15 +1241,23 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             final site = provider.filteredSites[index];
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: isTablet ? 20 : 16),
-                  child: _buildPremiumJobSiteCard(site, provider, index, isTablet),
+            
+            // Only apply animations if app is visible
+            Widget card = _buildPremiumJobSiteCard(site, provider, index, isTablet);
+            
+            if (shouldAnimate) {
+              card = FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: card,
                 ),
-              ),
+              );
+            }
+            
+            return Padding(
+              padding: EdgeInsets.only(bottom: isTablet ? 20 : 16),
+              child: card,
             );
           },
           childCount: provider.filteredSites.length,
@@ -1009,32 +1269,39 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
   Widget _buildPremiumJobSiteCard(JobSite site, JobSitesBrowseProvider provider, int index, bool isTablet) {
     final categoryColor = _getCategoryColor(site.category);
     final String siteKey = '${site.id}_${site.name}';
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: Duration(milliseconds: 500 + (index * 100)),
       curve: Curves.elasticOut,
       builder: (context, value, child) {
+        // Clamp the value to ensure it's between 0.0 and 1.0
+        final clampedValue = value.clamp(0.0, 1.0);
         return Transform.scale(
-          scale: 0.92 + (0.08 * value),
+          scale: 0.92 + (0.08 * clampedValue),
           child: Opacity(
-            opacity: value,
+            opacity: clampedValue,
             child: Container(
+              margin: EdgeInsets.symmetric(
+                horizontal: isTablet ? 16 : 12,
+                vertical: 6,
+              ),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: _charcoal.withOpacity(0.15),
-                    blurRadius: 20,
-                    offset: Offset(0, 10),
-                    spreadRadius: -5,
+                    color: _charcoal.withOpacity(0.12),
+                    blurRadius: 16,
+                    offset: Offset(0, 6),
+                    spreadRadius: -3,
                   ),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(24),
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                  filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -1050,12 +1317,19 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () => _openJobSite(site, provider),
-                        borderRadius: BorderRadius.circular(30),
+                        onTap: () {
+                          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                          if (authProvider.isGuestMode) {
+                            _showLoginRequiredDialog(context, 'view this job site');
+                            return;
+                          }
+                          _openJobSite(site, provider);
+                        },
+                        borderRadius: BorderRadius.circular(24),
                         splashColor: _secondaryGold.withOpacity(0.1),
                         highlightColor: Colors.transparent,
                         child: Padding(
-                          padding: EdgeInsets.all(isTablet ? 24 : 20),
+                          padding: EdgeInsets.all(isTablet ? 18 : 14),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1065,28 +1339,28 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                                 children: [
                                   // Site Logo
                                   Container(
-                                    width: isTablet ? 70 : 60,
-                                    height: isTablet ? 70 : 60,
+                                    width: isTablet ? 55 : 45,
+                                    height: isTablet ? 55 : 45,
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: [Colors.white, _lightBg],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: categoryColor.withOpacity(0.3), width: 2),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: categoryColor.withOpacity(0.3), width: 1.5),
                                       boxShadow: [
                                         BoxShadow(
                                           color: _charcoal.withOpacity(0.1),
-                                          blurRadius: 8,
-                                          offset: Offset(0, 3),
+                                          blurRadius: 6,
+                                          offset: Offset(0, 2),
                                         ),
                                       ],
                                     ),
-                                    child: _buildSiteLogo(site, size: isTablet ? 35 : 30, key: siteKey),
+                                    child: _buildSiteLogo(site, size: isTablet ? 28 : 24, key: siteKey),
                                   ),
                                   
-                                  SizedBox(width: 16),
+                                  SizedBox(width: 12),
                                   
                                   // Site Name and Category
                                   Expanded(
@@ -1096,7 +1370,7 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                                         Text(
                                           site.name,
                                           style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 22 : 20,
+                                            fontSize: isTablet ? 18 : 16,
                                             fontWeight: FontWeight.w800,
                                             color: _textPrimary,
                                             letterSpacing: -0.3,
@@ -1104,24 +1378,27 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        SizedBox(height: 6),
+                                        SizedBox(height: 4),
                                         Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
                                           decoration: BoxDecoration(
                                             color: categoryColor.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(20),
+                                            borderRadius: BorderRadius.circular(16),
                                             border: Border.all(color: categoryColor.withOpacity(0.3)),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(site.category.icon, size: 12, color: categoryColor),
-                                              SizedBox(width: 4),
+                                              Icon(site.category.icon, size: 11, color: categoryColor),
+                                              SizedBox(width: 3),
                                               Text(
                                                 site.category.displayName,
                                                 style: GoogleFonts.poppins(
                                                   color: categoryColor,
-                                                  fontSize: isTablet ? 12 : 11,
+                                                  fontSize: isTablet ? 11 : 10,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),
@@ -1134,38 +1411,44 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                                   
                                   // Visit Count Badge
                                   Container(
-                                    padding: EdgeInsets.all(8),
+                                    padding: EdgeInsets.all(6),
                                     decoration: BoxDecoration(
                                       gradient: _preciousGradient,
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
                                           color: _secondaryGold.withOpacity(0.3),
-                                          blurRadius: 8,
+                                          blurRadius: 6,
                                         ),
                                       ],
                                     ),
-                                    child: RotationTransition(
-                                      turns: _rotateController,
-                                      child: Icon(
-                                        Icons.trending_up_rounded,
-                                        color: Colors.white,
-                                        size: isTablet ? 18 : 16,
-                                      ),
-                                    ),
+                                    child: shouldAnimate
+                                        ? RotationTransition(
+                                            turns: _rotateController,
+                                            child: Icon(
+                                              Icons.trending_up_rounded,
+                                              color: Colors.white,
+                                              size: isTablet ? 15 : 13,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.trending_up_rounded,
+                                            color: Colors.white,
+                                            size: isTablet ? 15 : 13,
+                                          ),
                                   ),
                                 ],
                               ),
                               
-                              SizedBox(height: 16),
+                              SizedBox(height: 12),
                               
                               // Description
                               Text(
                                 site.description,
                                 style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 14 : 13,
+                                  fontSize: isTablet ? 13 : 12,
                                   color: _textSecondary,
-                                  height: 1.5,
+                                  height: 1.4,
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -1173,23 +1456,26 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                               
                               // Features
                               if (site.features.isNotEmpty) ...[
-                                SizedBox(height: 12),
+                                SizedBox(height: 10),
                                 Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
+                                  spacing: 5,
+                                  runSpacing: 5,
                                   children: site.features.map((feature) {
                                     return Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
                                         gradient: _glassMorphismGradient,
-                                        borderRadius: BorderRadius.circular(20),
+                                        borderRadius: BorderRadius.circular(16),
                                         border: Border.all(color: _secondaryGold.withOpacity(0.25)),
                                       ),
                                       child: Text(
                                         feature,
                                         style: GoogleFonts.poppins(
                                           color: _charcoal,
-                                          fontSize: isTablet ? 12 : 11,
+                                          fontSize: isTablet ? 11 : 10,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
@@ -1198,28 +1484,34 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                                 ),
                               ],
                               
-                              SizedBox(height: 16),
+                              SizedBox(height: 12),
                               
                               // Stats and Visit Button
                               Row(
                                 children: [
                                   // Click Count
                                   Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: _charcoal.withOpacity(0.05),
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(16),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.remove_red_eye_rounded, size: 14, color: _charcoal),
-                                        SizedBox(width: 4),
+                                        Icon(Icons.remove_red_eye_rounded, 
+                                          size: 12,
+                                          color: _charcoal
+                                        ),
+                                        SizedBox(width: 3),
                                         Text(
                                           '${_formatNumber(site.clickCount)} clicks',
                                           style: GoogleFonts.poppins(
                                             color: _charcoal,
-                                            fontSize: isTablet ? 12 : 11,
+                                            fontSize: isTablet ? 11 : 10,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
@@ -1231,20 +1523,27 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                                   
                                   // Visit Site Button
                                   GestureDetector(
-                                    onTap: () => _openJobSite(site, provider),
+                                    onTap: () {
+                                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                                      if (authProvider.isGuestMode) {
+                                        _showLoginRequiredDialog(context, 'view this job site');
+                                        return;
+                                      }
+                                      _openJobSite(site, provider);
+                                    },
                                     child: Container(
                                       padding: EdgeInsets.symmetric(
-                                        horizontal: isTablet ? 20 : 16,
-                                        vertical: isTablet ? 10 : 8,
+                                        horizontal: isTablet ? 16 : 12,
+                                        vertical: isTablet ? 8 : 6,
                                       ),
                                       decoration: BoxDecoration(
                                         gradient: _royalGradient,
-                                        borderRadius: BorderRadius.circular(25),
+                                        borderRadius: BorderRadius.circular(20),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: _charcoal.withOpacity(0.3),
-                                            blurRadius: 10,
-                                            offset: Offset(0, 4),
+                                            color: _charcoal.withOpacity(0.25),
+                                            blurRadius: 8,
+                                            offset: Offset(0, 3),
                                           ),
                                         ],
                                       ),
@@ -1255,15 +1554,15 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                                             'Visit Site',
                                             style: GoogleFonts.poppins(
                                               color: Colors.white,
-                                              fontSize: isTablet ? 14 : 13,
+                                              fontSize: isTablet ? 13 : 12,
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
-                                          SizedBox(width: 6),
+                                          SizedBox(width: 5),
                                           Icon(
                                             Icons.open_in_new_rounded,
                                             color: Colors.white,
-                                            size: isTablet ? 16 : 14,
+                                            size: isTablet ? 14 : 12,
                                           ),
                                         ],
                                       ),
@@ -1272,26 +1571,32 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                                 ],
                               ),
                               
-                              SizedBox(height: 12),
+                              SizedBox(height: 10),
                               
                               // URL Row
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
                                 decoration: BoxDecoration(
                                   color: _charcoal.withOpacity(0.03),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(10),
                                   border: Border.all(color: _borderLight),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.link_rounded, size: 16, color: _charcoal.withOpacity(0.5)),
-                                    SizedBox(width: 8),
+                                    Icon(Icons.link_rounded, 
+                                      size: 14,
+                                      color: _charcoal.withOpacity(0.5)
+                                    ),
+                                    SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
                                         site.url,
                                         style: GoogleFonts.inter(
                                           color: _textSecondary,
-                                          fontSize: isTablet ? 13 : 12,
+                                          fontSize: isTablet ? 12 : 11,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -1299,8 +1604,11 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                                     ),
                                     IconButton(
                                       onPressed: () => _copyToClipboard(site.url),
-                                      icon: Icon(Icons.copy_rounded, size: 16, color: _charcoal),
-                                      constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                                      icon: Icon(Icons.copy_rounded, 
+                                        size: 14,
+                                        color: _charcoal
+                                      ),
+                                      constraints: BoxConstraints(minWidth: 28, minHeight: 28),
                                       padding: EdgeInsets.zero,
                                       tooltip: 'Copy URL',
                                     ),
@@ -1373,18 +1681,22 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
             print('❌ Error decoding base64 for ${site.name}: $error');
-            setState(() {
-              _failedImageLoads.add(key);
-            });
+            if (mounted) {
+              setState(() {
+                _failedImageLoads.add(key);
+              });
+            }
             return _buildFallbackIcon(site, size: size);
           },
         ),
       );
     } catch (e) {
       print('❌ Error processing base64 for ${site.name}: $e');
-      setState(() {
-        _failedImageLoads.add(key);
-      });
+      if (mounted) {
+        setState(() {
+          _failedImageLoads.add(key);
+        });
+      }
       return null;
     }
   }
@@ -1400,9 +1712,11 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
           print('❌ Error loading asset logo for ${site.name}: $error');
-          setState(() {
-            _failedImageLoads.add(key);
-          });
+          if (mounted) {
+            setState(() {
+              _failedImageLoads.add(key);
+            });
+          }
           return _buildFallbackIcon(site, size: size);
         },
       ),
@@ -1442,29 +1756,41 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
           mode: LaunchMode.externalApplication,
         );
         
-        _showSnackBar('Opening ${site.name}...', _charcoal);
+        if (mounted) {
+          _showSnackBar('Opening ${site.name}...', _charcoal);
+        }
       } else {
-        _showSnackBar('Could not open website', _accentRed);
+        if (mounted) {
+          _showSnackBar('Could not open website', _accentRed);
+        }
       }
     } catch (e) {
       print('Error opening website: $e');
-      _showSnackBar('Error opening website', _accentRed);
+      if (mounted) {
+        _showSnackBar('Error opening website', _accentRed);
+      }
     }
   }
 
   Future<void> _refreshSites(BuildContext context, JobSitesBrowseProvider provider) async {
     HapticFeedback.lightImpact();
     await provider.refresh();
-    _showSnackBar('Refreshed!', _charcoal);
+    if (mounted) {
+      _showSnackBar('Refreshed!', _charcoal);
+    }
   }
 
   Future<void> _copyToClipboard(String url) async {
     await Clipboard.setData(ClipboardData(text: url));
-    _showSnackBar('URL copied to clipboard', _charcoal);
+    if (mounted) {
+      _showSnackBar('URL copied to clipboard', _charcoal);
+    }
     HapticFeedback.lightImpact();
   }
 
   void _showSnackBar(String message, Color color) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(

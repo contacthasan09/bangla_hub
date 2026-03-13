@@ -1,16 +1,14 @@
 // screens/user_app/entrepreneurship/networing_partner/premium_partner_details_screen.dart
+import 'dart:async';
 import 'dart:convert';
 import 'package:bangla_hub/models/entrepreneurship_models.dart';
-import 'package:bangla_hub/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 
 class PremiumPartnerDetailsScreen extends StatefulWidget {
   final NetworkingBusinessPartner partner;
-  final UserModel? user;
   final ScrollController scrollController;
   final Function(String) onLaunchPhone;
   final Function(String) onLaunchEmail;
@@ -23,7 +21,6 @@ class PremiumPartnerDetailsScreen extends StatefulWidget {
   const PremiumPartnerDetailsScreen({
     Key? key,
     required this.partner,
-    this.user,
     required this.scrollController,
     required this.onLaunchPhone,
     required this.onLaunchEmail,
@@ -38,11 +35,18 @@ class PremiumPartnerDetailsScreen extends StatefulWidget {
   _PremiumPartnerDetailsScreenState createState() => _PremiumPartnerDetailsScreenState();
 }
 
-class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScreen> with TickerProviderStateMixin {
+class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScreen> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   int _currentImageIndex = 0;
   late AnimationController _animationController;
   late PageController _pageController;
-  UserModel? _user;
+  
+  // Particle animation controllers
+  late List<AnimationController> _particleControllers;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
   // Premium Color Palette - Matching EventDetailsScreen
   final Color _primaryRed = Color(0xFFD32F2F);
@@ -91,41 +95,75 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 500),
     );
     _animationController.forward();
     _pageController = PageController();
-    _user = widget.user;
     
-    // If user is not provided, fetch it
-    if (_user == null && widget.partner.createdBy.isNotEmpty) {
-      _fetchUserData();
+    // Initialize particle controllers
+    _particleControllers = List.generate(20, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 3 + (index % 3)),
+      )..repeat(reverse: true);
+    });
+    
+    // Start animations if app is visible
+    if (_appLifecycleState == AppLifecycleState.resumed) {
+      _startAnimations();
+    }
+    
+    // REMOVED: User fetching logic - now using data from partner directly
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App is visible - start animations
+      _startAnimations();
+    } else {
+      // App is not visible - stop animations to save resources
+      _stopAnimations();
     }
   }
-
-  Future<void> _fetchUserData() async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.partner.createdBy)
-          .get();
-      
-      if (doc.exists && mounted) {
-        setState(() {
-          _user = UserModel.fromMap(doc.data()!, doc.id);
-        });
-      }
-    } catch (e) {
-      print('Error fetching user: $e');
+  
+  void _startAnimations() {
+    if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
+      _animationController.forward();
+      // Particle controllers already running via repeat
     }
+  }
+  
+  void _stopAnimations() {
+    _animationController.stop();
+    // Particle controllers continue but we don't stop them as they're repetitive
   }
 
   @override
   void dispose() {
+    print('🗑️ PremiumPartnerDetailsScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
     _animationController.dispose();
     _pageController.dispose();
+    
+    // ✅ Dispose particle controllers
+    for (var controller in _particleControllers) {
+      controller.dispose();
+    }
+    
     super.dispose();
   }
 
@@ -141,10 +179,11 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
     return cleaned;
   }
 
-  Widget _buildUserProfileImage(UserModel? user, {bool isLarge = false}) {
-    if (user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty) {
+  // NEW: Build partner poster image from partner.postedByProfileImageBase64
+  Widget _buildPartnerPosterImage({bool isLarge = false}) {
+    if (widget.partner.postedByProfileImageBase64 != null && widget.partner.postedByProfileImageBase64!.isNotEmpty) {
       try {
-        String base64String = user.profileImageUrl!;
+        String base64String = widget.partner.postedByProfileImageBase64!;
         
         if (base64String.contains('base64,')) {
           base64String = base64String.split('base64,').last;
@@ -185,14 +224,15 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
   }
 
   Widget _buildAnimatedParticle(int index, double width, double height) {
+    final controller = _particleControllers[index % _particleControllers.length];
+    
     return Positioned(
       left: (index * 37) % width,
       top: (index * 53) % height,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 3 + (index % 3)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          final value = controller.value;
           return Opacity(
             opacity: (0.1 + (value * 0.2)) * (0.5 + (index % 3) * 0.1),
             child: Transform.rotate(
@@ -219,6 +259,8 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
   }
 
   void _showPremiumSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
@@ -283,10 +325,10 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
   @override
   Widget build(BuildContext context) {
     final partner = widget.partner;
-    final user = _user;
     final hasImages = partner.galleryImagesBase64 != null && partner.galleryImagesBase64!.isNotEmpty;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
@@ -296,6 +338,23 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_rounded, 
+              color: Colors.white, 
+              fontWeight: FontWeight.bold,
+              size: isTablet ? 28 : 24,
+            ),
+            onPressed: () => Navigator.pop(context),
+            constraints: BoxConstraints.expand(),
+            padding: EdgeInsets.zero,
+            splashRadius: isTablet ? 18 : 14,
+          ),
+          leadingWidth: isTablet ? 52 : 44,
+        ),
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -355,32 +414,13 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Back Button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _shadowColor,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: Icon(Icons.arrow_back_rounded, color: _textPrimary, size: isTablet ? 22 : 20),
-                            ),
-                          ),
-                          
                           SizedBox(height: isTablet ? 20 : 16),
                           
-                          // User Profile and Business Info
+                          // User Profile and Business Info - Using partner's stored user info
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // User Profile Image with Premium Border
+                              // User Profile Image with Premium Border - from partner.postedByProfileImageBase64
                               Container(
                                 width: isTablet ? 80 : 70,
                                 height: isTablet ? 80 : 70,
@@ -396,7 +436,7 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                                   ],
                                 ),
                                 child: ClipOval(
-                                  child: _buildUserProfileImage(user, isLarge: true),
+                                  child: _buildPartnerPosterImage(isLarge: true),
                                 ),
                               ),
                               
@@ -407,8 +447,8 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // User Name
-                                    if (user != null)
+                                    // User Name from partner.postedByName
+                                    if (partner.postedByName != null && partner.postedByName!.isNotEmpty)
                                       Container(
                                         margin: EdgeInsets.only(bottom: 8),
                                         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -422,7 +462,7 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                                             Icon(Icons.person_rounded, color: _primaryGreen, size: 14),
                                             SizedBox(width: 4),
                                             Text(
-                                              user.fullName,
+                                              partner.postedByName!,
                                               style: GoogleFonts.poppins(
                                                 color: _primaryGreen,
                                                 fontSize: isTablet ? 14 : 12,
@@ -1062,6 +1102,7 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
 
   Widget _buildPremiumImageGallery(NetworkingBusinessPartner partner, bool isTablet) {
     final galleryImages = partner.galleryImagesBase64 ?? [];
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
     return Stack(
       children: [
@@ -1072,9 +1113,11 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
             controller: _pageController,
             itemCount: galleryImages.length,
             onPageChanged: (index) {
-              setState(() {
-                _currentImageIndex = index;
-              });
+              if (mounted) {
+                setState(() {
+                  _currentImageIndex = index;
+                });
+              }
             },
             itemBuilder: (context, index) {
               return Container(
@@ -1299,6 +1342,8 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
     required List<Color> gradientColors,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Container(
       padding: EdgeInsets.all(isTablet ? 20 : 16),
       decoration: BoxDecoration(
@@ -1339,11 +1384,20 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
               ],
             ),
             child: Center(
-              child: Icon(
-                icon,
-                color: Colors.white,
-                size: isTablet ? 22 : 18,
-              ),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: AlwaysStoppedAnimation(0), // No rotation, just placeholder
+                      child: Icon(
+                        icon,
+                        color: Colors.white,
+                        size: isTablet ? 22 : 18,
+                      ),
+                    )
+                  : Icon(
+                      icon,
+                      color: Colors.white,
+                      size: isTablet ? 22 : 18,
+                    ),
             ),
           ),
           SizedBox(width: isTablet ? 16 : 12),
@@ -1385,6 +1439,8 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
     required bool isTablet,
     VoidCallback? onTap,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1413,11 +1469,20 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                   borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                 ),
                 child: Center(
-                  child: Icon(
-                    icon,
-                    color: onTap != null ? Colors.white : Colors.grey.shade600,
-                    size: isTablet ? 20 : 18,
-                  ),
+                  child: shouldAnimate
+                      ? RotationTransition(
+                          turns: AlwaysStoppedAnimation(0), // No rotation, just placeholder
+                          child: Icon(
+                            icon,
+                            color: onTap != null ? Colors.white : Colors.grey.shade600,
+                            size: isTablet ? 20 : 18,
+                          ),
+                        )
+                      : Icon(
+                          icon,
+                          color: onTap != null ? Colors.white : Colors.grey.shade600,
+                          size: isTablet ? 20 : 18,
+                        ),
                 ),
               ),
               SizedBox(width: isTablet ? 16 : 12),
@@ -1474,6 +1539,8 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
     required VoidCallback onPressed,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Container(
       decoration: BoxDecoration(
         gradient: gradient,

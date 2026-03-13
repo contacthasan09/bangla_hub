@@ -400,7 +400,7 @@ class _AdminJobPostingsScreenState extends State<AdminJobPostingsScreen> with Si
     );
   }
 
-  Widget _buildJobCard(JobPosting job, {required String type}) {
+/*  Widget _buildJobCard(JobPosting job, {required String type}) {
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 360;
     final imageBytes = _base64ToImage(job.companyLogoBase64);
@@ -623,6 +623,294 @@ class _AdminJobPostingsScreenState extends State<AdminJobPostingsScreen> with Si
       ),
     );
   }
+
+*/
+
+Widget _buildJobCard(JobPosting job, {required String type}) {
+  final screenSize = MediaQuery.of(context).size;
+  final isSmallScreen = screenSize.width < 360;
+  final imageBytes = _base64ToImage(job.companyLogoBase64);
+
+  return Card(
+    margin: EdgeInsets.only(bottom: 16),
+    elevation: 4,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: job.isUrgent && type == 'pending'
+            ? Border.all(color: Colors.red, width: 2)
+            : job.isExpired && type == 'active'
+                ? Border.all(color: Colors.grey, width: 2)
+                : null,
+      ),
+      child: InkWell(
+        onTap: () => _showJobDetails(job, type),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Logo/Icon
+                  Container(
+                    width: isSmallScreen ? 50 : 60,
+                    height: isSmallScreen ? 50 : 60,
+                    decoration: BoxDecoration(
+                      color: _getTypeColor(type).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: imageBytes != null && imageBytes.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              imageBytes,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Icon(
+                                  job.isUrgent
+                                      ? Icons.priority_high_rounded
+                                      : Icons.work_rounded,
+                                  color: _getTypeColor(type),
+                                  size: isSmallScreen ? 25 : 30,
+                                );
+                              },
+                            ),
+                          )
+                        : Icon(
+                            job.isUrgent
+                                ? Icons.priority_high_rounded
+                                : Icons.work_rounded,
+                            color: _getTypeColor(type),
+                            size: isSmallScreen ? 25 : 30,
+                          ),
+                  ),
+                  SizedBox(width: isSmallScreen ? 8 : 12),
+                  
+                  // Job Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                job.jobTitle,
+                                style: GoogleFonts.poppins(
+                                  fontSize: isSmallScreen ? 14 : 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (job.isUrgent)
+                              Container(
+                                margin: EdgeInsets.only(left: 8),
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'URGENT',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isSmallScreen ? 8 : 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            if (job.isExpired && type == 'active')
+                              Container(
+                                margin: EdgeInsets.only(left: 8),
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'EXPIRED',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isSmallScreen ? 8 : 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          job.companyName,
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 12 : 14,
+                            fontWeight: FontWeight.w500,
+                            color: _primaryGreen,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: 4),
+                        
+                        // UPDATED: Show user name and profile image
+                        Row(
+                          children: [
+                            // User profile image (small)
+                            Container(
+                              width: isSmallScreen ? 18 : 20,
+                              height: isSmallScreen ? 18 : 20,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey[200],
+                              ),
+                              child: job.postedByProfileImageBase64 != null &&
+                                      job.postedByProfileImageBase64!.isNotEmpty
+                                  ? ClipOval(
+                                      child: Image.memory(
+                                        _base64ToImageForProfile(job.postedByProfileImageBase64!),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Icon(
+                                            Icons.person,
+                                            size: isSmallScreen ? 12 : 14,
+                                            color: Colors.grey[600],
+                                          );
+                                        },
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.person,
+                                      size: isSmallScreen ? 12 : 14,
+                                      color: Colors.grey[600],
+                                    ),
+                            ),
+                            SizedBox(width: 4),
+                            
+                            // User name
+                            Expanded(
+                              child: Text(
+                                job.postedByName ?? 'Unknown User',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 10 : 12,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              SizedBox(height: isSmallScreen ? 8 : 12),
+              
+              // Info Chips
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _buildInfoChip(
+                    Icons.location_on_rounded,
+                    isSmallScreen ? job.city : '${job.city}, ${job.state}',
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  _buildInfoChip(
+                    Icons.work_rounded,
+                    job.jobType.displayName,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  _buildInfoChip(
+                    Icons.school_rounded,
+                    job.experienceLevel.displayName,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  _buildInfoChip(
+                    Icons.attach_money_rounded,
+                    job.formattedSalary.length > (isSmallScreen ? 15 : 20) 
+                        ? '${job.formattedSalary.substring(0, isSmallScreen ? 15 : 20)}...' 
+                        : job.formattedSalary,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  if (job.numberOfVacancies > 1)
+                    _buildInfoChip(
+                      Icons.people_rounded,
+                      '${job.numberOfVacancies} openings',
+                      isSmallScreen: isSmallScreen,
+                    ),
+                ],
+              ),
+              
+              SizedBox(height: isSmallScreen ? 8 : 12),
+              
+              // Status and Stats Row
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _buildStatusChip(job, type, isSmallScreen: isSmallScreen),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.calendar_today_rounded, size: isSmallScreen ? 12 : 14, color: Colors.grey[600]),
+                        SizedBox(width: 4),
+                        Text(
+                          _formatDate(job.applicationDeadline),
+                          style: TextStyle(fontSize: isSmallScreen ? 10 : 12, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              // Admin Actions based on type
+              _buildActionButtons(job, type, isSmallScreen),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+// Add this helper method for profile images
+Uint8List _base64ToImageForProfile(String base64String) {
+  try {
+    String cleaned = base64String.trim();
+    if (cleaned.contains('base64,')) {
+      cleaned = cleaned.split('base64,').last;
+    }
+    cleaned = cleaned.replaceAll(RegExp(r'\s'), '');
+    while (cleaned.length % 4 != 0) {
+      cleaned += '=';
+    }
+    return base64Decode(cleaned);
+  } catch (e) {
+    print('Error decoding profile image: $e');
+    return Uint8List(0);
+  }
+}
+
+
+
 
   Widget _buildActionButtons(JobPosting job, String type, bool isSmallScreen) {
     if (type == 'pending') {

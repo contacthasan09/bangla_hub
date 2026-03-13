@@ -200,6 +200,15 @@ class NetworkingBusinessPartner {
   List<String>? galleryImagesBase64;
   List<String> businessHours;
   List<String> languagesSpoken;
+
+      // Add these fields to store user information directly
+  String? postedByUserId; // Keep the user ID for reference
+  String? postedByName; // Store user's full name
+  String? postedByEmail; // Store user's email
+  String? postedByProfileImageBase64; // Store user's profile image
+
+  double? latitude;
+double? longitude;
   
   // Status fields
   bool isVerified;
@@ -243,6 +252,16 @@ class NetworkingBusinessPartner {
     this.galleryImagesBase64,
     required this.businessHours,
     this.languagesSpoken = const ['English', 'Bengali'],
+
+            this.postedByUserId,
+    this.postedByName,
+    this.postedByEmail,
+    this.postedByProfileImageBase64,
+
+        this.latitude,
+    this.longitude,
+
+
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -281,6 +300,15 @@ class NetworkingBusinessPartner {
       'galleryImagesBase64': galleryImagesBase64 ?? [],
       'businessHours': businessHours,
       'languagesSpoken': languagesSpoken,
+
+                  'postedByUserId': postedByUserId ?? '',
+      'postedByName': postedByName ?? '',
+      'postedByEmail': postedByEmail ?? '',
+      'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
+
+            'latitude': latitude,
+      'longitude': longitude,
+
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -363,6 +391,15 @@ class NetworkingBusinessPartner {
       galleryImagesBase64: List<String>.from(data['galleryImagesBase64'] ?? []),
       businessHours: List<String>.from(data['businessHours'] ?? []),
       languagesSpoken: List<String>.from(data['languagesSpoken'] ?? []),
+
+        postedByUserId: data['postedByUserId'] ?? '',
+      postedByName: data['postedByName'] ?? '',
+      postedByEmail: data['postedByEmail'] ?? '',
+      postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
+
+            latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
+
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
@@ -492,8 +529,16 @@ class JobPosting {
   DateTime applicationDeadline;
   int numberOfVacancies;
 
-  String? postedByName; // Optional: store the name separately
-  String? postedByEmail; 
+
+
+    // Add these fields to store user information directly
+  String? postedByUserId; // Keep the user ID for reference
+  String? postedByName; // Store user's full name
+  String? postedByEmail; // Store user's email
+  String? postedByProfileImageBase64; // Store user's profile image
+
+  double? latitude;
+double? longitude;
   
   // Status fields
   bool isVerified;
@@ -535,12 +580,21 @@ class JobPosting {
     this.applicationLink,
     required this.applicationDeadline,
     this.numberOfVacancies = 1,
+
+        this.postedByUserId,
+    this.postedByName,
+    this.postedByEmail,
+    this.postedByProfileImageBase64,
+
+        this.latitude,
+    this.longitude,
+
+
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
     this.isUrgent = false,
-        this.postedByName,
-    this.postedByEmail,
+
     required this.postedBy,
     required this.createdAt,
     required this.updatedAt,
@@ -576,13 +630,21 @@ class JobPosting {
       'applicationLink': applicationLink ?? '',
       'applicationDeadline': Timestamp.fromDate(applicationDeadline),
       'numberOfVacancies': numberOfVacancies,
+
+            'postedByUserId': postedByUserId ?? '',
+      'postedByName': postedByName ?? '',
+      'postedByEmail': postedByEmail ?? '',
+      'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
+
+            'latitude': latitude,
+      'longitude': longitude,
+
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
       'isUrgent': isUrgent,
       'postedBy': postedBy,
-      'postedByName': postedByName ?? '', // Store user name
-      'postedByEmail': postedByEmail ?? '', // Store user email
+      
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'companyLogoBase64': companyLogoBase64 ?? '',
@@ -651,13 +713,21 @@ class JobPosting {
       applicationLink: data['applicationLink'],
       applicationDeadline: (data['applicationDeadline'] as Timestamp).toDate(),
       numberOfVacancies: data['numberOfVacancies'] ?? 1,
+
+            postedByUserId: data['postedByUserId'] ?? '',
+      postedByName: data['postedByName'] ?? '',
+      postedByEmail: data['postedByEmail'] ?? '',
+      postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
+
+                  latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
+
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
       isUrgent: data['isUrgent'] ?? false,
       postedBy: data['postedBy'] ?? '',
-      postedByName: data['postedByName'], // Get user name if stored
-      postedByEmail: data['postedByEmail'], 
+      
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
       companyLogoBase64: data['companyLogoBase64'],
@@ -754,6 +824,15 @@ class SmallBusinessPromotion {
   double? specialOfferDiscount;
   String? offerValidity;
   List<String> paymentMethods;
+
+      // Add these fields to store user information directly
+  String? postedByUserId; // Keep the user ID for reference
+  String? postedByName; // Store user's full name
+  String? postedByEmail; // Store user's email
+  String? postedByProfileImageBase64; // Store user's profile image
+
+  double? latitude;
+double? longitude;
   
   // Status fields
   bool isVerified;
@@ -794,6 +873,15 @@ class SmallBusinessPromotion {
     this.specialOfferDiscount,
     this.offerValidity,
     this.paymentMethods = const [],
+
+            this.postedByUserId,
+    this.postedByName,
+    this.postedByEmail,
+    this.postedByProfileImageBase64,
+
+        this.latitude,
+    this.longitude,
+
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -829,6 +917,15 @@ class SmallBusinessPromotion {
       'specialOfferDiscount': specialOfferDiscount ?? 0,
       'offerValidity': offerValidity ?? '',
       'paymentMethods': paymentMethods,
+
+                  'postedByUserId': postedByUserId ?? '',
+      'postedByName': postedByName ?? '',
+      'postedByEmail': postedByEmail ?? '',
+      'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
+
+            'latitude': latitude,
+      'longitude': longitude,
+
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -880,6 +977,15 @@ class SmallBusinessPromotion {
       specialOfferDiscount: (data['specialOfferDiscount'] ?? 0).toDouble(),
       offerValidity: data['offerValidity'],
       paymentMethods: List<String>.from(data['paymentMethods'] ?? []),
+
+                  postedByUserId: data['postedByUserId'] ?? '',
+      postedByName: data['postedByName'] ?? '',
+      postedByEmail: data['postedByEmail'] ?? '',
+      postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
+
+                  latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
+
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
@@ -1007,6 +1113,15 @@ class BusinessPartnerRequest {
   String contactPhone;
   String? preferredMeetingMethod;
   List<String>? additionalDocumentsBase64;
+
+        // Add these fields to store user information directly
+  String? postedByUserId; // Keep the user ID for reference
+  String? postedByName; // Store user's full name
+  String? postedByEmail; // Store user's email
+  String? postedByProfileImageBase64; // Store user's profile image
+
+  double? latitude;
+double? longitude;
   
   // Status fields
   bool isVerified;
@@ -1046,6 +1161,15 @@ class BusinessPartnerRequest {
     required this.contactPhone,
     this.preferredMeetingMethod,
     this.additionalDocumentsBase64,
+
+                this.postedByUserId,
+    this.postedByName,
+    this.postedByEmail,
+    this.postedByProfileImageBase64,
+
+        this.latitude,
+    this.longitude,
+
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -1082,6 +1206,15 @@ class BusinessPartnerRequest {
       'contactPhone': contactPhone,
       'preferredMeetingMethod': preferredMeetingMethod ?? '',
       'additionalDocumentsBase64': additionalDocumentsBase64 ?? [],
+
+                        'postedByUserId': postedByUserId ?? '',
+      'postedByName': postedByName ?? '',
+      'postedByEmail': postedByEmail ?? '',
+      'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
+
+            'latitude': latitude,
+      'longitude': longitude,
+
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -1153,6 +1286,15 @@ class BusinessPartnerRequest {
       preferredMeetingMethod: data['preferredMeetingMethod'],
       additionalDocumentsBase64: List<String>.from(data['additionalDocumentsBase64'] ?? []),
       isVerified: data['isVerified'] ?? false,
+
+                        postedByUserId: data['postedByUserId'] ?? '',
+      postedByName: data['postedByName'] ?? '',
+      postedByEmail: data['postedByEmail'] ?? '',
+      postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
+
+                  latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
+
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
       isUrgent: data['isUrgent'] ?? false,

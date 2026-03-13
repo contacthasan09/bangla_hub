@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'dart:convert'; // Add this import
+import 'dart:convert';
 
 // Event Status Enum
 enum EventStatus {
@@ -38,6 +38,11 @@ class EventModel {
   final String createdBy;
   final DateTime createdAt;
   final DateTime? updatedAt;
+
+  final double? latitude;
+  final double? longitude;
+  final String? state;
+  final String? city;
   
   // New fields
   final String category;
@@ -64,6 +69,11 @@ class EventModel {
     required this.category,
     this.status = 'pending',
     this.totalInterested = 0,
+
+    this.latitude,
+    this.longitude,
+    this.state,
+    this.city,
   });
 
   // Helper method to check if image is base64
@@ -161,18 +171,14 @@ class EventModel {
             bytes,
             width: double.infinity,
             height: double.infinity,
-          //  fit: BoxFit.cover,
-          fit : BoxFit.contain,
+            fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               print('❌ Error decoding base64 image: $error');
-              print('Stack trace: $stackTrace');
               return _buildDefaultImage();
             },
           );
         } catch (decodeError) {
           print('❌ Base64 decode error: $decodeError');
-          print('Base64 string length: ${base64String.length}');
-          print('Base64 string start: ${base64String.substring(0, min(50, base64String.length))}...');
           return _buildDefaultImage();
         }
       } else if (isNetworkImage) {
@@ -181,8 +187,7 @@ class EventModel {
           imageUrl,
           width: double.infinity,
           height: double.infinity,
-        //  fit: BoxFit.cover,
-         fit : BoxFit.contain,
+          fit: BoxFit.cover,
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
             return Center(
@@ -194,18 +199,14 @@ class EventModel {
           },
           errorBuilder: (context, error, stackTrace) {
             print('❌ Error loading network image: $error');
-            print('Image URL: $imageUrl');
             return _buildDefaultImage();
           },
         );
       } else {
-        // Not a valid image format - could be a local asset path
-        print('⚠️ Image URL is neither base64 nor network: $imageUrl');
         return _buildDefaultImage();
       }
     } catch (e) {
       print('❌ Error creating image widget: $e');
-      print('Stack trace: ${StackTrace.current}');
       return _buildDefaultImage();
     }
   }
@@ -408,6 +409,11 @@ class EventModel {
       'category': category,
       'status': status,
       'totalInterested': totalInterested,
+
+      'latitude': latitude,
+      'longitude': longitude,
+      'state': state,
+      'city': city,
     };
   }
 
@@ -436,6 +442,11 @@ class EventModel {
       category: map['category'] ?? 'social',
       status: map['status'] ?? 'pending',
       totalInterested: (map['totalInterested'] as int?) ?? 0,
+
+      latitude: map['latitude']?.toDouble(),
+      longitude: map['longitude']?.toDouble(),
+      state: map['state'],
+      city: map['city'],
     );
   }
 
@@ -459,6 +470,10 @@ class EventModel {
     String? category,
     String? status,
     int? totalInterested,
+    double? latitude,
+    double? longitude,
+    String? state,
+    String? city,
   }) {
     return EventModel(
       id: id ?? this.id,
@@ -480,6 +495,10 @@ class EventModel {
       category: category ?? this.category,
       status: status ?? this.status,
       totalInterested: totalInterested ?? this.totalInterested,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      state: state ?? this.state,
+      city: city ?? this.city,
     );
   }
 }

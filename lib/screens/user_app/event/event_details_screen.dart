@@ -24,10 +24,22 @@ class EventDetailsScreen extends StatefulWidget {
   _EventDetailsScreenState createState() => _EventDetailsScreenState();
 }
 
-class _EventDetailsScreenState extends State<EventDetailsScreen> {
+class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   bool _isInterested = false;
   bool _isLoading = false;
   bool _isGeneratingPDF = false;
+  
+  // Animation Controllers
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+  late AnimationController _slideController;
+  late Animation<Offset> _slideAnimation;
+  
+  // Track particle animations
+  late List<AnimationController> _particleControllers;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
   // Premium Color Palette - Matching ServiceProviderDetailScreen with Light Green Background
   final Color _primaryRed = Color(0xFFD32F2F); // Darker red for buttons
@@ -76,9 +88,97 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _checkIfInterested();
     
+    // Initialize animations
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    );
+    
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+    
+    // Initialize particle controllers (20 particles)
+    _particleControllers = List.generate(20, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 3 + (index % 3)),
+      )..repeat(reverse: true);
+    });
+    
+    // Start animations only if app is visible
+    if (_appLifecycleState == AppLifecycleState.resumed) {
+      _startAnimations();
+    }
+    
     print('📸 EventDetailsScreen init - Banner URL: ${widget.event.bannerImageUrl}');
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App is visible - start animations
+      _startAnimations();
+    } else {
+      // App is not visible - stop animations to save resources
+      _stopAnimations();
+    }
+  }
+  
+  void _startAnimations() {
+    if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
+      _fadeController.forward();
+      _slideController.forward();
+      // Particle controllers already running via repeat
+    }
+  }
+  
+  void _stopAnimations() {
+    _fadeController.stop();
+    _slideController.stop();
+    // Particle controllers will continue but we don't stop them as they're repetitive
+    // and stopping them would require restart logic
+  }
+  
+  @override
+  void dispose() {
+    print('🗑️ EventDetailsScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // ✅ Dispose all animation controllers
+    _fadeController.dispose();
+    _slideController.dispose();
+    
+    // ✅ Dispose particle controllers
+    for (var controller in _particleControllers) {
+      controller.dispose();
+    }
+    
+    super.dispose();
   }
   
   Future<void> _checkIfInterested() async {
@@ -91,7 +191,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
           widget.event.id, 
           authProvider.user!.id
         );
-        setState(() {});
+        if (mounted) setState(() {});
       } catch (e) {
         print('❌ Error checking interest: $e');
       }
@@ -116,20 +216,50 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
         widget.event.id,
         authProvider.user!.id,
       );
-      setState(() {
-        _isInterested = !_isInterested;
-      });
+      if (mounted) {
+        setState(() {
+          _isInterested = !_isInterested;
+        });
+      }
     } catch (e) {
       print('❌ Error toggling interest: $e');
-      _showPremiumSnackBar('Error: $e', isError: true);
+      if (mounted) {
+        _showPremiumSnackBar('Error: $e', isError: true);
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  int _getUpdatedInterestedCount() {
+    final eventProvider = context.read<EventProvider>();
+    
+    // Check in upcoming events
+    final upcomingEvent = eventProvider.upcomingEvents.firstWhere(
+      (e) => e.id == widget.event.id,
+      orElse: () => widget.event, // Fallback to original event
+    );
+    
+    // Check in past events if not found in upcoming
+    if (upcomingEvent.id == widget.event.id && upcomingEvent != widget.event) {
+      return upcomingEvent.totalInterested;
+    }
+    
+    final pastEvent = eventProvider.pastEvents.firstWhere(
+      (e) => e.id == widget.event.id,
+      orElse: () => widget.event,
+    );
+    
+    return pastEvent.totalInterested;
   }
   
   void _showPremiumSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
@@ -194,11 +324,189 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   }
 
   Widget _buildBannerImage(EventModel event, bool isTablet) {
-    // Use the built-in bannerImageWidget from EventModel
+    // Use the built-in bannerImageWidget from EventModel with proper positioning
     return Container(
       width: double.infinity,
-      height: isTablet ? 300 : 250,
-      child: event.bannerImageWidget,
+      height: isTablet ? 350 : 280, // Adjusted height for better visibility
+      child: Stack(
+        children: [
+          // Background Image - covers full container without cropping
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(isTablet ? 40 : 30),
+                bottomRight: Radius.circular(isTablet ? 40 : 30),
+              ),
+              child: event.bannerImageWidget, // This handles base64/network images
+            ),
+          ),
+          
+          // Gradient overlay for better text visibility
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.3),
+                    Colors.black.withOpacity(0.6),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.0, 0.5, 1.0],
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(isTablet ? 40 : 30),
+                  bottomRight: Radius.circular(isTablet ? 40 : 30),
+                ),
+              ),
+            ),
+          ),
+          
+          // Back button - positioned absolutely to ensure it's on top
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: isTablet ? 20 : 16,
+            child: Container(
+              width: isTablet ? 44 : 40,
+              height: isTablet ? 44 : 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white,
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  color: Colors.black87,
+                  size: isTablet ? 22 : 20,
+                ),
+                onPressed: () => Navigator.pop(context),
+                padding: EdgeInsets.zero,
+                splashRadius: isTablet ? 22 : 18,
+              ),
+            ),
+          ),
+          
+          // Interest button - positioned absolutely on top right
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: isTablet ? 20 : 16,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: _shadowColor,
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                onPressed: _isLoading ? null : _toggleInterest,
+                icon: _isLoading
+                    ? SizedBox(
+                        width: isTablet ? 22 : 20,
+                        height: isTablet ? 22 : 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: _primaryGreen,
+                        ),
+                      )
+                    : Icon(
+                        _isInterested ? Icons.favorite : Icons.favorite_border,
+                        color: _isInterested ? Colors.red : _textPrimary,
+                        size: isTablet ? 22 : 20,
+                      ),
+              ),
+            ),
+          ),
+          
+          // Event title overlay at bottom of banner
+          Positioned(
+            bottom: 20,
+            left: isTablet ? 24 : 20,
+            right: isTablet ? 24 : 20,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Category badge
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 14 : 12,
+                    vertical: isTablet ? 8 : 6,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_primaryRed, _deepRed],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _primaryRed.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        widget.event.categoryIcon,
+                        color: Colors.white,
+                        size: isTablet ? 16 : 14,
+                      ),
+                      SizedBox(width: isTablet ? 6 : 4),
+                      Text(
+                        widget.event.categoryText,
+                        style: GoogleFonts.poppins(
+                          fontSize: isTablet ? 13 : 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 12),
+                // Event title
+                Text(
+                  widget.event.title,
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 32 : 26,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 10,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
   
@@ -213,6 +521,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   }
 
   void _showPremiumShareOptions() {
+    if (!mounted) return;
+    
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     
@@ -385,7 +695,9 @@ ${widget.event.description.substring(0, widget.event.description.length > 100 ? 
 Shared via Bangla Hub App.
                         ''';
                         await Clipboard.setData(ClipboardData(text: text));
-                        _showPremiumSnackBar('Event details copied to clipboard');
+                        if (mounted) {
+                          _showPremiumSnackBar('Event details copied to clipboard');
+                        }
                         Navigator.pop(context);
                       },
                       isTablet: isTablet,
@@ -806,14 +1118,20 @@ Shared via Bangla Hub App.
         text: 'Check out this event from Bangla Hub!',
       );
 
-      _showPremiumSnackBar('✅ PDF generated and shared successfully!');
+      if (mounted) {
+        _showPremiumSnackBar('✅ PDF generated and shared successfully!');
+      }
     } catch (e) {
       print('PDF Generation Error: $e');
-      _showPremiumSnackBar('Error generating PDF: $e', isError: true);
+      if (mounted) {
+        _showPremiumSnackBar('Error generating PDF: $e', isError: true);
+      }
     } finally {
-      setState(() {
-        _isGeneratingPDF = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isGeneratingPDF = false;
+        });
+      }
     }
   }
 
@@ -883,7 +1201,9 @@ _Download Bangla Hub App for more details!_ 📱
     if (await canLaunch(url)) {
       await launch(url);
     } else {
-      _showPremiumSnackBar('WhatsApp not installed 📱', isError: true);
+      if (mounted) {
+        _showPremiumSnackBar('WhatsApp not installed 📱', isError: true);
+      }
     }
   }
   
@@ -905,777 +1225,17 @@ Shared via Bangla Hub App. Download now! 📲
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 600;
-
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        extendBodyBehindAppBar: true,
-        floatingActionButton: ScaleTransition(
-          scale: AlwaysStoppedAnimation(1.0),
-          child: GestureDetector(
-            onTap: _isGeneratingPDF ? null : _showPremiumShareOptions,
-            child: Container(
-              width: isTablet ? 64 : 56,
-              height: isTablet ? 64 : 56,
-              decoration: BoxDecoration(
-                gradient: _isGeneratingPDF
-                    ? LinearGradient(colors: [Colors.grey.shade300, Colors.grey.shade400])
-                    : LinearGradient(colors: [_primaryRed, _primaryGreen]),
-                borderRadius: BorderRadius.circular(isTablet ? 22 : 18),
-                boxShadow: [
-                  BoxShadow(
-                    color: _primaryRed.withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: Offset(0, 10),
-                  ),
-                ],
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: _isGeneratingPDF
-                  ? Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 3,
-                      ),
-                    )
-                  : Icon(
-                      Icons.share_rounded,
-                      color: Colors.white,
-                      size: isTablet ? 28 : 24,
-                    ),
-            ),
-          ),
-        ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_lightGreenBg, _lightGreen, Colors.white],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Stack(
-            children: [
-              // Animated Background Particles
-              ...List.generate(20, (index) => _buildAnimatedParticle(index, screenWidth, MediaQuery.of(context).size.height)),
-              
-              // Main Content
-              CustomScrollView(
-                slivers: [
-                  // Banner Image
-                  SliverToBoxAdapter(
-                    child: _buildBannerImage(widget.event, isTablet),
-                  ),
-                  
-                  // All Information in Column Below
-                  SliverToBoxAdapter(
-                    child: Container(
-                      padding: EdgeInsets.all(isTablet ? 24 : 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Back and Interest Buttons
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _shadowColor,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: IconButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  icon: Icon(Icons.arrow_back_rounded, color: _textPrimary, size: isTablet ? 22 : 20),
-                                ),
-                              ),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _shadowColor,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: IconButton(
-                                  onPressed: _isLoading ? null : _toggleInterest,
-                                  icon: _isLoading
-                                      ? SizedBox(
-                                          width: isTablet ? 20 : 18,
-                                          height: isTablet ? 20 : 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: _primaryGreen,
-                                          ),
-                                        )
-                                      : Icon(
-                                          _isInterested ? Icons.favorite : Icons.favorite_border,
-                                          color: _isInterested ? Colors.red : _textPrimary,
-                                          size: isTablet ? 22 : 20,
-                                        ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 20 : 16),
-                          
-                          // Event Title and Category
-                          Text(
-                            widget.event.title,
-                            style: GoogleFonts.poppins(
-                              fontSize: isTablet ? 28 : 24,
-                              fontWeight: FontWeight.w800,
-                              color: _textPrimary,
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 8 : 6),
-                          
-                          // Category Badge - DARK RED
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isTablet ? 14 : 12,
-                              vertical: isTablet ? 8 : 6,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [_primaryRed, _deepRed],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(30),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _primaryRed.withOpacity(0.3),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  widget.event.categoryIcon,
-                                  color: Colors.white,
-                                  size: isTablet ? 18 : 16,
-                                ),
-                                SizedBox(width: isTablet ? 8 : 6),
-                                Text(
-                                  widget.event.categoryText,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: isTablet ? 14 : 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 20 : 16),
-                          
-                          // Status Row
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Approved Badge - DARK GREEN
-                              if (widget.event.isApproved)
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isTablet ? 14 : 12,
-                                    vertical: isTablet ? 6 : 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [_successGreen, _darkGreen],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _successGreen.withOpacity(0.3),
-                                        blurRadius: 5,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.verified_rounded,
-                                        color: Colors.white,
-                                        size: isTablet ? 16 : 14,
-                                      ),
-                                      SizedBox(width: isTablet ? 4 : 3),
-                                      Text(
-                                        'APPROVED',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 12 : 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              else
-                                Container(),
-                              
-                              // Status Badge
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 14 : 12,
-                                  vertical: isTablet ? 6 : 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: widget.event.isPast
-                                      ? [Colors.grey, Colors.grey[700]!]
-                                      : [_successGreen, _darkGreen],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: widget.event.isPast
-                                          ? Colors.grey.withOpacity(0.2)
-                                          : _successGreen.withOpacity(0.3),
-                                      blurRadius: 5,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      widget.event.isPast ? Icons.event_busy_rounded : Icons.event_available_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 16 : 14,
-                                    ),
-                                    SizedBox(width: isTablet ? 4 : 3),
-                                    Text(
-                                      widget.event.isPast ? 'PAST' : 'UPCOMING',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 12 : 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 20 : 16),
-                          
-                          // Stats Row
-                          Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Interested Count
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 14 : 12,
-                                  vertical: isTablet ? 6 : 4,
-                                ),
-                                margin: EdgeInsets.only(right: isTablet ? 12 : 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: _primaryRed.withOpacity(0.3), width: 1),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _shadowColor,
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.favorite_rounded,
-                                      color: _primaryRed,
-                                      size: isTablet ? 16 : 14,
-                                    ),
-                                    SizedBox(width: isTablet ? 4 : 3),
-                                    Text(
-                                      _formatCount(widget.event.totalInterested),
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 14 : 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: _primaryRed,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              
-                              // Ticket Info
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 14 : 12,
-                                  vertical: isTablet ? 6 : 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: widget.event.isFree ? _primaryGreen.withOpacity(0.3) : _badgeGold.withOpacity(0.3), 
-                                    width: 1
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _shadowColor,
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      widget.event.isFree ? Icons.card_giftcard_rounded : Icons.confirmation_number_rounded,
-                                      color: widget.event.isFree ? _primaryGreen : _badgeGold,
-                                      size: isTablet ? 16 : 14,
-                                    ),
-                                    SizedBox(width: isTablet ? 4 : 3),
-                                    Text(
-                                      widget.event.isFree ? 'FREE' : 'TICKETED',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 14 : 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: widget.event.isFree ? _primaryGreen : _badgeGold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Event Details Section
-                          _buildPremiumDetailSection(
-                            title: 'Event Details',
-                            icon: Icons.info_rounded,
-                            child: Column(
-                              children: [
-                                // Date & Time Card
-                                _buildPremiumDetailCard(
-                                  icon: Icons.calendar_today_rounded,
-                                  title: 'Date & Time',
-                                  value: widget.event.fullFormattedDate,
-                                  gradientColors: [_primaryRed, _deepRed],
-                                  isTablet: isTablet,
-                                ),
-                                SizedBox(height: isTablet ? 14 : 12),
-                                
-                                // Location Card
-                                _buildPremiumDetailCard(
-                                  icon: Icons.location_on_rounded,
-                                  title: 'Location',
-                                  value: widget.event.location,
-                                  gradientColors: [_primaryGreen, _darkGreen],
-                                  isTablet: isTablet,
-                                ),
-                                SizedBox(height: isTablet ? 14 : 12),
-                                
-                                // Organizer Card
-                                _buildPremiumDetailCard(
-                                  icon: Icons.business_rounded,
-                                  title: 'Organizer',
-                                  value: widget.event.organizer,
-                                  gradientColors: [_badgeGold, _goldAccent],
-                                  isTablet: isTablet,
-                                ),
-                              ],
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Description Section
-                          _buildPremiumDetailSection(
-                            title: 'Description',
-                            icon: Icons.description_rounded,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                border: Border.all(color: _borderLight, width: 1),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                widget.event.description,
-                                style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 15 : 14,
-                                  color: _textSecondary,
-                                  height: 1.6,
-                                ),
-                              ),
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Contact Information Section
-                          _buildPremiumDetailSection(
-                            title: 'Contact Information',
-                            icon: Icons.contact_phone_rounded,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                border: Border.all(color: _borderLight, width: 1),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  _buildPremiumContactItem(
-                                    icon: Icons.person_rounded,
-                                    title: 'Contact Person',
-                                    value: widget.event.contactPerson,
-                                    isTablet: isTablet,
-                                  ),
-                                  SizedBox(height: isTablet ? 14 : 12),
-                                  _buildPremiumContactItem(
-                                    icon: Icons.email_rounded,
-                                    title: 'Email',
-                                    value: widget.event.contactEmail,
-                                    isTablet: isTablet,
-                                    onTap: () => _launchEmail(widget.event.contactEmail),
-                                  ),
-                                  SizedBox(height: isTablet ? 14 : 12),
-                                  _buildPremiumContactItem(
-                                    icon: Icons.phone_rounded,
-                                    title: 'Phone',
-                                    value: widget.event.contactPhone,
-                                    isTablet: isTablet,
-                                    onTap: () => _launchPhone(widget.event.contactPhone),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          // Ticket Information Section
-                          if (!widget.event.isFree && widget.event.ticketPrices != null && widget.event.ticketPrices!.isNotEmpty) ...[
-                            SizedBox(height: isTablet ? 32 : 24),
-                            _buildPremiumDetailSection(
-                              title: 'Ticket Information',
-                              icon: Icons.confirmation_number_rounded,
-                              child: Container(
-                                padding: EdgeInsets.all(isTablet ? 20 : 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                  border: Border.all(color: _borderLight, width: 1),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _shadowColor,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  children: widget.event.ticketPrices!.entries.map((entry) {
-                                    return Padding(
-                                      padding: EdgeInsets.symmetric(vertical: isTablet ? 8 : 6),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Row(
-                                              children: [
-                                                Container(
-                                                  width: isTablet ? 24 : 20,
-                                                  height: isTablet ? 24 : 20,
-                                                  decoration: BoxDecoration(
-                                                    color: _primaryGreen.withOpacity(0.1),
-                                                    borderRadius: BorderRadius.circular(6),
-                                                  ),
-                                                  child: Center(
-                                                    child: Icon(
-                                                      Icons.confirmation_number_rounded,
-                                                      color: _primaryGreen,
-                                                      size: isTablet ? 14 : 12,
-                                                    ),
-                                                  ),
-                                                ),
-                                                SizedBox(width: isTablet ? 12 : 10),
-                                                Expanded(
-                                                  child: Text(
-                                                    entry.key,
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: isTablet ? 15 : 14,
-                                                      color: _textPrimary,
-                                                      fontWeight: FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: isTablet ? 16 : 12,
-                                              vertical: isTablet ? 8 : 6,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [_primaryRed, _deepRed],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ),
-                                              borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
-                                            ),
-                                            child: Text(
-                                              '\$${entry.value.toStringAsFixed(2)}',
-                                              style: GoogleFonts.inter(
-                                                fontSize: isTablet ? 16 : 14,
-                                                fontWeight: FontWeight.w800,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                              isTablet: isTablet,
-                            ),
-                          ],
-                          
-                          // Free Event Banner
-                          if (widget.event.isFree) ...[
-                            SizedBox(height: isTablet ? 32 : 24),
-                            Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [_lightGreen50, _lightGreen],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                border: Border.all(color: _primaryGreen.withOpacity(0.3), width: 1.5),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: isTablet ? 50 : 44,
-                                    height: isTablet ? 50 : 44,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [_primaryGreen, _darkGreen],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(isTablet ? 14 : 12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _primaryGreen.withOpacity(0.3),
-                                          blurRadius: 8,
-                                          offset: Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.card_giftcard_rounded,
-                                        color: Colors.white,
-                                        size: isTablet ? 24 : 20,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: isTablet ? 16 : 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Free Event',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 18 : 16,
-                                            fontWeight: FontWeight.w800,
-                                            color: _primaryGreen,
-                                          ),
-                                        ),
-                                        SizedBox(height: isTablet ? 4 : 2),
-                                        Text(
-                                          'No tickets required - Join for free!',
-                                          style: GoogleFonts.inter(
-                                            fontSize: isTablet ? 14 : 12,
-                                            color: _textSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          
-                          // Premium Footer
-                          SizedBox(height: isTablet ? 40 : 32),
-                          
-                          Container(
-                            padding: EdgeInsets.all(isTablet ? 24 : 20),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [_lightGreen50, _lightGreen],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
-                              border: Border.all(color: _primaryGreen.withOpacity(0.2), width: 1.5),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: isTablet ? 60 : 50,
-                                  height: isTablet ? 60 : 50,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [_primaryRed, _primaryGreen],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _primaryRed.withOpacity(0.3),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.event_available_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 28 : 24,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: isTablet ? 20 : 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Premium Event',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 18 : 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: _primaryGreen,
-                                        ),
-                                      ),
-                                      SizedBox(height: isTablet ? 4 : 2),
-                                      Text(
-                                        'Powered by Bangla Hub Community',
-                                        style: GoogleFonts.inter(
-                                          fontSize: isTablet ? 14 : 12,
-                                          color: _textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 40 : 30),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  
-  Future<void> _launchEmail(String email) async {
-    final Uri uri = Uri.parse('mailto:$email');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      await Clipboard.setData(ClipboardData(text: email));
-      _showPremiumSnackBar('Email copied to clipboard');
-    }
-  }
-  
-  Future<void> _launchPhone(String phone) async {
-    final Uri uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      await Clipboard.setData(ClipboardData(text: phone));
-      _showPremiumSnackBar('Phone number copied to clipboard');
-    }
-  }
-  
   Widget _buildAnimatedParticle(int index, double width, double height) {
+    // Use the pre-initialized controller
+    final controller = _particleControllers[index % _particleControllers.length];
+    
     return Positioned(
       left: (index * 37) % width,
       top: (index * 53) % height,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 3 + (index % 3)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          final value = controller.value;
           return Opacity(
             opacity: (0.1 + (value * 0.2)) * (0.5 + (index % 3) * 0.1),
             child: Transform.rotate(
@@ -1918,5 +1478,680 @@ Shared via Bangla Hub App. Download now! 📲
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: true,
+        floatingActionButton: ScaleTransition(
+          scale: AlwaysStoppedAnimation(1.0),
+          child: GestureDetector(
+            onTap: _isGeneratingPDF ? null : _showPremiumShareOptions,
+            child: Container(
+              width: isTablet ? 64 : 56,
+              height: isTablet ? 64 : 56,
+              decoration: BoxDecoration(
+                gradient: _isGeneratingPDF
+                    ? LinearGradient(colors: [Colors.grey.shade300, Colors.grey.shade400])
+                    : LinearGradient(colors: [_primaryRed, _primaryGreen]),
+                borderRadius: BorderRadius.circular(isTablet ? 22 : 18),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryRed.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                  ),
+                ],
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: _isGeneratingPDF
+                  ? Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
+                      ),
+                    )
+                  : Icon(
+                      Icons.share_rounded,
+                      color: Colors.white,
+                      size: isTablet ? 28 : 24,
+                    ),
+            ),
+          ),
+        ),
+        body: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_lightGreenBg, _lightGreen, Colors.white],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Stack(
+                children: [
+                  // Animated Background Particles
+                  ...List.generate(20, (index) => _buildAnimatedParticle(index, screenWidth, MediaQuery.of(context).size.height)),
+                  
+                  // Main Content
+                  CustomScrollView(
+                    slivers: [
+                      // Banner Image
+                      SliverToBoxAdapter(
+                        child: _buildBannerImage(widget.event, isTablet),
+                      ),
+                      
+                      // All Information in Column Below
+                      SliverToBoxAdapter(
+                        child: Container(
+                          padding: EdgeInsets.all(isTablet ? 24 : 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: isTablet ? 20 : 16),
+                              
+                              // Status Row
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // Approved Badge - DARK GREEN
+                                  if (widget.event.isApproved)
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isTablet ? 14 : 12,
+                                        vertical: isTablet ? 6 : 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [_successGreen, _darkGreen],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: _successGreen.withOpacity(0.3),
+                                            blurRadius: 5,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.verified_rounded,
+                                            color: Colors.white,
+                                            size: isTablet ? 16 : 14,
+                                          ),
+                                          SizedBox(width: isTablet ? 4 : 3),
+                                          Text(
+                                            'APPROVED',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: isTablet ? 12 : 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  else
+                                    Container(),
+                                  
+                                  // Status Badge
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: isTablet ? 14 : 12,
+                                      vertical: isTablet ? 6 : 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: widget.event.isPast
+                                          ? [Colors.grey, Colors.grey[700]!]
+                                          : [_successGreen, _darkGreen],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: widget.event.isPast
+                                              ? Colors.grey.withOpacity(0.2)
+                                              : _successGreen.withOpacity(0.3),
+                                          blurRadius: 5,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          widget.event.isPast ? Icons.event_busy_rounded : Icons.event_available_rounded,
+                                          color: Colors.white,
+                                          size: isTablet ? 16 : 14,
+                                        ),
+                                        SizedBox(width: isTablet ? 4 : 3),
+                                        Text(
+                                          widget.event.isPast ? 'PAST' : 'UPCOMING',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: isTablet ? 12 : 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              
+                              SizedBox(height: isTablet ? 20 : 16),
+                              
+                              // Stats Row
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // Interested Count - Now updates dynamically
+                                  Consumer<EventProvider>(
+                                    builder: (context, eventProvider, _) {
+                                      // Get updated event from provider
+                                      final updatedEvent = eventProvider.upcomingEvents.firstWhere(
+                                        (e) => e.id == widget.event.id,
+                                        orElse: () => eventProvider.pastEvents.firstWhere(
+                                          (e) => e.id == widget.event.id,
+                                          orElse: () => widget.event,
+                                        ),
+                                      );
+                                      
+                                      return Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isTablet ? 14 : 12,
+                                          vertical: isTablet ? 6 : 4,
+                                        ),
+                                        margin: EdgeInsets.only(right: isTablet ? 12 : 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(color: _primaryRed.withOpacity(0.3), width: 1),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: _shadowColor,
+                                              blurRadius: 4,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.favorite_rounded,
+                                              color: _primaryRed,
+                                              size: isTablet ? 16 : 14,
+                                            ),
+                                            SizedBox(width: isTablet ? 4 : 3),
+                                            Text(
+                                              _formatCount(updatedEvent.totalInterested),
+                                              style: GoogleFonts.poppins(
+                                                fontSize: isTablet ? 14 : 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: _primaryRed,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  
+                                  // Ticket Info
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: isTablet ? 14 : 12,
+                                      vertical: isTablet ? 6 : 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: widget.event.isFree ? _primaryGreen.withOpacity(0.3) : _badgeGold.withOpacity(0.3), 
+                                        width: 1
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: _shadowColor,
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          widget.event.isFree ? Icons.card_giftcard_rounded : Icons.confirmation_number_rounded,
+                                          color: widget.event.isFree ? _primaryGreen : _badgeGold,
+                                          size: isTablet ? 16 : 14,
+                                        ),
+                                        SizedBox(width: isTablet ? 4 : 3),
+                                        Text(
+                                          widget.event.isFree ? 'FREE' : 'TICKETED',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: isTablet ? 14 : 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: widget.event.isFree ? _primaryGreen : _badgeGold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              
+                              SizedBox(height: isTablet ? 32 : 24),
+                              
+                              // Event Details Section
+                              _buildPremiumDetailSection(
+                                title: 'Event Details',
+                                icon: Icons.info_rounded,
+                                child: Column(
+                                  children: [
+                                    // Date & Time Card
+                                    _buildPremiumDetailCard(
+                                      icon: Icons.calendar_today_rounded,
+                                      title: 'Date & Time',
+                                      value: widget.event.fullFormattedDate,
+                                      gradientColors: [_primaryRed, _deepRed],
+                                      isTablet: isTablet,
+                                    ),
+                                    SizedBox(height: isTablet ? 14 : 12),
+                                    
+                                    // Location Card
+                                    _buildPremiumDetailCard(
+                                      icon: Icons.location_on_rounded,
+                                      title: 'Location',
+                                      value: widget.event.location,
+                                      gradientColors: [_primaryGreen, _darkGreen],
+                                      isTablet: isTablet,
+                                    ),
+                                    SizedBox(height: isTablet ? 14 : 12),
+                                    
+                                    // Organizer Card
+                                    _buildPremiumDetailCard(
+                                      icon: Icons.business_rounded,
+                                      title: 'Organizer',
+                                      value: widget.event.organizer,
+                                      gradientColors: [_badgeGold, _goldAccent],
+                                      isTablet: isTablet,
+                                    ),
+                                  ],
+                                ),
+                                isTablet: isTablet,
+                              ),
+                              
+                              SizedBox(height: isTablet ? 32 : 24),
+                              
+                              // Description Section
+                              _buildPremiumDetailSection(
+                                title: 'Description',
+                                icon: Icons.description_rounded,
+                                child: Container(
+                                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                                    border: Border.all(color: _borderLight, width: 1),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _shadowColor,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    widget.event.description,
+                                    style: GoogleFonts.inter(
+                                      fontSize: isTablet ? 15 : 14,
+                                      color: _textSecondary,
+                                      height: 1.6,
+                                    ),
+                                  ),
+                                ),
+                                isTablet: isTablet,
+                              ),
+                              
+                              SizedBox(height: isTablet ? 32 : 24),
+                              
+                              // Contact Information Section
+                              _buildPremiumDetailSection(
+                                title: 'Contact Information',
+                                icon: Icons.contact_phone_rounded,
+                                child: Container(
+                                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                                    border: Border.all(color: _borderLight, width: 1),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _shadowColor,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      _buildPremiumContactItem(
+                                        icon: Icons.person_rounded,
+                                        title: 'Contact Person',
+                                        value: widget.event.contactPerson,
+                                        isTablet: isTablet,
+                                      ),
+                                      SizedBox(height: isTablet ? 14 : 12),
+                                      _buildPremiumContactItem(
+                                        icon: Icons.email_rounded,
+                                        title: 'Email',
+                                        value: widget.event.contactEmail,
+                                        isTablet: isTablet,
+                                        onTap: () => _launchEmail(widget.event.contactEmail),
+                                      ),
+                                      SizedBox(height: isTablet ? 14 : 12),
+                                      _buildPremiumContactItem(
+                                        icon: Icons.phone_rounded,
+                                        title: 'Phone',
+                                        value: widget.event.contactPhone,
+                                        isTablet: isTablet,
+                                        onTap: () => _launchPhone(widget.event.contactPhone),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                isTablet: isTablet,
+                              ),
+                              
+                              // Ticket Information Section
+                              if (!widget.event.isFree && widget.event.ticketPrices != null && widget.event.ticketPrices!.isNotEmpty) ...[
+                                SizedBox(height: isTablet ? 32 : 24),
+                                _buildPremiumDetailSection(
+                                  title: 'Ticket Information',
+                                  icon: Icons.confirmation_number_rounded,
+                                  child: Container(
+                                    padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                                      border: Border.all(color: _borderLight, width: 1),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: _shadowColor,
+                                          blurRadius: 8,
+                                          offset: Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      children: widget.event.ticketPrices!.entries.map((entry) {
+                                        return Padding(
+                                          padding: EdgeInsets.symmetric(vertical: isTablet ? 8 : 6),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      width: isTablet ? 24 : 20,
+                                                      height: isTablet ? 24 : 20,
+                                                      decoration: BoxDecoration(
+                                                        color: _primaryGreen.withOpacity(0.1),
+                                                        borderRadius: BorderRadius.circular(6),
+                                                      ),
+                                                      child: Center(
+                                                        child: Icon(
+                                                          Icons.confirmation_number_rounded,
+                                                          color: _primaryGreen,
+                                                          size: isTablet ? 14 : 12,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: isTablet ? 12 : 10),
+                                                    Expanded(
+                                                      child: Text(
+                                                        entry.key,
+                                                        style: GoogleFonts.inter(
+                                                          fontSize: isTablet ? 15 : 14,
+                                                          color: _textPrimary,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: isTablet ? 16 : 12,
+                                                  vertical: isTablet ? 8 : 6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: [_primaryRed, _deepRed],
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                  ),
+                                                  borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
+                                                ),
+                                                child: Text(
+                                                  '\$${entry.value.toStringAsFixed(2)}',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: isTablet ? 16 : 14,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                  isTablet: isTablet,
+                                ),
+                              ],
+                              
+                              // Free Event Banner
+                              if (widget.event.isFree) ...[
+                                SizedBox(height: isTablet ? 32 : 24),
+                                Container(
+                                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [_lightGreen50, _lightGreen],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                                    border: Border.all(color: _primaryGreen.withOpacity(0.3), width: 1.5),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: isTablet ? 50 : 44,
+                                        height: isTablet ? 50 : 44,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [_primaryGreen, _darkGreen],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(isTablet ? 14 : 12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: _primaryGreen.withOpacity(0.3),
+                                              blurRadius: 8,
+                                              offset: Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: Icon(
+                                            Icons.card_giftcard_rounded,
+                                            color: Colors.white,
+                                            size: isTablet ? 24 : 20,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: isTablet ? 16 : 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Free Event',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: isTablet ? 18 : 16,
+                                                fontWeight: FontWeight.w800,
+                                                color: _primaryGreen,
+                                              ),
+                                            ),
+                                            SizedBox(height: isTablet ? 4 : 2),
+                                            Text(
+                                              'No tickets required - Join for free!',
+                                              style: GoogleFonts.inter(
+                                                fontSize: isTablet ? 14 : 12,
+                                                color: _textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              
+                              // Premium Footer
+                              SizedBox(height: isTablet ? 40 : 32),
+                              
+                              Container(
+                                padding: EdgeInsets.all(isTablet ? 24 : 20),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [_lightGreen50, _lightGreen],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
+                                  border: Border.all(color: _primaryGreen.withOpacity(0.2), width: 1.5),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: isTablet ? 60 : 50,
+                                      height: isTablet ? 60 : 50,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [_primaryRed, _primaryGreen],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: _primaryRed.withOpacity(0.3),
+                                            blurRadius: 8,
+                                            offset: Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.event_available_rounded,
+                                          color: Colors.white,
+                                          size: isTablet ? 28 : 24,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: isTablet ? 20 : 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Premium Event',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: isTablet ? 18 : 16,
+                                              fontWeight: FontWeight.w700,
+                                              color: _primaryGreen,
+                                            ),
+                                          ),
+                                          SizedBox(height: isTablet ? 4 : 2),
+                                          Text(
+                                            'Powered by Bangla Hub Community',
+                                            style: GoogleFonts.inter(
+                                              fontSize: isTablet ? 14 : 12,
+                                              color: _textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              SizedBox(height: isTablet ? 40 : 30),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Future<void> _launchEmail(String email) async {
+    final Uri uri = Uri.parse('mailto:$email');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      await Clipboard.setData(ClipboardData(text: email));
+      if (mounted) {
+        _showPremiumSnackBar('Email copied to clipboard');
+      }
+    }
+  }
+  
+  Future<void> _launchPhone(String phone) async {
+    final Uri uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      await Clipboard.setData(ClipboardData(text: phone));
+      if (mounted) {
+        _showPremiumSnackBar('Phone number copied to clipboard');
+      }
+    }
   }
 }

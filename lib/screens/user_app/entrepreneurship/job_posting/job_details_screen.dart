@@ -1,7 +1,7 @@
 // screens/user_app/entrepreneurship/job_posting/job_details_screen.dart
+import 'dart:async';
 import 'dart:convert';
 import 'package:bangla_hub/models/entrepreneurship_models.dart';
-import 'package:bangla_hub/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,7 +10,6 @@ import 'package:flutter/services.dart';
 
 class JobDetailsScreen extends StatefulWidget {
   final JobPosting job;
-  final UserModel? user;
   final ScrollController scrollController;
   final Function(String) onLaunchPhone;
   final Function(String) onLaunchEmail;
@@ -23,7 +22,6 @@ class JobDetailsScreen extends StatefulWidget {
   const JobDetailsScreen({
     Key? key,
     required this.job,
-    this.user,
     required this.scrollController,
     required this.onLaunchPhone,
     required this.onLaunchEmail,
@@ -38,10 +36,18 @@ class JobDetailsScreen extends StatefulWidget {
   _JobDetailsScreenState createState() => _JobDetailsScreenState();
 }
 
-class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProviderStateMixin {
+class _JobDetailsScreenState extends State<JobDetailsScreen> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   late AnimationController _animationController;
   
-  // Premium Color Palette - Sports Theme (from SportsClubsScreen)
+  // Particle animation controllers
+  late List<AnimationController> _particleControllers;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  
+  // Premium Color Palette - Sports Theme
   final Color _primaryRed = Color(0xFFF44336);
   final Color _darkRed = Color(0xFFD32F2F);
   final Color _lightRed = Color(0xFFFFEBEE);
@@ -70,28 +76,81 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 500),
     );
+    
+    // Initialize particle controllers (20 particles)
+    _particleControllers = List.generate(20, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 3 + (index % 3)),
+      )..repeat(reverse: true);
+    });
+    
     _animationController.forward();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App is visible - start animations
+      _startAnimations();
+    } else {
+      // App is not visible - stop animations to save resources
+      _stopAnimations();
+    }
+  }
+  
+  void _startAnimations() {
+    if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
+      _animationController.forward();
+      // Particle controllers already running via repeat
+    }
+  }
+  
+  void _stopAnimations() {
+    _animationController.stop();
+    // Particle controllers will continue but we don't stop them as they're repetitive
   }
 
   @override
   void dispose() {
+    print('🗑️ JobDetailsScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // ✅ Dispose animation controllers
     _animationController.dispose();
+    
+    // ✅ Dispose particle controllers
+    for (var controller in _particleControllers) {
+      controller.dispose();
+    }
+    
     super.dispose();
   }
 
   Widget _buildAnimatedParticle(int index, double width, double height) {
+    final controller = _particleControllers[index % _particleControllers.length];
+    
     return Positioned(
       left: (index * 37) % width,
       top: (index * 53) % height,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 3 + (index % 3)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          final value = controller.value;
           return Opacity(
             opacity: (0.1 + (value * 0.2)) * (0.5 + (index % 3) * 0.1),
             child: Transform.rotate(
@@ -118,6 +177,8 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
   }
 
   void _showPremiumSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
@@ -172,19 +233,41 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
   @override
   Widget build(BuildContext context) {
     final job = widget.job;
-    final user = widget.user;
     final isDeadlineNear = job.applicationDeadline.difference(DateTime.now()).inDays <= 7;
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 600;
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(
+      value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_rounded, 
+              color: Colors.white, 
+              size: isTablet ? 28 : 24,
+            ),
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+            splashRadius: isTablet ? 28 : 24,
+            constraints: BoxConstraints(
+              minWidth: isTablet ? 48 : 40,
+              minHeight: isTablet ? 48 : 40,
+            ),
+          ),
+          leadingWidth: isTablet ? 60 : 50,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+          toolbarHeight: isTablet ? 70 : 60,
+        ),
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -196,7 +279,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
           child: Stack(
             children: [
               // Animated Background Particles
-              ...List.generate(20, (index) => _buildAnimatedParticle(index, screenWidth, MediaQuery.of(context).size.height)),
+              ...List.generate(20, (index) => _buildAnimatedParticle(index, screenWidth, screenHeight)),
               
               // Main Content
               CustomScrollView(
@@ -205,7 +288,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
                   // Header Section
                   SliverToBoxAdapter(
                     child: Container(
-                      height: isTablet ? 300 : 250,
+                      width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [widget.primaryRed, widget.purpleAccent, _royalPurple],
@@ -215,296 +298,286 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
                       ),
                       child: SafeArea(
                         bottom: false,
+                        top: true,
                         child: Padding(
-                          padding: EdgeInsets.all(isTablet ? 24 : 20),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Premium Pattern Line
-                              Container(
-                                height: 4,
-                                width: 60,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [widget.goldAccent, _orangeAccent, widget.goldAccent],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Job Title
-                              ShaderMask(
-                                shaderCallback: (bounds) => LinearGradient(
-                                  colors: [Colors.white, widget.goldAccent],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ).createShader(bounds),
-                                child: Text(
-                                  job.jobTitle,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: isTablet ? 32 : 28,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              SizedBox(height: isTablet ? 8 : 6),
-                              
-                              // Company Name
-                              Text(
-                                job.companyName,
-                                style: GoogleFonts.poppins(
-                                  fontSize: isTablet ? 20 : 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
-                              ),
-                              
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Urgent Badge
-                              if (job.isUrgent)
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isTablet ? 16 : 14,
-                                    vertical: isTablet ? 8 : 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(color: Colors.white.withOpacity(0.3)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.priority_high_rounded, color: widget.goldAccent, size: isTablet ? 18 : 16),
-                                      SizedBox(width: isTablet ? 8 : 6),
-                                      Text(
-                                        'URGENT HIRING',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 14 : 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 40 : 24,
+                            vertical: isTablet ? 16 : 12,
+                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Premium Pattern Line
+                                  Container(
+                                    height: 4,
+                                    width: 60,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [widget.goldAccent, _orangeAccent, widget.goldAccent],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
                                       ),
-                                    ],
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
                                   ),
-                                ),
-                            ],
+                                  SizedBox(height: isTablet ? 12 : 8),
+                                  
+                                  // Title
+                                  Text(
+                                    job.jobTitle,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: isTablet ? 32 : 24,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: isTablet ? 4 : 2),
+                                  
+                                  // Company Name as Subtitle
+                                  Text(
+                                    job.companyName,
+                                    style: GoogleFonts.inter(
+                                      fontSize: isTablet ? 18 : 15,
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  
+                                  // Urgent Badge - Only show if urgent
+                                  if (job.isUrgent) ...[
+                                    SizedBox(height: isTablet ? 10 : 8),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isTablet ? 14 : 12,
+                                        vertical: isTablet ? 6 : 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.priority_high_rounded, 
+                                            color: widget.goldAccent, 
+                                            size: isTablet ? 16 : 14
+                                          ),
+                                          SizedBox(width: isTablet ? 6 : 4),
+                                          Text(
+                                            'URGENT HIRING',
+                                            style: GoogleFonts.inter(
+                                              fontSize: isTablet ? 13 : 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                         ),
                       ),
                     ),
                   ),
-                  
-                  // All Information in Column Below
-                  SliverToBoxAdapter(
-                    child: Container(
-                      padding: EdgeInsets.all(isTablet ? 24 : 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Back Button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _shadowColor,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: Icon(Icons.arrow_back_rounded, color: _textPrimary, size: isTablet ? 22 : 20),
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 20 : 16),
-                          
-                          // User Profile and Job Info
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // User Profile Image
-                              Container(
-                                width: isTablet ? 80 : 70,
-                                height: isTablet ? 80 : 70,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: widget.goldAccent, width: 3),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: widget.goldAccent.withOpacity(0.3),
-                                      blurRadius: 12,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                                child: ClipOval(
-                                  child: _buildUserProfileImage(user, isLarge: true),
-                                ),
+                
+                  // Main Content Section
+                  SliverPadding(
+                    padding: EdgeInsets.all(isTablet ? 24 : 20),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        // User Profile and Job Info - Using job.postedBy fields
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // User Profile Image from job.postedByProfileImageBase64
+                            Container(
+                              width: isTablet ? 80 : 70,
+                              height: isTablet ? 80 : 70,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: widget.goldAccent, width: 3),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: widget.goldAccent.withOpacity(0.3),
+                                    blurRadius: 12,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
                               ),
-                              
-                              SizedBox(width: isTablet ? 20 : 16),
-                              
-                              // Job Info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // User Name
-                                    if (user != null)
-                                      Container(
-                                        margin: EdgeInsets.only(bottom: 8),
-                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: _lightRed,
-                                          borderRadius: BorderRadius.circular(16),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.person_rounded, color: widget.primaryRed, size: 14),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              user.fullName,
+                              child: ClipOval(
+                                child: _buildJobPosterImage(isLarge: true),
+                              ),
+                            ),
+                            
+                            SizedBox(width: isTablet ? 20 : 16),
+                            
+                            // Job Info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // User Name from job.postedByName
+                                  if (job.postedByName != null && job.postedByName!.isNotEmpty)
+                                    Container(
+                                      margin: EdgeInsets.only(bottom: 8),
+                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: _lightRed,
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.person_rounded, color: widget.primaryRed, size: 14),
+                                          SizedBox(width: 4),
+                                          Flexible(
+                                            child: Text(
+                                              job.postedByName!,
                                               style: GoogleFonts.poppins(
                                                 color: widget.primaryRed,
                                                 fontSize: isTablet ? 14 : 12,
                                                 fontWeight: FontWeight.w600,
                                               ),
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                          ],
-                                        ),
-                                      ),
-                                    
-                                    // Posted Date
-                                    Text(
-                                      'Posted on ${DateFormat('MMM d, yyyy').format(job.createdAt)}',
-                                      style: GoogleFonts.inter(
-                                        fontSize: isTablet ? 13 : 12,
-                                        color: _textSecondary,
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 16 : 12),
-                          
-                          // Job Type and Experience Badges
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              // Job Type Badge
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 14 : 12,
-                                  vertical: isTablet ? 8 : 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [widget.primaryRed, widget.purpleAccent],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
+                                  
+                                  // Posted Date
+                                  Text(
+                                    'Posted on ${DateFormat('MMM d, yyyy').format(job.createdAt)}',
+                                    style: GoogleFonts.inter(
+                                      fontSize: isTablet ? 13 : 12,
+                                      color: _textSecondary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  borderRadius: BorderRadius.circular(30),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: widget.primaryRed.withOpacity(0.3),
-                                      blurRadius: 6,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.schedule_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 18 : 16,
-                                    ),
-                                    SizedBox(width: isTablet ? 8 : 6),
-                                    Text(
-                                      job.jobType.displayName,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 14 : 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                ],
                               ),
-                              
-                              // Experience Level Badge
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 14 : 12,
-                                  vertical: isTablet ? 8 : 6,
+                            ),
+                          ],
+                        ),
+                        
+                        SizedBox(height: isTablet ? 16 : 12),
+                        
+                        // Job Type and Experience Badges
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            // Job Type Badge
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isTablet ? 14 : 12,
+                                vertical: isTablet ? 8 : 6,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [widget.primaryRed, widget.purpleAccent],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [widget.goldAccent, _orangeAccent],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
+                                borderRadius: BorderRadius.circular(30),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: widget.primaryRed.withOpacity(0.3),
+                                    blurRadius: 6,
+                                    offset: Offset(0, 3),
                                   ),
-                                  borderRadius: BorderRadius.circular(30),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: widget.goldAccent.withOpacity(0.3),
-                                      blurRadius: 6,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.timeline_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 18 : 16,
-                                    ),
-                                    SizedBox(width: isTablet ? 8 : 6),
-                                    Text(
-                                      job.experienceLevel.displayName,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 14 : 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 20 : 16),
-                          
-                          // Deadline and Status Row
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Deadline Badge
-                              Container(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.schedule_rounded,
+                                    color: Colors.white,
+                                    size: isTablet ? 18 : 16,
+                                  ),
+                                  SizedBox(width: isTablet ? 8 : 6),
+                                  Text(
+                                    job.jobType.displayName,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: isTablet ? 14 : 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            // Experience Level Badge
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isTablet ? 14 : 12,
+                                vertical: isTablet ? 8 : 6,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [widget.goldAccent, _orangeAccent],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(30),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: widget.goldAccent.withOpacity(0.3),
+                                    blurRadius: 6,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.timeline_rounded,
+                                    color: Colors.white,
+                                    size: isTablet ? 18 : 16,
+                                  ),
+                                  SizedBox(width: isTablet ? 8 : 6),
+                                  Text(
+                                    job.experienceLevel.displayName,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: isTablet ? 14 : 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        SizedBox(height: isTablet ? 20 : 16),
+                        
+                        // Deadline and Status Row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Deadline Badge
+                            Flexible(
+                              child: Container(
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 14 : 12,
+                                  horizontal: isTablet ? 14 : 10,
                                   vertical: isTablet ? 6 : 4,
                                 ),
                                 decoration: BoxDecoration(
@@ -525,29 +598,37 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
                                   ],
                                 ),
                                 child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       Icons.calendar_today_rounded,
                                       color: Colors.white,
-                                      size: isTablet ? 16 : 14,
+                                      size: isTablet ? 16 : 12,
                                     ),
-                                    SizedBox(width: isTablet ? 4 : 3),
-                                    Text(
-                                      'Deadline: ${DateFormat('MMM d, yyyy').format(job.applicationDeadline)}',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 12 : 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
+                                    SizedBox(width: isTablet ? 4 : 2),
+                                    Flexible(
+                                      child: Text(
+                                        'Deadline: ${DateFormat('MMM d, yyyy').format(job.applicationDeadline)}',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isTablet ? 12 : 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              
-                              // Verified Badge
-                              Container(
+                            ),
+                            
+                            SizedBox(width: 8),
+                            
+                            // Verified Badge
+                            Flexible(
+                              child: Container(
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 14 : 12,
+                                  horizontal: isTablet ? 14 : 10,
                                   vertical: isTablet ? 6 : 4,
                                 ),
                                 decoration: BoxDecoration(
@@ -566,307 +647,329 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
                                   ],
                                 ),
                                 child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       Icons.verified_rounded,
                                       color: Colors.white,
-                                      size: isTablet ? 16 : 14,
+                                      size: isTablet ? 16 : 12,
                                     ),
-                                    SizedBox(width: isTablet ? 4 : 3),
-                                    Text(
-                                      'VERIFIED',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 12 : 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
+                                    SizedBox(width: isTablet ? 4 : 2),
+                                    Flexible(
+                                      child: Text(
+                                        'VERIFIED',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isTablet ? 12 : 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        SizedBox(height: isTablet ? 32 : 24),
+                        
+                        // Location Section
+                        _buildPremiumDetailSection(
+                          title: 'Location',
+                          icon: Icons.location_on_rounded,
+                          child: _buildPremiumDetailCard(
+                            icon: Icons.location_on_rounded,
+                            title: 'Address',
+                            value: '${job.location}, ${job.city}, ${job.state}',
+                            gradientColors: [widget.primaryRed, widget.purpleAccent],
+                            isTablet: isTablet,
+                            shouldAnimate: shouldAnimate,
+                          ),
+                          isTablet: isTablet,
+                          shouldAnimate: shouldAnimate,
+                        ),
+                        
+                        SizedBox(height: isTablet ? 32 : 24),
+                        
+                        // Description Section
+                        _buildPremiumDetailSection(
+                          title: 'Job Description',
+                          icon: Icons.description_rounded,
+                          child: Container(
+                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                              border: Border.all(color: _borderLight, width: 1),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _shadowColor,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              job.description,
+                              style: GoogleFonts.inter(
+                                fontSize: isTablet ? 15 : 14,
+                                color: _textSecondary,
+                                height: 1.6,
+                              ),
+                            ),
+                          ),
+                          isTablet: isTablet,
+                          shouldAnimate: shouldAnimate,
+                        ),
+                        
+                        SizedBox(height: isTablet ? 32 : 24),
+                        
+                        // Requirements Section
+                        _buildPremiumDetailSection(
+                          title: 'Requirements',
+                          icon: Icons.checklist_rounded,
+                          child: Container(
+                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                              border: Border.all(color: _borderLight, width: 1),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _shadowColor,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              job.requirements,
+                              style: GoogleFonts.inter(
+                                fontSize: isTablet ? 15 : 14,
+                                color: _textSecondary,
+                                height: 1.6,
+                              ),
+                            ),
+                          ),
+                          isTablet: isTablet,
+                          shouldAnimate: shouldAnimate,
+                        ),
+                        
+                        // Skills Section
+                        if (job.skillsRequired.isNotEmpty) ...[
+                          SizedBox(height: isTablet ? 32 : 24),
+                          _buildPremiumDetailSection(
+                            title: 'Skills Required',
+                            icon: Icons.code_rounded,
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: job.skillsRequired.map((skill) {
+                                return Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isTablet ? 16 : 12,
+                                    vertical: isTablet ? 10 : 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [widget.primaryRed.withOpacity(0.1), _lightRed],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(25),
+                                    border: Border.all(color: widget.primaryRed.withOpacity(0.3)),
+                                  ),
+                                  child: Text(
+                                    skill,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: isTablet ? 14 : 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: widget.primaryRed,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            isTablet: isTablet,
+                            shouldAnimate: shouldAnimate,
+                          ),
+                        ],
+                        
+                        // Benefits Section
+                        if (job.benefits.isNotEmpty) ...[
+                          SizedBox(height: isTablet ? 32 : 24),
+                          _buildPremiumDetailSection(
+                            title: 'Benefits',
+                            icon: Icons.card_giftcard_rounded,
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: job.benefits.map((benefit) {
+                                return Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isTablet ? 16 : 12,
+                                    vertical: isTablet ? 10 : 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [widget.goldAccent.withOpacity(0.1), _creamWhite],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(25),
+                                    border: Border.all(color: widget.goldAccent.withOpacity(0.3)),
+                                  ),
+                                  child: Text(
+                                    benefit,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: isTablet ? 14 : 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: widget.goldAccent,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            isTablet: isTablet,
+                            shouldAnimate: shouldAnimate,
+                          ),
+                        ],
+                        
+                        // Contact Information Section
+                        SizedBox(height: isTablet ? 32 : 24),
+                        _buildPremiumDetailSection(
+                          title: 'Contact Information',
+                          icon: Icons.contact_phone_rounded,
+                          child: Container(
+                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                              border: Border.all(color: _borderLight, width: 1),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _shadowColor,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                _buildPremiumContactItem(
+                                  icon: Icons.email_rounded,
+                                  title: 'Email',
+                                  value: job.contactEmail,
+                                  isTablet: isTablet,
+                                  onTap: () => widget.onLaunchEmail(job.contactEmail),
+                                ),
+                                SizedBox(height: isTablet ? 14 : 12),
+                                _buildPremiumContactItem(
+                                  icon: Icons.phone_rounded,
+                                  title: 'Phone',
+                                  value: job.contactPhone,
+                                  isTablet: isTablet,
+                                  onTap: () => widget.onLaunchPhone(job.contactPhone),
+                                ),
+                              ],
+                            ),
+                          ),
+                          isTablet: isTablet,
+                          shouldAnimate: shouldAnimate,
+                        ),
+                        
+                        // Premium Footer
+                        SizedBox(height: isTablet ? 40 : 32),
+                        
+                        Container(
+                          padding: EdgeInsets.all(isTablet ? 24 : 20),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_lightRedBg, _lightRed],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
+                            border: Border.all(color: widget.primaryRed.withOpacity(0.2), width: 1.5),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: isTablet ? 60 : 50,
+                                height: isTablet ? 60 : 50,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [widget.primaryRed, widget.purpleAccent, widget.tealAccent],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: widget.primaryRed.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: shouldAnimate
+                                      ? RotationTransition(
+                                          turns: _animationController,
+                                          child: Icon(
+                                            Icons.work_rounded,
+                                            color: Colors.white,
+                                            size: isTablet ? 28 : 24,
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.work_rounded,
+                                          color: Colors.white,
+                                          size: isTablet ? 28 : 24,
+                                        ),
+                                ),
+                              ),
+                              SizedBox(width: isTablet ? 20 : 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ShaderMask(
+                                      shaderCallback: (bounds) => LinearGradient(
+                                        colors: [widget.primaryRed, widget.purpleAccent],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ).createShader(bounds),
+                                      child: Text(
+                                        'Premium Job Opportunity',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isTablet ? 18 : 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(height: isTablet ? 4 : 2),
+                                    Text(
+                                      'Verified Employer',
+                                      style: GoogleFonts.inter(
+                                        fontSize: isTablet ? 14 : 12,
+                                        color: _textSecondary,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
                               ),
                             ],
                           ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Location Section
-                          _buildPremiumDetailSection(
-                            title: 'Location',
-                            icon: Icons.location_on_rounded,
-                            child: _buildPremiumDetailCard(
-                              icon: Icons.location_on_rounded,
-                              title: 'Address',
-                              value: '${job.location}, ${job.city}, ${job.state}',
-                              gradientColors: [widget.primaryRed, widget.purpleAccent],
-                              isTablet: isTablet,
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Description Section
-                          _buildPremiumDetailSection(
-                            title: 'Job Description',
-                            icon: Icons.description_rounded,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                border: Border.all(color: _borderLight, width: 1),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                job.description,
-                                style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 15 : 14,
-                                  color: _textSecondary,
-                                  height: 1.6,
-                                ),
-                              ),
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Requirements Section
-                          _buildPremiumDetailSection(
-                            title: 'Requirements',
-                            icon: Icons.checklist_rounded,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                border: Border.all(color: _borderLight, width: 1),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                job.requirements,
-                                style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 15 : 14,
-                                  color: _textSecondary,
-                                  height: 1.6,
-                                ),
-                              ),
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          // Skills Section
-                          if (job.skillsRequired.isNotEmpty) ...[
-                            SizedBox(height: isTablet ? 32 : 24),
-                            _buildPremiumDetailSection(
-                              title: 'Skills Required',
-                              icon: Icons.code_rounded,
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: job.skillsRequired.map((skill) {
-                                  return Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isTablet ? 16 : 14,
-                                      vertical: isTablet ? 10 : 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [widget.primaryRed.withOpacity(0.1), _lightRed],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(25),
-                                      border: Border.all(color: widget.primaryRed.withOpacity(0.3)),
-                                    ),
-                                    child: Text(
-                                      skill,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 15 : 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: widget.primaryRed,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              isTablet: isTablet,
-                            ),
-                          ],
-                          
-                          // Benefits Section
-                          if (job.benefits.isNotEmpty) ...[
-                            SizedBox(height: isTablet ? 32 : 24),
-                            _buildPremiumDetailSection(
-                              title: 'Benefits',
-                              icon: Icons.card_giftcard_rounded,
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: job.benefits.map((benefit) {
-                                  return Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isTablet ? 16 : 14,
-                                      vertical: isTablet ? 10 : 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [widget.goldAccent.withOpacity(0.1), _creamWhite],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(25),
-                                      border: Border.all(color: widget.goldAccent.withOpacity(0.3)),
-                                    ),
-                                    child: Text(
-                                      benefit,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 15 : 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: widget.goldAccent,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              isTablet: isTablet,
-                            ),
-                          ],
-                          
-                          // Contact Information Section
-                          SizedBox(height: isTablet ? 32 : 24),
-                          _buildPremiumDetailSection(
-                            title: 'Contact Information',
-                            icon: Icons.contact_phone_rounded,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                border: Border.all(color: _borderLight, width: 1),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  _buildPremiumContactItem(
-                                    icon: Icons.email_rounded,
-                                    title: 'Email',
-                                    value: job.contactEmail,
-                                    isTablet: isTablet,
-                                    onTap: () => widget.onLaunchEmail(job.contactEmail),
-                                  ),
-                                  SizedBox(height: isTablet ? 14 : 12),
-                                  _buildPremiumContactItem(
-                                    icon: Icons.phone_rounded,
-                                    title: 'Phone',
-                                    value: job.contactPhone,
-                                    isTablet: isTablet,
-                                    onTap: () => widget.onLaunchPhone(job.contactPhone),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          // Premium Footer
-                          SizedBox(height: isTablet ? 40 : 32),
-                          
-                          Container(
-                            padding: EdgeInsets.all(isTablet ? 24 : 20),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [_lightRedBg, _lightRed],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
-                              border: Border.all(color: widget.primaryRed.withOpacity(0.2), width: 1.5),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: isTablet ? 60 : 50,
-                                  height: isTablet ? 60 : 50,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [widget.primaryRed, widget.purpleAccent, widget.tealAccent],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: widget.primaryRed.withOpacity(0.3),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.work_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 28 : 24,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: isTablet ? 20 : 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      ShaderMask(
-                                        shaderCallback: (bounds) => LinearGradient(
-                                          colors: [widget.primaryRed, widget.purpleAccent],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ).createShader(bounds),
-                                        child: Text(
-                                          'Premium Job Opportunity',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 18 : 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(height: isTablet ? 4 : 2),
-                                      Text(
-                                        'Verified Employer',
-                                        style: GoogleFonts.inter(
-                                          fontSize: isTablet ? 14 : 12,
-                                          color: _textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 40 : 30),
-                        ],
-                      ),
+                        ),
+                        
+                        // Add bottom padding to ensure content doesn't get hidden behind bottom nav
+                        SizedBox(height: 20),
+                      ]),
                     ),
                   ),
                 ],
@@ -886,42 +989,47 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
               ),
             ],
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildPremiumActionButton(
-                  icon: Icons.email_rounded,
-                  label: 'Apply via Email',
-                  gradient: LinearGradient(
-                    colors: [widget.primaryRed, widget.purpleAccent],
+          child: SafeArea(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildPremiumActionButton(
+                    icon: Icons.email_rounded,
+                    label: 'Apply via Email',
+                    gradient: LinearGradient(
+                      colors: [widget.primaryRed, widget.purpleAccent],
+                    ),
+                    onPressed: () => widget.onLaunchEmail(job.contactEmail),
+                    isTablet: isTablet,
+                    shouldAnimate: shouldAnimate,
                   ),
-                  onPressed: () => widget.onLaunchEmail(job.contactEmail),
-                  isTablet: isTablet,
                 ),
-              ),
-              SizedBox(width: isTablet ? 16 : 12),
-              Expanded(
-                child: _buildPremiumActionButton(
-                  icon: Icons.phone_rounded,
-                  label: 'Call Employer',
-                  gradient: LinearGradient(
-                    colors: [widget.goldAccent, _orangeAccent],
+                SizedBox(width: isTablet ? 16 : 12),
+                Expanded(
+                  child: _buildPremiumActionButton(
+                    icon: Icons.phone_rounded,
+                    label: 'Call Employer',
+                    gradient: LinearGradient(
+                      colors: [widget.goldAccent, _orangeAccent],
+                    ),
+                    onPressed: () => widget.onLaunchPhone(job.contactPhone),
+                    isTablet: isTablet,
+                    shouldAnimate: shouldAnimate,
                   ),
-                  onPressed: () => widget.onLaunchPhone(job.contactPhone),
-                  isTablet: isTablet,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildUserProfileImage(UserModel? user, {bool isLarge = false}) {
-    if (user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty) {
+  // NEW METHOD: Build poster image from job.postedByProfileImageBase64
+  Widget _buildJobPosterImage({bool isLarge = false}) {
+    if (widget.job.postedByProfileImageBase64 != null && widget.job.postedByProfileImageBase64!.isNotEmpty) {
       try {
-        String base64String = user.profileImageUrl!;
+        String base64String = widget.job.postedByProfileImageBase64!;
         
         if (base64String.contains('base64,')) {
           base64String = base64String.split('base64,').last;
@@ -966,6 +1074,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
     required IconData icon,
     required Widget child,
     required bool isTablet,
+    required bool shouldAnimate,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -982,19 +1091,31 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
                 ),
                 borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
               ),
-              child: Icon(
-                icon,
-                color: Colors.white,
-                size: isTablet ? 18 : 16,
-              ),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: _animationController,
+                      child: Icon(
+                        icon,
+                        color: Colors.white,
+                        size: isTablet ? 18 : 16,
+                      ),
+                    )
+                  : Icon(
+                      icon,
+                      color: Colors.white,
+                      size: isTablet ? 18 : 16,
+                    ),
             ),
             SizedBox(width: isTablet ? 12 : 10),
-            Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: isTablet ? 18 : 16,
-                fontWeight: FontWeight.w700,
-                color: _textPrimary,
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: isTablet ? 18 : 16,
+                  fontWeight: FontWeight.w700,
+                  color: _textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -1011,6 +1132,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
     required String value,
     required List<Color> gradientColors,
     required bool isTablet,
+    required bool shouldAnimate,
   }) {
     return Container(
       padding: EdgeInsets.all(isTablet ? 20 : 16),
@@ -1052,11 +1174,20 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
               ],
             ),
             child: Center(
-              child: Icon(
-                icon,
-                color: Colors.white,
-                size: isTablet ? 22 : 18,
-              ),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: _animationController,
+                      child: Icon(
+                        icon,
+                        color: Colors.white,
+                        size: isTablet ? 22 : 18,
+                      ),
+                    )
+                  : Icon(
+                      icon,
+                      color: Colors.white,
+                      size: isTablet ? 22 : 18,
+                    ),
             ),
           ),
           SizedBox(width: isTablet ? 16 : 12),
@@ -1186,6 +1317,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
     required Gradient gradient,
     required VoidCallback onPressed,
     required bool isTablet,
+    required bool shouldAnimate,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -1209,14 +1341,23 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> with TickerProvider
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
+                shouldAnimate
+                    ? RotationTransition(
+                        turns: _animationController,
+                        child: Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
+                      )
+                    : Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
                 SizedBox(width: isTablet ? 10 : 8),
-                Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: isTablet ? 16 : 14,
-                    fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: isTablet ? 16 : 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
               ],

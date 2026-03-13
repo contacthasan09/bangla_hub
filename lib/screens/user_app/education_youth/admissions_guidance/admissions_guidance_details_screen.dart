@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:bangla_hub/models/education_models.dart';
-import 'package:bangla_hub/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 
 class AdmissionsGuidanceDetailsScreen extends StatefulWidget {
   final AdmissionsGuidance service;
-  final UserModel? user;
   final ScrollController scrollController;
   final Color primaryGreen;
   final Color successGreen;
@@ -22,7 +21,6 @@ class AdmissionsGuidanceDetailsScreen extends StatefulWidget {
   const AdmissionsGuidanceDetailsScreen({
     Key? key,
     required this.service,
-    this.user,
     required this.scrollController,
     required this.primaryGreen,
     required this.successGreen,
@@ -37,8 +35,13 @@ class AdmissionsGuidanceDetailsScreen extends StatefulWidget {
   _AdmissionsGuidanceDetailsScreenState createState() => _AdmissionsGuidanceDetailsScreenState();
 }
 
-class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDetailsScreen> with TickerProviderStateMixin {
+class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDetailsScreen> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   late AnimationController _animationController;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
   final Color _darkGreen = Color(0xFF1B5E20);
   final Color _textPrimary = Color(0xFF1E2A3A);
@@ -50,16 +53,49 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 500),
     );
-    _animationController.forward();
+    
+    // Start animation if app is visible
+    if (_appLifecycleState == AppLifecycleState.resumed) {
+      _animationController.forward();
+    }
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App is visible - restart animation if needed
+      if (_animationController.isCompleted) {
+        _animationController.reset();
+        _animationController.forward();
+      }
+    } else {
+      // App is not visible - stop animation
+      _animationController.stop();
+    }
   }
 
   @override
   void dispose() {
+    print('🗑️ AdmissionsGuidanceDetailsScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // ✅ Dispose animation controller
     _animationController.dispose();
+    
     super.dispose();
   }
 
@@ -94,6 +130,8 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
   }
 
   void _showPremiumSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
@@ -145,10 +183,11 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
     );
   }
 
-  Widget _buildUserProfileImage(UserModel? user, {bool isLarge = false}) {
-    if (user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty) {
+  // Build poster image from service.postedByProfileImageBase64
+  Widget _buildPosterImage({bool isLarge = false}) {
+    if (widget.service.postedByProfileImageBase64 != null && widget.service.postedByProfileImageBase64!.isNotEmpty) {
       try {
-        String base64String = user.profileImageUrl!;
+        String base64String = widget.service.postedByProfileImageBase64!;
         
         if (base64String.contains('base64,')) {
           base64String = base64String.split('base64,').last;
@@ -191,7 +230,6 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
   @override
   Widget build(BuildContext context) {
     final service = widget.service;
-    final user = widget.user;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
 
@@ -203,309 +241,295 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [widget.lightGreen, _creamWhite, Colors.white],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_rounded, 
+              color: Colors.white, 
+              size: isTablet ? 28 : 24,
+            ),
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+            splashRadius: isTablet ? 28 : 24,
+            constraints: BoxConstraints(
+              minWidth: isTablet ? 48 : 40,
+              minHeight: isTablet ? 48 : 40,
             ),
           ),
-          child: Stack(
-            children: [
-              // Main Content
-              CustomScrollView(
-                controller: widget.scrollController,
-                slivers: [
-                  // Header Section
-                  SliverToBoxAdapter(
-                    child: Container(
-                      height: isTablet ? 300 : 250,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [widget.primaryGreen, widget.purpleAccent, _darkGreen],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+          leadingWidth: isTablet ? 60 : 50,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+          toolbarHeight: isTablet ? 70 : 60,
+        ),
+        body: FadeTransition(
+          opacity: _animationController,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [widget.lightGreen, _creamWhite, Colors.white],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Stack(
+              children: [
+                // Main Content
+                CustomScrollView(
+                  controller: widget.scrollController,
+                  slivers: [
+                    // Header Section
+                    SliverToBoxAdapter(
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [widget.primaryGreen, widget.purpleAccent, _darkGreen],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                         ),
-                      ),
-                      child: SafeArea(
-                        bottom: false,
-                        child: Padding(
-                          padding: EdgeInsets.all(isTablet ? 24 : 20),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Premium Pattern Line
-                              Container(
-                                height: 4,
-                                width: 60,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [widget.goldAccent, widget.warningOrange, widget.goldAccent],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Consultant Name
-                              ShaderMask(
-                                shaderCallback: (bounds) => LinearGradient(
-                                  colors: [Colors.white, widget.goldAccent],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ).createShader(bounds),
-                                child: Text(
-                                  service.consultantName,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: isTablet ? 32 : 28,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              SizedBox(height: isTablet ? 8 : 6),
-                              
-                              // Organization
-                              Text(
-                                service.organizationName ?? 'Independent Consultant',
-                                style: GoogleFonts.poppins(
-                                  fontSize: isTablet ? 20 : 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
-                              ),
-                              
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Verified Badge
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 16 : 14,
-                                  vertical: isTablet ? 8 : 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(30),
-                                  border: Border.all(color: Colors.white.withOpacity(0.3)),
-                                ),
-                                child: Row(
+                        child: SafeArea(
+                          bottom: false,
+                          top: true,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isTablet ? 40 : 24,
+                              vertical: isTablet ? 16 : 12,
+                            ),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                return Column(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.verified_rounded, color: widget.goldAccent, size: isTablet ? 18 : 16),
-                                    SizedBox(width: isTablet ? 8 : 6),
-                                    Text(
-                                      'VERIFIED CONSULTANT',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 14 : 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
+                                    // Premium Pattern Line
+                                    Container(
+                                      height: 4,
+                                      width: 60,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [widget.goldAccent, widget.warningOrange, widget.goldAccent],
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(2),
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  // All Information in Column Below
-                  SliverToBoxAdapter(
-                    child: Container(
-                      padding: EdgeInsets.all(isTablet ? 24 : 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Back Button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _shadowColor,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: Icon(Icons.arrow_back_rounded, color: _textPrimary, size: isTablet ? 22 : 20),
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 20 : 16),
-                          
-                          // User Profile and Consultant Info
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // User Profile Image
-                              Container(
-                                width: isTablet ? 80 : 70,
-                                height: isTablet ? 80 : 70,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: widget.goldAccent, width: 3),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: widget.goldAccent.withOpacity(0.3),
-                                      blurRadius: 12,
-                                      spreadRadius: 2,
+                                    SizedBox(height: isTablet ? 12 : 8),
+                                    
+                                    // Consultant Name
+                                    ShaderMask(
+                                      shaderCallback: (bounds) => LinearGradient(
+                                        colors: [Colors.white, widget.goldAccent],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ).createShader(bounds),
+                                      child: Text(
+                                        service.consultantName,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isTablet ? 32 : 24,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                  ],
-                                ),
-                                child: ClipOval(
-                                  child: _buildUserProfileImage(user, isLarge: true),
-                                ),
-                              ),
-                              
-                              SizedBox(width: isTablet ? 20 : 16),
-                              
-                              // Consultant Info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // User Name
-                                    if (user != null)
+                                    SizedBox(height: isTablet ? 4 : 2),
+                                    
+                                    // Organization
+                                    Text(
+                                      service.organizationName ?? 'Independent Consultant',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: isTablet ? 18 : 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    
+                                    // Verified Badge
+                                    if (service.isVerified) ...[
+                                      SizedBox(height: isTablet ? 10 : 8),
                                       Container(
-                                        margin: EdgeInsets.only(bottom: 8),
-                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isTablet ? 14 : 12,
+                                          vertical: isTablet ? 6 : 4,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: widget.lightGreen,
-                                          borderRadius: BorderRadius.circular(16),
+                                          color: Colors.white.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(30),
+                                          border: Border.all(color: Colors.white.withOpacity(0.3)),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(Icons.person_rounded, color: widget.primaryGreen, size: 14),
-                                            SizedBox(width: 4),
+                                            Icon(
+                                              Icons.verified_rounded, 
+                                              color: widget.goldAccent, 
+                                              size: isTablet ? 16 : 14
+                                            ),
+                                            SizedBox(width: isTablet ? 6 : 4),
                                             Text(
-                                              user.fullName,
+                                              'VERIFIED CONSULTANT',
                                               style: GoogleFonts.poppins(
-                                                color: widget.primaryGreen,
-                                                fontSize: isTablet ? 14 : 12,
-                                                fontWeight: FontWeight.w600,
+                                                fontSize: isTablet ? 13 : 11,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                    
-                                    // Member Since
-                                    Text(
-                                      'Member since ${DateFormat('MMM d, yyyy').format(service.createdAt)}',
-                                      style: GoogleFonts.inter(
-                                        fontSize: isTablet ? 13 : 12,
-                                        color: _textSecondary,
-                                      ),
-                                    ),
+                                    ],
                                   ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Quick Stats Grid
-                          Container(
-                            padding: EdgeInsets.all(isTablet ? 24 : 20),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Colors.grey[50]!, Colors.white],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: _borderLight),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _shadowColor,
-                                  blurRadius: 15,
-                                  offset: Offset(0, 5),
-                                ),
-                              ],
+                                );
+                              },
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // All Information in Column Below
+                    SliverToBoxAdapter(
+                      child: Container(
+                        padding: EdgeInsets.all(isTablet ? 24 : 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: isTablet ? 20 : 16),
+                            
+                            // User Profile and Consultant Info - Using service's stored user info
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                _buildPremiumStatItem(
-                                  Icons.category_rounded,
-                                  'Specializations',
-                                  '${service.specializations.length}',
-                                  widget.primaryGreen,
-                                  isTablet,
+                                // User Profile Image from service.postedByProfileImageBase64
+                                Container(
+                                  width: isTablet ? 80 : 70,
+                                  height: isTablet ? 80 : 70,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: widget.goldAccent, width: 3),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: widget.goldAccent.withOpacity(0.3),
+                                        blurRadius: 12,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipOval(
+                                    child: _buildPosterImage(isLarge: true),
+                                  ),
                                 ),
-                                _buildPremiumStatItem(
-                                  Icons.public_rounded,
-                                  'Countries',
-                                  '${service.countries.length}',
-                                  widget.infoBlue,
-                                  isTablet,
-                                ),
-                                _buildPremiumStatItem(
-                                  Icons.attach_money_rounded,
-                                  'Fee',
-                                  service.formattedFee,
-                                  widget.successGreen,
-                                  isTablet,
+                                
+                                SizedBox(width: isTablet ? 20 : 16),
+                                
+                                // Consultant Info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // User Name from service.postedByName
+                                      if (service.postedByName != null && service.postedByName!.isNotEmpty)
+                                        Container(
+                                          margin: EdgeInsets.only(bottom: 8),
+                                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: widget.lightGreen,
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.person_rounded, color: widget.primaryGreen, size: 14),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                service.postedByName!,
+                                                style: GoogleFonts.poppins(
+                                                  color: widget.primaryGreen,
+                                                  fontSize: isTablet ? 14 : 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      
+                                      // Member Since
+                                      Text(
+                                        'Member since ${DateFormat('MMM d, yyyy').format(service.createdAt)}',
+                                        style: GoogleFonts.inter(
+                                          fontSize: isTablet ? 13 : 12,
+                                          color: _textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // About Section
-                          _buildPremiumSection(
-                            title: 'About the Consultant',
-                            icon: Icons.info_rounded,
-                            color: widget.primaryGreen,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            
+                            SizedBox(height: isTablet ? 32 : 24),
+                            
+                            // Quick Stats Grid
+                            Container(
+                              padding: EdgeInsets.all(isTablet ? 24 : 20),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
+                                gradient: LinearGradient(
+                                  colors: [Colors.grey[50]!, Colors.white],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(24),
                                 border: Border.all(color: _borderLight),
                                 boxShadow: [
                                   BoxShadow(
                                     color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
+                                    blurRadius: 15,
+                                    offset: Offset(0, 5),
                                   ),
                                 ],
                               ),
-                              child: Text(
-                                service.description,
-                                style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 16 : 15,
-                                  color: _textSecondary,
-                                  height: 1.6,
-                                ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: [
+                                  _buildPremiumStatItem(
+                                    Icons.category_rounded,
+                                    'Specializations',
+                                    '${service.specializations.length}',
+                                    widget.primaryGreen,
+                                    isTablet,
+                                  ),
+                                  _buildPremiumStatItem(
+                                    Icons.public_rounded,
+                                    'Countries',
+                                    '${service.countries.length}',
+                                    widget.infoBlue,
+                                    isTablet,
+                                  ),
+                                  _buildPremiumStatItem(
+                                    Icons.attach_money_rounded,
+                                    'Fee',
+                                    service.formattedFee,
+                                    widget.successGreen,
+                                    isTablet,
+                                  ),
+                                ],
                               ),
                             ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Experience Section
-                          if (service.experience != null && service.experience!.isNotEmpty)
+                            
+                            SizedBox(height: isTablet ? 32 : 24),
+                            
+                            // About Section
                             _buildPremiumSection(
-                              title: 'Experience',
-                              icon: Icons.work_history_rounded,
-                              color: widget.warningOrange,
+                              title: 'About the Consultant',
+                              icon: Icons.info_rounded,
+                              color: widget.primaryGreen,
                               child: Container(
                                 padding: EdgeInsets.all(isTablet ? 20 : 16),
                                 decoration: BoxDecoration(
@@ -521,7 +545,7 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
                                   ],
                                 ),
                                 child: Text(
-                                  service.experience!,
+                                  service.description,
                                   style: GoogleFonts.inter(
                                     fontSize: isTablet ? 16 : 15,
                                     color: _textSecondary,
@@ -531,159 +555,84 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
                               ),
                               isTablet: isTablet,
                             ),
-                          
-                          if (service.experience != null && service.experience!.isNotEmpty)
+                            
                             SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Qualifications Section
-                          if (service.qualifications != null && service.qualifications!.isNotEmpty)
-                            _buildPremiumSection(
-                              title: 'Qualifications',
-                              icon: Icons.school_rounded,
-                              color: widget.purpleAccent,
-                              child: Container(
-                                padding: EdgeInsets.all(isTablet ? 20 : 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: _borderLight),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _shadowColor,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
+                            
+                            // Experience Section
+                            if (service.experience != null && service.experience!.isNotEmpty)
+                              _buildPremiumSection(
+                                title: 'Experience',
+                                icon: Icons.work_history_rounded,
+                                color: widget.warningOrange,
+                                child: Container(
+                                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: _borderLight),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _shadowColor,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    service.experience!,
+                                    style: GoogleFonts.inter(
+                                      fontSize: isTablet ? 16 : 15,
+                                      color: _textSecondary,
+                                      height: 1.6,
                                     ),
-                                  ],
-                                ),
-                                child: Text(
-                                  service.qualifications!,
-                                  style: GoogleFonts.inter(
-                                    fontSize: isTablet ? 16 : 15,
-                                    color: _textSecondary,
-                                    height: 1.6,
                                   ),
                                 ),
+                                isTablet: isTablet,
                               ),
-                              isTablet: isTablet,
-                            ),
-                          
-                          if (service.qualifications != null && service.qualifications!.isNotEmpty)
-                            SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Specializations Section
-                          _buildPremiumSection(
-                            title: 'Specializations',
-                            icon: Icons.category_rounded,
-                            color: widget.primaryGreen,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: _borderLight),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
+                            
+                            if (service.experience != null && service.experience!.isNotEmpty)
+                              SizedBox(height: isTablet ? 32 : 24),
+                            
+                            // Qualifications Section
+                            if (service.qualifications != null && service.qualifications!.isNotEmpty)
+                              _buildPremiumSection(
+                                title: 'Qualifications',
+                                icon: Icons.school_rounded,
+                                color: widget.purpleAccent,
+                                child: Container(
+                                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: _borderLight),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _shadowColor,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              child: Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: service.specializations.map((spec) {
-                                  return Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isTablet ? 16 : 12,
-                                      vertical: isTablet ? 10 : 8,
+                                  child: Text(
+                                    service.qualifications!,
+                                    style: GoogleFonts.inter(
+                                      fontSize: isTablet ? 16 : 15,
+                                      color: _textSecondary,
+                                      height: 1.6,
                                     ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [widget.primaryGreen.withOpacity(0.1), widget.lightGreen],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(25),
-                                      border: Border.all(color: widget.primaryGreen.withOpacity(0.3)),
-                                    ),
-                                    child: Text(
-                                      spec,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 15 : 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: widget.primaryGreen,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Countries Served Section
-                          _buildPremiumSection(
-                            title: 'Countries Served',
-                            icon: Icons.public_rounded,
-                            color: widget.infoBlue,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: _borderLight),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
                                   ),
-                                ],
+                                ),
+                                isTablet: isTablet,
                               ),
-                              child: Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: service.countries.map((country) {
-                                  return Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isTablet ? 16 : 12,
-                                      vertical: isTablet ? 10 : 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [widget.infoBlue.withOpacity(0.1), widget.infoBlue.withOpacity(0.05)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(25),
-                                      border: Border.all(color: widget.infoBlue.withOpacity(0.3)),
-                                    ),
-                                    child: Text(
-                                      country,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 15 : 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: widget.infoBlue,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Services Offered Section
-                          if (service.servicesOffered.isNotEmpty)
+                            
+                            if (service.qualifications != null && service.qualifications!.isNotEmpty)
+                              SizedBox(height: isTablet ? 32 : 24),
+                            
+                            // Specializations Section
                             _buildPremiumSection(
-                              title: 'Services Offered',
-                              icon: Icons.checklist_rounded,
-                              color: widget.purpleAccent,
+                              title: 'Specializations',
+                              icon: Icons.category_rounded,
+                              color: widget.primaryGreen,
                               child: Container(
                                 padding: EdgeInsets.all(isTablet ? 20 : 16),
                                 decoration: BoxDecoration(
@@ -701,7 +650,7 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
                                 child: Wrap(
                                   spacing: 10,
                                   runSpacing: 10,
-                                  children: service.servicesOffered.map((service) {
+                                  children: service.specializations.map((spec) {
                                     return Container(
                                       padding: EdgeInsets.symmetric(
                                         horizontal: isTablet ? 16 : 12,
@@ -709,19 +658,19 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
                                       ),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
-                                          colors: [widget.purpleAccent.withOpacity(0.1), widget.purpleAccent.withOpacity(0.05)],
+                                          colors: [widget.primaryGreen.withOpacity(0.1), widget.lightGreen],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
                                         ),
                                         borderRadius: BorderRadius.circular(25),
-                                        border: Border.all(color: widget.purpleAccent.withOpacity(0.3)),
+                                        border: Border.all(color: widget.primaryGreen.withOpacity(0.3)),
                                       ),
                                       child: Text(
-                                        service,
+                                        spec,
                                         style: GoogleFonts.poppins(
                                           fontSize: isTablet ? 15 : 13,
                                           fontWeight: FontWeight.w600,
-                                          color: widget.purpleAccent,
+                                          color: widget.primaryGreen,
                                         ),
                                       ),
                                     );
@@ -730,63 +679,313 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
                               ),
                               isTablet: isTablet,
                             ),
-                          
-                          if (service.servicesOffered.isNotEmpty)
+                            
                             SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Location Section
-                          _buildPremiumSection(
-                            title: 'Location',
-                            icon: Icons.location_on_rounded,
-                            color: widget.warningOrange,
-                            child: Container(
+                            
+                            // Countries Served Section
+                            _buildPremiumSection(
+                              title: 'Countries Served',
+                              icon: Icons.public_rounded,
+                              color: widget.infoBlue,
+                              child: Container(
+                                padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: _borderLight),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _shadowColor,
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: service.countries.map((country) {
+                                    return Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isTablet ? 16 : 12,
+                                        vertical: isTablet ? 10 : 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [widget.infoBlue.withOpacity(0.1), widget.infoBlue.withOpacity(0.05)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(25),
+                                        border: Border.all(color: widget.infoBlue.withOpacity(0.3)),
+                                      ),
+                                      child: Text(
+                                        country,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isTablet ? 15 : 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: widget.infoBlue,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                              isTablet: isTablet,
+                            ),
+                            
+                            SizedBox(height: isTablet ? 32 : 24),
+                            
+                            // Services Offered Section
+                            if (service.servicesOffered.isNotEmpty)
+                              _buildPremiumSection(
+                                title: 'Services Offered',
+                                icon: Icons.checklist_rounded,
+                                color: widget.purpleAccent,
+                                child: Container(
+                                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: _borderLight),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _shadowColor,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Wrap(
+                                    spacing: 10,
+                                    runSpacing: 10,
+                                    children: service.servicesOffered.map((serviceItem) {
+                                      return Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isTablet ? 16 : 12,
+                                          vertical: isTablet ? 10 : 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [widget.purpleAccent.withOpacity(0.1), widget.purpleAccent.withOpacity(0.05)],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(25),
+                                          border: Border.all(color: widget.purpleAccent.withOpacity(0.3)),
+                                        ),
+                                        child: Text(
+                                          serviceItem,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: isTablet ? 15 : 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: widget.purpleAccent,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                                isTablet: isTablet,
+                              ),
+                            
+                            if (service.servicesOffered.isNotEmpty)
+                              SizedBox(height: isTablet ? 32 : 24),
+                            
+                            // Location Section
+                            _buildPremiumSection(
+                              title: 'Location',
+                              icon: Icons.location_on_rounded,
+                              color: widget.warningOrange,
+                              child: Container(
+                                padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: _borderLight),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _shadowColor,
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(isTablet ? 12 : 10),
+                                      decoration: BoxDecoration(
+                                        color: widget.warningOrange.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(
+                                        Icons.location_on_rounded,
+                                        color: widget.warningOrange,
+                                        size: isTablet ? 24 : 20,
+                                      ),
+                                    ),
+                                    SizedBox(width: isTablet ? 16 : 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Full Address',
+                                            style: GoogleFonts.inter(
+                                              fontSize: isTablet ? 14 : 12,
+                                              color: Colors.grey[600],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            '${service.address}, ${service.city}, ${service.state}',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: isTablet ? 18 : 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey[800],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              isTablet: isTablet,
+                            ),
+                            
+                            SizedBox(height: isTablet ? 32 : 24),
+                            
+                            // Contact Information Section
+                            _buildPremiumSection(
+                              title: 'Contact Information',
+                              icon: Icons.contact_phone_rounded,
+                              color: widget.primaryGreen,
+                              child: Container(
+                                padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: _borderLight),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _shadowColor,
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    _buildPremiumContactItem(
+                                      icon: Icons.email_rounded,
+                                      label: 'Email',
+                                      value: service.email,
+                                      color: widget.primaryGreen,
+                                      onTap: () => _launchEmail(service.email),
+                                      isTablet: isTablet,
+                                    ),
+                                    SizedBox(height: isTablet ? 16 : 12),
+                                    _buildPremiumContactItem(
+                                      icon: Icons.phone_rounded,
+                                      label: 'Phone',
+                                      value: service.phone,
+                                      color: widget.successGreen,
+                                      onTap: () => _launchPhone(service.phone),
+                                      isTablet: isTablet,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              isTablet: isTablet,
+                            ),
+                            
+                            SizedBox(height: isTablet ? 40 : 32),
+                            
+                            // Action Buttons
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildPremiumActionButton(
+                                    icon: Icons.email_rounded,
+                                    label: 'Email',
+                                    gradient: LinearGradient(
+                                      colors: [widget.primaryGreen, widget.purpleAccent],
+                                    ),
+                                    onPressed: () => _launchEmail(service.email),
+                                    isTablet: isTablet,
+                                  ),
+                                ),
+                                SizedBox(width: isTablet ? 16 : 12),
+                                Expanded(
+                                  child: _buildPremiumActionButton(
+                                    icon: Icons.phone_rounded,
+                                    label: 'Call',
+                                    gradient: LinearGradient(
+                                      colors: [widget.successGreen, widget.infoBlue],
+                                    ),
+                                    onPressed: () => _launchPhone(service.phone),
+                                    isTablet: isTablet,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            
+                            SizedBox(height: isTablet ? 16 : 12),
+                            
+                            // Close Button
+                            OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: widget.primaryGreen,
+                                padding: EdgeInsets.symmetric(vertical: isTablet ? 18 : 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                side: BorderSide(color: widget.primaryGreen, width: 2),
+                              ),
+                              child: Text(
+                                'Close',
+                                style: GoogleFonts.poppins(
+                                  fontSize: isTablet ? 18 : 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            
+                            SizedBox(height: isTablet ? 24 : 20),
+                            
+                            // Rating and reviews
+                            Container(
                               padding: EdgeInsets.all(isTablet ? 20 : 16),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: _borderLight),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
+                                color: Colors.amber.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.amber.withOpacity(0.3)),
                               ),
                               child: Row(
                                 children: [
-                                  Container(
-                                    padding: EdgeInsets.all(isTablet ? 12 : 10),
-                                    decoration: BoxDecoration(
-                                      color: widget.warningOrange.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      Icons.location_on_rounded,
-                                      color: widget.warningOrange,
-                                      size: isTablet ? 24 : 20,
-                                    ),
-                                  ),
+                                  Icon(Icons.star_rounded, color: Colors.amber, size: isTablet ? 40 : 32),
                                   SizedBox(width: isTablet ? 16 : 12),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Full Address',
+                                          '${service.rating.toStringAsFixed(1)} out of 5',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: isTablet ? 20 : 18,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.amber[800],
+                                          ),
+                                        ),
+                                        Text(
+                                          'Based on ${service.totalReviews} reviews',
                                           style: GoogleFonts.inter(
                                             fontSize: isTablet ? 14 : 12,
                                             color: Colors.grey[600],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          '${service.address}, ${service.city}, ${service.state}',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 18 : 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.grey[800],
                                           ),
                                         ),
                                       ],
@@ -795,233 +994,93 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
                                 ],
                               ),
                             ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Contact Information Section
-                          _buildPremiumSection(
-                            title: 'Contact Information',
-                            icon: Icons.contact_phone_rounded,
-                            color: widget.primaryGreen,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            
+                            SizedBox(height: isTablet ? 24 : 20),
+                            
+                            // Premium Footer
+                            Container(
+                              padding: EdgeInsets.all(isTablet ? 24 : 20),
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: _borderLight),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
+                                gradient: LinearGradient(
+                                  colors: [widget.lightGreen.withOpacity(0.5), widget.lightGreen],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
+                                border: Border.all(color: widget.primaryGreen.withOpacity(0.2), width: 1.5),
                               ),
-                              child: Column(
+                              child: Row(
                                 children: [
-                                  _buildPremiumContactItem(
-                                    icon: Icons.email_rounded,
-                                    label: 'Email',
-                                    value: service.email,
-                                    color: widget.primaryGreen,
-                                    onTap: () => _launchEmail(service.email),
-                                    isTablet: isTablet,
-                                  ),
-                                  SizedBox(height: isTablet ? 16 : 12),
-                                  _buildPremiumContactItem(
-                                    icon: Icons.phone_rounded,
-                                    label: 'Phone',
-                                    value: service.phone,
-                                    color: widget.successGreen,
-                                    onTap: () => _launchPhone(service.phone),
-                                    isTablet: isTablet,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          SizedBox(height: isTablet ? 40 : 32),
-                          
-                          // Action Buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildPremiumActionButton(
-                                  icon: Icons.email_rounded,
-                                  label: 'Email',
-                                  gradient: LinearGradient(
-                                    colors: [widget.primaryGreen, widget.purpleAccent],
-                                  ),
-                                  onPressed: () => _launchEmail(service.email),
-                                  isTablet: isTablet,
-                                ),
-                              ),
-                              SizedBox(width: isTablet ? 16 : 12),
-                              Expanded(
-                                child: _buildPremiumActionButton(
-                                  icon: Icons.phone_rounded,
-                                  label: 'Call',
-                                  gradient: LinearGradient(
-                                    colors: [widget.successGreen, widget.infoBlue],
-                                  ),
-                                  onPressed: () => _launchPhone(service.phone),
-                                  isTablet: isTablet,
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 16 : 12),
-                          
-                          // Close Button
-                          OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: widget.primaryGreen,
-                              padding: EdgeInsets.symmetric(vertical: isTablet ? 18 : 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              side: BorderSide(color: widget.primaryGreen, width: 2),
-                            ),
-                            child: Text(
-                              'Close',
-                              style: GoogleFonts.poppins(
-                                fontSize: isTablet ? 18 : 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 24 : 20),
-                          
-                          // Rating and reviews
-                          Container(
-                            padding: EdgeInsets.all(isTablet ? 20 : 16),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.amber.withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.star_rounded, color: Colors.amber, size: isTablet ? 40 : 32),
-                                SizedBox(width: isTablet ? 16 : 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${service.rating.toStringAsFixed(1)} out of 5',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 20 : 18,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.amber[800],
-                                        ),
+                                  Container(
+                                    width: isTablet ? 60 : 50,
+                                    height: isTablet ? 60 : 50,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [widget.primaryGreen, widget.purpleAccent, widget.infoBlue],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
                                       ),
-                                      Text(
-                                        'Based on ${service.totalReviews} reviews',
-                                        style: GoogleFonts.inter(
-                                          fontSize: isTablet ? 14 : 12,
-                                          color: Colors.grey[600],
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: widget.primaryGreen.withOpacity(0.3),
+                                          blurRadius: 8,
+                                          offset: Offset(0, 4),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 24 : 20),
-                          
-                          // Premium Footer
-                          Container(
-                            padding: EdgeInsets.all(isTablet ? 24 : 20),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [widget.lightGreen.withOpacity(0.5), widget.lightGreen],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
-                              border: Border.all(color: widget.primaryGreen.withOpacity(0.2), width: 1.5),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: isTablet ? 60 : 50,
-                                  height: isTablet ? 60 : 50,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [widget.primaryGreen, widget.purpleAccent, widget.infoBlue],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
+                                      ],
                                     ),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: widget.primaryGreen.withOpacity(0.3),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 4),
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.business_center_rounded,
+                                        color: Colors.white,
+                                        size: isTablet ? 28 : 24,
                                       ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.business_center_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 28 : 24,
                                     ),
                                   ),
-                                ),
-                                SizedBox(width: isTablet ? 20 : 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      ShaderMask(
-                                        shaderCallback: (bounds) => LinearGradient(
-                                          colors: [widget.primaryGreen, widget.purpleAccent],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ).createShader(bounds),
-                                        child: Text(
-                                          'Premium Consultant',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 18 : 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
+                                  SizedBox(width: isTablet ? 20 : 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        ShaderMask(
+                                          shaderCallback: (bounds) => LinearGradient(
+                                            colors: [widget.primaryGreen, widget.purpleAccent],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ).createShader(bounds),
+                                          child: Text(
+                                            'Premium Consultant',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: isTablet ? 18 : 16,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      SizedBox(height: isTablet ? 4 : 2),
-                                      Text(
-                                        'Verified by Admin',
-                                        style: GoogleFonts.inter(
-                                          fontSize: isTablet ? 14 : 12,
-                                          color: _textSecondary,
+                                        SizedBox(height: isTablet ? 4 : 2),
+                                        Text(
+                                          'Verified by Admin',
+                                          style: GoogleFonts.inter(
+                                            fontSize: isTablet ? 14 : 12,
+                                            color: _textSecondary,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 24 : 20),
-                        ],
+                            
+                            SizedBox(height: isTablet ? 24 : 20),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1045,10 +1104,10 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
         ),
         SizedBox(height: isTablet ? 8 : 6),
         Text(
-          value, overflow: TextOverflow.ellipsis,
+          value, 
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.poppins(
-          //  fontSize: isTablet ? 22 : 18,
-             fontSize: isTablet ? 16 : 12,
+            fontSize: isTablet ? 16 : 12,
             fontWeight: FontWeight.w800,
             color: Colors.grey[800],
           ),
@@ -1056,8 +1115,7 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
         Text(
           label,
           style: GoogleFonts.inter(
-         //   fontSize: isTablet ? 14 : 12,
-             fontSize: isTablet ? 12 : 10,
+            fontSize: isTablet ? 12 : 10,
             color: Colors.grey[600],
             fontWeight: FontWeight.w500,
           ),

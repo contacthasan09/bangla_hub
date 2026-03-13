@@ -196,6 +196,9 @@ class ServiceProviderModel {
   int totalLikes;
   List<String> likedByUsers; // List of user IDs who liked this service
 
+    final double? latitude;
+  final double? longitude;
+
   ServiceProviderModel({
     this.id,
     required this.fullName,
@@ -233,6 +236,9 @@ class ServiceProviderModel {
     this.acceptedPaymentMethods,
     this.totalLikes = 0,
     this.likedByUsers = const [],
+
+        this.latitude,
+    this.longitude,
   });
 
   // Convert to Map for Firestore
@@ -278,6 +284,9 @@ class ServiceProviderModel {
       'searchKeywords': _generateSearchKeywords(),
       'state_city': '${state}_$city',
       'category_provider': '${serviceCategory.stringValue}_$serviceProvider',
+
+            'latitude': latitude,
+      'longitude': longitude,
     };
   }
 
@@ -351,8 +360,8 @@ class ServiceProviderModel {
       isAvailable: data['isAvailable'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
       createdBy: data['createdBy'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       additionalInfo: Map<String, dynamic>.from(data['additionalInfo'] ?? {}),
       galleryImagesBase64: List<String>.from(data['galleryImagesBase64'] ?? []),
       licenseNumber: data['licenseNumber'],
@@ -362,6 +371,9 @@ class ServiceProviderModel {
       acceptedPaymentMethods: List<String>.from(data['acceptedPaymentMethods'] ?? []),
       totalLikes: data['totalLikes'] ?? 0,
       likedByUsers: List<String>.from(data['likedByUsers'] ?? []),
+
+latitude: data['latitude']?.toDouble(),
+longitude: data['longitude']?.toDouble(),
     );
   }
 
@@ -403,6 +415,8 @@ class ServiceProviderModel {
     List<String>? acceptedPaymentMethods,
     int? totalLikes,
     List<String>? likedByUsers,
+    double? latitude,
+    double? longitude,
   }) {
     return ServiceProviderModel(
       id: id ?? this.id,
@@ -441,6 +455,8 @@ class ServiceProviderModel {
       acceptedPaymentMethods: acceptedPaymentMethods ?? this.acceptedPaymentMethods,
       totalLikes: totalLikes ?? this.totalLikes,
       likedByUsers: likedByUsers ?? this.likedByUsers,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 

@@ -1,12 +1,18 @@
+// screens/user_app/entrepreneurship/job_posting/job_postings_screen.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:bangla_hub/models/community_services_models.dart';
 import 'package:bangla_hub/models/entrepreneurship_models.dart';
-import 'package:bangla_hub/models/user_model.dart';
 import 'package:bangla_hub/providers/entrepreneurship_provider.dart';
 import 'package:bangla_hub/providers/auth_provider.dart';
+import 'package:bangla_hub/providers/location_filter_provider.dart';
+import 'package:bangla_hub/screens/auth/login_screen.dart';
+import 'package:bangla_hub/screens/auth/signup_screen.dart';
 import 'package:bangla_hub/screens/user_app/entrepreneurship/job_posting/job_details_screen.dart';
+import 'package:bangla_hub/widgets/common/distance_widget.dart';
+import 'package:bangla_hub/widgets/common/global_location_filter_bar.dart';
+import 'package:bangla_hub/widgets/common/osm_location_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,8 +26,10 @@ class JobPostingsScreen extends StatefulWidget {
   _JobPostingsScreenState createState() => _JobPostingsScreenState();
 }
 
-class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
-  // Premium Color Palette - Sports Theme (copied from SportsClubsScreen)
+class _JobPostingsScreenState extends State<JobPostingsScreen> 
+    with AutomaticKeepAliveClientMixin, TickerProviderStateMixin, WidgetsBindingObserver {
+  
+  // Premium Color Palette - Sports Theme
   final Color _primaryRed = Color(0xFFF44336);
   final Color _darkRed = Color(0xFFD32F2F);
   final Color _lightRed = Color(0xFFFFEBEE);
@@ -49,14 +57,33 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
   late AnimationController _rotateController;
+  
+  // Particle animation controllers
+  late List<AnimationController> _particleControllers;
+  late List<AnimationController> _bubbleControllers;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
 
   bool _isLoading = false;
   String? _selectedFilter = 'All';
-  final List<String> _filters = ['All', 'Full Time', 'Part Time', 'Contract', 'Internship', 'Urgent'];
+  bool _isFilterView = false;
+  final ScrollController _filterScrollController = ScrollController();
   
-  // Cache for user profiles
-  final Map<String, UserModel?> _userCache = {};
-  final Map<String, StreamSubscription?> _userSubscriptions = {};
+  // LOCAL FILTER STATE - completely separate from global filter
+  String? _localSelectedState;
+  String? _localSelectedCity;
+  JobType? _localSelectedJobType;
+  ExperienceLevel? _localSelectedExperienceLevel;
+  
+  // Track which local filters are active (for display)
+  bool _hasLocalFilters = false;
+  Map<String, dynamic> _activeLocalFilters = {};
+  
+  final List<String> _filters = ['All', 'Full Time', 'Part Time', 'Contract', 'Internship', 'Urgent'];
+
+  // Track previous global filter state for UI updates
+  bool _previousGlobalFilterState = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -64,6 +91,9 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
     
     // Initialize animations
     _fadeController = AnimationController(
@@ -84,7 +114,7 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
     _pulseController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
+    );
     
     _pulseAnimation = CurvedAnimation(
       parent: _pulseController,
@@ -103,27 +133,110 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
     _rotateController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
+    );
     
-    _fadeController.forward();
-    _slideController.forward();
-    _scaleController.forward();
+    // Initialize particle controllers (30 particles)
+    _particleControllers = List.generate(30, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 3 + (index % 3)),
+      )..repeat(reverse: true);
+    });
+    
+    // Initialize bubble controllers (8 bubbles)
+    _bubbleControllers = List.generate(8, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 8 + (index * 2)),
+      )..repeat(reverse: true);
+    });
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
+      
+      // Get user location if not already
+      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+      if (locationProvider.currentUserLocation == null) {
+        locationProvider.getUserLocation(showLoading: false);
+      }
     });
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App is visible - start animations
+      _startAnimations();
+    } else {
+      // App is not visible - stop animations to save resources
+      _stopAnimations();
+    }
+  }
+  
+  void _startAnimations() {
+    if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
+      _fadeController.forward();
+      _slideController.forward();
+      _scaleController.forward();
+      _pulseController.repeat(reverse: true);
+      _rotateController.repeat(reverse: true);
+      // Particle and bubble controllers already running via repeat
+    }
+  }
+  
+  void _stopAnimations() {
+    _fadeController.stop();
+    _slideController.stop();
+    _pulseController.stop();
+    _scaleController.stop();
+    _rotateController.stop();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Listen to location provider changes but DON'T automatically apply filter
+    // This ensures global filter is separate
+    final locationProvider = Provider.of<LocationFilterProvider>(context);
+    
+    // Only reload when global filter changes to show/hide global filter bar
+    if (locationProvider.isFilterActive != _previousGlobalFilterState) {
+      _previousGlobalFilterState = locationProvider.isFilterActive;
+      _loadData();
+    }
   }
 
   @override
   void dispose() {
+    print('🗑️ JobPostingsScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // ✅ Dispose animation controllers
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
     _scaleController.dispose();
     _rotateController.dispose();
-    // Cancel all user subscriptions
-    _userSubscriptions.values.forEach((sub) => sub?.cancel());
-    _userSubscriptions.clear();
+    
+    // ✅ Dispose particle controllers
+    for (var controller in _particleControllers) {
+      controller.dispose();
+    }
+    
+    // ✅ Dispose bubble controllers
+    for (var controller in _bubbleControllers) {
+      controller.dispose();
+    }
+    
+    _filterScrollController.dispose();
+    
     super.dispose();
   }
 
@@ -132,14 +245,28 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
 
     try {
       final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
-      await provider.loadJobPostings();
+      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
       
-      // Load user profiles immediately for all jobs
-      if (provider.jobPostings.isNotEmpty) {
-        await _loadAllUserProfiles(provider.jobPostings);
-        _setupUserProfileListeners(provider.jobPostings);
+      // IMPORTANT: Do NOT apply global filter automatically to provider
+      // The provider handles global filter separately
+      
+      // Apply LOCAL filters if any
+      if (_hasLocalFilters) {
+        if (_localSelectedState != null) {
+          provider.setFilter(EntrepreneurshipCategory.jobPostings, 'local_state', _localSelectedState);
+        }
+        if (_localSelectedCity != null && _localSelectedCity!.isNotEmpty) {
+          provider.setFilter(EntrepreneurshipCategory.jobPostings, 'local_city', _localSelectedCity);
+        }
+        if (_localSelectedJobType != null) {
+          provider.setFilter(EntrepreneurshipCategory.jobPostings, 'local_jobType', _localSelectedJobType);
+        }
+        if (_localSelectedExperienceLevel != null) {
+          provider.setFilter(EntrepreneurshipCategory.jobPostings, 'local_experienceLevel', _localSelectedExperienceLevel);
+        }
       }
       
+      await provider.loadJobPostings();
       if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       print('Error loading jobs: $e');
@@ -147,79 +274,325 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
     }
   }
 
-  Future<void> _loadAllUserProfiles(List<JobPosting> jobs) async {
-    final Map<String, Future<UserModel?>> futures = {};
+  Future<void> _applyLocalFilters() async {
+    final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
     
-    for (var job in jobs) {
-      final userId = job.postedBy;
-      if (!_userCache.containsKey(userId)) {
-        futures[userId] = _fetchUserProfile(userId);
-      }
+    // Clear any existing local filters first
+    provider.clearAllFilters(EntrepreneurshipCategory.jobPostings);
+    
+    // Build active filters map for display
+    Map<String, dynamic> newActiveFilters = {};
+    
+    // Apply new local filters
+    if (_localSelectedState != null) {
+      provider.setFilter(EntrepreneurshipCategory.jobPostings, 'local_state', _localSelectedState);
+      newActiveFilters['local_state'] = _localSelectedState;
+    }
+    if (_localSelectedCity != null && _localSelectedCity!.isNotEmpty) {
+      provider.setFilter(EntrepreneurshipCategory.jobPostings, 'local_city', _localSelectedCity);
+      newActiveFilters['local_city'] = _localSelectedCity;
+    }
+    if (_localSelectedJobType != null) {
+      provider.setFilter(EntrepreneurshipCategory.jobPostings, 'local_jobType', _localSelectedJobType);
+      newActiveFilters['local_jobType'] = _localSelectedJobType!.displayName;
+    }
+    if (_localSelectedExperienceLevel != null) {
+      provider.setFilter(EntrepreneurshipCategory.jobPostings, 'local_experienceLevel', _localSelectedExperienceLevel);
+      newActiveFilters['local_experienceLevel'] = _localSelectedExperienceLevel!.displayName;
     }
     
-    if (futures.isNotEmpty) {
-      await Future.wait(futures.values);
-    }
+    setState(() {
+      _hasLocalFilters = newActiveFilters.isNotEmpty;
+      _activeLocalFilters = newActiveFilters;
+      _isFilterView = false;
+    });
+    
+    await provider.loadJobPostings();
   }
 
-  Future<UserModel?> _fetchUserProfile(String userId) async {
+  void _clearLocalFilters() {
+    final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
+    
+    // Clear all local filters from provider
+    provider.clearAllFilters(EntrepreneurshipCategory.jobPostings);
+    
+    // Reset local state
+    setState(() {
+      _localSelectedState = null;
+      _localSelectedCity = null;
+      _localSelectedJobType = null;
+      _localSelectedExperienceLevel = null;
+      _hasLocalFilters = false;
+      _activeLocalFilters.clear();
+      _isFilterView = false;
+    });
+    
+    provider.loadJobPostings();
+  }
+
+  // Get filtered jobs - applying BOTH global and local filters
+  List<JobPosting> _getFilteredJobs(
+    List<JobPosting> jobs,
+    LocationFilterProvider locationProvider,
+  ) {
+    // Start with all verified jobs
+    var filteredJobs = jobs.where((job) => job.isVerified).toList();
+    
+    // Apply GLOBAL location filter if active (from LocationFilterProvider)
+    if (locationProvider.isFilterActive && locationProvider.selectedState != null) {
+      filteredJobs = filteredJobs.where((job) {
+        return job.state == locationProvider.selectedState;
+      }).toList();
+      print('📍 After GLOBAL filter (${locationProvider.selectedState}): ${filteredJobs.length} jobs');
+    }
+    
+    // Apply LOCAL filters if any (from this screen's filter view)
+    if (_hasLocalFilters) {
+      // State filter
+      if (_localSelectedState != null) {
+        filteredJobs = filteredJobs.where((job) => 
+          job.state == _localSelectedState
+        ).toList();
+      }
+      
+      // City filter
+      if (_localSelectedCity != null && _localSelectedCity!.isNotEmpty) {
+        filteredJobs = filteredJobs.where((job) => 
+          job.city.toLowerCase().contains(_localSelectedCity!.toLowerCase())
+        ).toList();
+      }
+      
+      // Job type filter
+      if (_localSelectedJobType != null) {
+        filteredJobs = filteredJobs.where((job) => 
+          job.jobType == _localSelectedJobType
+        ).toList();
+      }
+      
+      // Experience level filter
+      if (_localSelectedExperienceLevel != null) {
+        filteredJobs = filteredJobs.where((job) => 
+          job.experienceLevel == _localSelectedExperienceLevel
+        ).toList();
+      }
+      
+      print('📊 After LOCAL filters: ${filteredJobs.length} jobs');
+    }
+    
+    // Apply category filter (from chips)
+    if (_selectedFilter == 'Urgent') {
+      filteredJobs = filteredJobs.where((job) => job.isUrgent).toList();
+    } else if (_selectedFilter != 'All') {
+      filteredJobs = filteredJobs.where((job) => 
+        job.jobType.displayName == _selectedFilter
+      ).toList();
+    }
+    
+    return filteredJobs;
+  }
+
+  Future<List<String>> _getCitiesForState(String state) async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('job_postings')
+          .where('state', isEqualTo: state)
+          .where('isDeleted', isEqualTo: false)
           .get();
       
-      if (doc.exists && mounted) {
-        final user = UserModel.fromMap(doc.data()!, doc.id);
-        setState(() {
-          _userCache[userId] = user;
-        });
-        return user;
-      }
-    } catch (e) {
-      print('❌ Error fetching user $userId: $e');
-    }
-    return null;
-  }
-
-  void _setupUserProfileListeners(List<JobPosting> jobs) {
-    _userSubscriptions.values.forEach((sub) => sub?.cancel());
-    _userSubscriptions.clear();
-    
-    for (var job in jobs) {
-      final userId = job.postedBy;
+      final cities = querySnapshot.docs
+          .map((doc) => doc.data()['city'] as String?)
+          .where((city) => city != null && city.isNotEmpty)
+          .toSet()
+          .toList() as List<String>;
       
-      if (!_userSubscriptions.containsKey(userId)) {
-        final subscription = FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .snapshots()
-            .listen((snapshot) {
-              if (snapshot.exists && mounted) {
-                final user = UserModel.fromMap(snapshot.data()!, snapshot.id);
-                setState(() {
-                  _userCache[userId] = user;
-                });
-              } else if (mounted) {
-                setState(() {
-                  _userCache[userId] = null;
-                });
-              }
-            }, onError: (error) {
-              print('❌ Error listening to user $userId: $error');
-            });
-        
-        _userSubscriptions[userId] = subscription;
-      }
+      cities.sort();
+      return cities;
+    } catch (e) {
+      print('Error getting cities: $e');
+      return [];
     }
   }
 
-  List<JobPosting> _getFilteredJobs(List<JobPosting> jobs) {
-    final verifiedJobs = jobs.where((job) => job.isVerified).toList();
-    
-    if (_selectedFilter == 'All') return verifiedJobs;
-    if (_selectedFilter == 'Urgent') return verifiedJobs.where((job) => job.isUrgent).toList();
-    return verifiedJobs.where((job) => job.jobType.displayName == _selectedFilter).toList();
+  int _getActiveLocalFilterCount() {
+    return _activeLocalFilters.length;
+  }
+
+  IconData _getIconForLocalFilter(String key) {
+    switch (key) {
+      case 'local_state': return Icons.location_on_rounded;
+      case 'local_city': return Icons.location_city_rounded;
+      case 'local_jobType': return Icons.schedule_rounded;
+      case 'local_experienceLevel': return Icons.timeline_rounded;
+      default: return Icons.filter_alt_rounded;
+    }
+  }
+
+  void _showLoginRequiredDialog(BuildContext context, String feature) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 30,
+                offset: Offset(0, 15),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with gradient
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_primaryRed, _tealAccent],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.lock_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Login Required',
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'You need to login to $feature',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Create an account or sign in to access full details',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 16),
+                    
+                    // Login Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LoginScreen(),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _tealAccent,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Login',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    
+                    // Sign Up Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RegisterScreen(role: 'user'),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _tealAccent,
+                          side: BorderSide(color: _tealAccent, width: 2),
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Create Account',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    
+                    // Continue Browsing
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'Continue Browsing',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -255,15 +628,55 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
               ...List.generate(8, (index) => _buildFloatingBubble(index)),
               
               // Main Content
-              CustomScrollView(
-                physics: BouncingScrollPhysics(),
-                slivers: [
-                  _buildPremiumAppBar(isTablet),
-                  SliverToBoxAdapter(
-                    child: _buildFilterChips(isTablet),
-                  ),
-                  _buildContent(),
-                ],
+              RefreshIndicator(
+                color: _goldAccent,
+                backgroundColor: Colors.white,
+                onRefresh: _loadData,
+                child: _isFilterView
+                    ? _buildFiltersView(isTablet)
+                    : CustomScrollView(
+                        physics: BouncingScrollPhysics(),
+                        slivers: [
+                          _buildPremiumAppBar(isTablet),
+                          
+                          // Global Location Filter Bar - SEPARATE
+                          SliverToBoxAdapter(
+                            child: Consumer<LocationFilterProvider>(
+                              builder: (context, locationProvider, _) {
+                                return GlobalLocationFilterBar(
+                                  isTablet: isTablet,
+                                  onClearTap: () {
+                                    // This only clears GLOBAL filter
+                                    locationProvider.clearLocationFilter();
+                                    _loadData(); // Reload with global filter cleared
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                          
+                          // Local Filter Toggle Button - SEPARATE
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isTablet ? 20 : 16,
+                                vertical: 8,
+                              ),
+                              child: _buildLocalFilterToggleButton(isTablet),
+                            ),
+                          ),
+                          
+                          // Active LOCAL Filters Display
+                          _buildActiveLocalFilters(isTablet),
+                          
+                          // Category Filter Chips (still separate)
+                          SliverToBoxAdapter(
+                            child: _buildFilterChips(isTablet),
+                          ),
+                          
+                          _buildContent(),
+                        ],
+                      ),
               ),
               
               // Premium Floating Action Button
@@ -273,6 +686,513 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
                 child: _buildPremiumFloatingActionButton(isTablet),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFiltersView(bool isTablet) {
+    // Initialize temp values with current local filters
+    _localSelectedState ??= _activeLocalFilters['local_state'];
+    _localSelectedJobType ??= _activeLocalFilters.containsKey('local_jobType') 
+        ? JobType.values.firstWhere(
+            (type) => type.displayName == _activeLocalFilters['local_jobType'],
+            orElse: () => JobType.fullTime,
+          )
+        : null;
+    _localSelectedExperienceLevel ??= _activeLocalFilters.containsKey('local_experienceLevel')
+        ? ExperienceLevel.values.firstWhere(
+            (level) => level.displayName == _activeLocalFilters['local_experienceLevel'],
+            orElse: () => ExperienceLevel.entry,
+          )
+        : null;
+    
+    return CustomScrollView(
+      controller: _filterScrollController,
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        _buildPremiumAppBar(isTablet),
+        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        
+        // Global Location Filter Bar - still visible but separate
+        SliverToBoxAdapter(
+          child: Consumer<LocationFilterProvider>(
+            builder: (context, locationProvider, _) {
+              return GlobalLocationFilterBar(
+                isTablet: isTablet,
+                onClearTap: () {
+                  locationProvider.clearLocationFilter();
+                },
+              );
+            },
+          ),
+        ),
+        
+        SliverToBoxAdapter(
+          child: Container(
+            margin: EdgeInsets.all(isTablet ? 24 : 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: Container(
+                  padding: EdgeInsets.all(isTablet ? 24 : 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [_primaryRed, _purpleAccent],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(Icons.tune_rounded, color: Colors.white),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Filters',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: isTablet ? 24 : 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: _textPrimary,
+                                  ),
+                                ),
+                                Text(
+                                  'Apply filters specific to this screen',
+                                  style: GoogleFonts.inter(
+                                    fontSize: isTablet ? 14 : 12,
+                                    color: _textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      SizedBox(height: 24),
+                      
+                      // State Dropdown
+                      _buildDropdown<String?>(
+                        value: _localSelectedState,
+                        label: 'Select State',
+                        icon: Icons.location_on_rounded,
+                        items: [
+                          DropdownMenuItem<String?>(value: null, child: Text('All States')),
+                          ...CommunityStates.states.map((state) => 
+                            DropdownMenuItem<String?>(value: state, child: Text(state))
+                          ),
+                        ],
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _localSelectedState = newValue;
+                            _localSelectedCity = null;
+                          });
+                        },
+                        isTablet: isTablet,
+                      ),
+                      
+                      if (_localSelectedState != null) ...[
+                        SizedBox(height: 16),
+                        FutureBuilder<List<String>>(
+                          future: _getCitiesForState(_localSelectedState!),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
+                            return _buildDropdown<String?>(
+                              value: _localSelectedCity,
+                              label: 'Select City',
+                              icon: Icons.location_city_rounded,
+                              items: [
+                                DropdownMenuItem<String?>(value: null, child: Text('All Cities')),
+                                ...snapshot.data!.map((city) => 
+                                  DropdownMenuItem<String?>(value: city, child: Text(city))
+                                ),
+                              ],
+                              onChanged: (String? newValue) {
+                                setState(() => _localSelectedCity = newValue);
+                              },
+                              isTablet: isTablet,
+                            );
+                          },
+                        ),
+                      ],
+                      
+                      SizedBox(height: 16),
+                      
+                      // Job Type Dropdown
+                      _buildDropdown<JobType?>(
+                        value: _localSelectedJobType,
+                        label: 'Job Type',
+                        icon: Icons.schedule_rounded,
+                        items: [
+                          DropdownMenuItem<JobType?>(value: null, child: Text('All Types')),
+                          ...JobType.values.map((type) => 
+                            DropdownMenuItem<JobType?>(
+                              value: type,
+                              child: Text(type.displayName),
+                            )
+                          ),
+                        ],
+                        onChanged: (JobType? newValue) {
+                          setState(() => _localSelectedJobType = newValue);
+                        },
+                        isTablet: isTablet,
+                      ),
+                      
+                      SizedBox(height: 16),
+                      
+                      // Experience Level Dropdown
+                      _buildDropdown<ExperienceLevel?>(
+                        value: _localSelectedExperienceLevel,
+                        label: 'Experience Level',
+                        icon: Icons.timeline_rounded,
+                        items: [
+                          DropdownMenuItem<ExperienceLevel?>(value: null, child: Text('All Levels')),
+                          ...ExperienceLevel.values.map((level) => 
+                            DropdownMenuItem<ExperienceLevel?>(
+                              value: level,
+                              child: Text(level.displayName),
+                            )
+                          ),
+                        ],
+                        onChanged: (ExperienceLevel? newValue) {
+                          setState(() => _localSelectedExperienceLevel = newValue);
+                        },
+                        isTablet: isTablet,
+                      ),
+                      
+                      SizedBox(height: 24),
+                      
+                      // Action Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionButton(
+                              label: 'Apply',
+                              onTap: _applyLocalFilters,
+                              isPrimary: true,
+                              isTablet: isTablet,
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: _buildActionButton(
+                              label: 'Clear',
+                              onTap: _clearLocalFilters,
+                              isPrimary: false,
+                              isTablet: isTablet,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(child: SizedBox(height: isTablet ? 100 : 80)),
+      ],
+    );
+  }
+
+  Widget _buildLocalFilterToggleButton(bool isTablet) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() => _isFilterView = true);
+        HapticFeedback.lightImpact();
+      },
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(
+          horizontal: isTablet ? 20 : 16,
+          vertical: isTablet ? 14 : 12,
+        ),
+        decoration: BoxDecoration(
+          gradient: _hasLocalFilters
+              ? LinearGradient(colors: [_primaryRed, _purpleAccent])
+              : LinearGradient(colors: [_tealAccent, _infoBlue]),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: (_hasLocalFilters ? _primaryRed : _tealAccent).withOpacity(0.3),
+              blurRadius: 15,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            shouldAnimate
+                ? RotationTransition(
+                    turns: _rotateController,
+                    child: Icon(
+                      _hasLocalFilters ? Icons.filter_alt_rounded : Icons.tune_rounded,
+                      color: Colors.white,
+                      size: isTablet ? 20 : 18,
+                    ),
+                  )
+                : Icon(
+                    _hasLocalFilters ? Icons.filter_alt_rounded : Icons.tune_rounded,
+                    color: Colors.white,
+                    size: isTablet ? 20 : 18,
+                  ),
+            SizedBox(width: 8),
+            Text(
+              _hasLocalFilters ? 'Edit Filters' : 'Filters',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: isTablet ? 16 : 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (_hasLocalFilters) ...[
+              SizedBox(width: 8),
+              Container(
+                padding: EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '${_getActiveLocalFilterCount()}',
+                  style: GoogleFonts.poppins(
+                    color: _primaryRed,
+                    fontSize: isTablet ? 12 : 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveLocalFilters(bool isTablet) {
+    if (_activeLocalFilters.isEmpty) return SliverToBoxAdapter(child: SizedBox.shrink());
+    
+    final chips = <Widget>[];
+    
+    _activeLocalFilters.forEach((key, value) {
+      if (value != null && value.toString().isNotEmpty) {
+        String label = '';
+        IconData icon = Icons.filter_alt_rounded;
+        
+        switch (key) {
+          case 'local_state':
+            label = 'State: $value';
+            icon = Icons.location_on_rounded;
+            break;
+          case 'local_city':
+            label = 'City: $value';
+            icon = Icons.location_city_rounded;
+            break;
+          case 'local_jobType':
+            label = 'Job Type: $value';
+            icon = Icons.schedule_rounded;
+            break;
+          case 'local_experienceLevel':
+            label = 'Experience: $value';
+            icon = Icons.timeline_rounded;
+            break;
+        }
+        
+        chips.add(_buildFilterChip(
+          label: label,
+          icon: icon,
+          onRemove: () {
+            // Remove this specific local filter
+            final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
+            provider.clearFilter(EntrepreneurshipCategory.jobPostings, key);
+            
+            setState(() {
+              _activeLocalFilters.remove(key);
+              _hasLocalFilters = _activeLocalFilters.isNotEmpty;
+              
+              // Also clear the corresponding local state variable
+              switch (key) {
+                case 'local_state':
+                  _localSelectedState = null;
+                  break;
+                case 'local_city':
+                  _localSelectedCity = null;
+                  break;
+                case 'local_jobType':
+                  _localSelectedJobType = null;
+                  break;
+                case 'local_experienceLevel':
+                  _localSelectedExperienceLevel = null;
+                  break;
+              }
+            });
+            
+            provider.loadJobPostings();
+          },
+        ));
+      }
+    });
+    
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: isTablet ? 20 : 16, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text(
+                'Active Filters:',
+                style: GoogleFonts.poppins(
+                  fontSize: isTablet ? 14 : 12,
+                  fontWeight: FontWeight.w600,
+                  color: _primaryRed,
+                ),
+              ),
+            ),
+            Wrap(spacing: 8, runSpacing: 8, children: chips),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required IconData icon,
+    required VoidCallback onRemove,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_primaryRed, _purpleAccent],
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 14),
+          SizedBox(width: 6),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+          SizedBox(width: 6),
+          GestureDetector(
+            onTap: onRemove,
+            child: Icon(Icons.close, color: Colors.white, size: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdown<T>({
+    required T? value,
+    required String label,
+    required IconData icon,
+    required List<DropdownMenuItem<T>> items,
+    required void Function(T?) onChanged,
+    required bool isTablet,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: DropdownButtonFormField<T>(
+        value: value,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.poppins(fontSize: 13),
+          prefixIcon: Icon(icon, color: _primaryRed, size: 20),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.transparent,
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+        items: items,
+        onChanged: onChanged,
+        isExpanded: true,
+        icon: Icon(Icons.arrow_drop_down, color: _primaryRed),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required String label,
+    required VoidCallback onTap,
+    required bool isPrimary,
+    required bool isTablet,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          gradient: isPrimary
+              ? LinearGradient(colors: [_primaryRed, _purpleAccent])
+              : null,
+          color: isPrimary ? null : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: isPrimary ? null : Border.all(color: _primaryRed, width: 2),
+          boxShadow: isPrimary
+              ? [BoxShadow(color: _primaryRed.withOpacity(0.3), blurRadius: 15, offset: Offset(0, 6))]
+              : null,
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: isPrimary ? Colors.white : _primaryRed,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
           ),
         ),
       ),
@@ -396,17 +1316,9 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
           ),
         ),
       ),
-      leading: Container(
-        margin: EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _goldAccent.withOpacity(0.3), width: 1.5),
-        ),
-        child: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: Colors.white, size: isTablet ? 28 : 24),
-          onPressed: () => Navigator.pop(context),
-        ),
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back_rounded, color: Colors.white, size: isTablet ? 28 : 24),
+        onPressed: () => Navigator.pop(context),
       ),
     );
   }
@@ -414,15 +1326,15 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
   Widget _buildAnimatedParticle(int index) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final controller = _particleControllers[index % _particleControllers.length];
     
     return Positioned(
       left: (index * 37) % screenWidth,
       top: (index * 53) % screenHeight,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 3 + (index % 3)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          final value = controller.value;
           return Opacity(
             opacity: (0.1 + (value * 0.2)) * (0.5 + (index % 3) * 0.1),
             child: Transform.rotate(
@@ -452,15 +1364,15 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final size = 50 + (index * 15).toDouble();
+    final controller = _bubbleControllers[index % _bubbleControllers.length];
     
     return Positioned(
       left: (index * 73) % screenWidth,
       top: (index * 47) % screenHeight,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 8 + (index * 2)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          final value = controller.value;
           return Transform.translate(
             offset: Offset(0, 20 * (value - 0.5)),
             child: Opacity(
@@ -490,141 +1402,157 @@ class _JobPostingsScreenState extends State<JobPostingsScreen> with AutomaticKee
     );
   }
 
-Widget _buildFilterChips(bool isTablet) {
-  return Container(
-    height: 60, // Add fixed height
-    margin: EdgeInsets.only(top: 16, bottom: 8),
-    child: ListView.builder(
-      scrollDirection: Axis.horizontal,
-      padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
-      itemCount: _filters.length,
-      itemBuilder: (context, index) {
-        final filter = _filters[index];
-        final isSelected = _selectedFilter == filter;
-        
-        return Padding(
-          padding: EdgeInsets.only(right: 12),
-          child: FilterChip(
-            selected: isSelected,
-            label: Text(
-              filter,
-              style: GoogleFonts.poppins(
-                color: isSelected ? Colors.white : _textPrimary,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                fontSize: isTablet ? 14 : 12,
+  Widget _buildFilterChips(bool isTablet) {
+    return Container(
+      height: 60,
+      margin: EdgeInsets.only(top: 8, bottom: 8),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
+        itemCount: _filters.length,
+        itemBuilder: (context, index) {
+          final filter = _filters[index];
+          final isSelected = _selectedFilter == filter;
+          
+          return Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: FilterChip(
+              selected: isSelected,
+              label: Text(
+                filter,
+                style: GoogleFonts.poppins(
+                  color: isSelected ? Colors.white : _textPrimary,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: isTablet ? 14 : 12,
+                ),
               ),
-            ),
-            onSelected: (selected) {
-              setState(() {
-                _selectedFilter = filter;
-              });
-              HapticFeedback.lightImpact();
-            },
-            backgroundColor: Colors.white,
-            selectedColor: _primaryRed,
-            checkmarkColor: _goldAccent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-              side: BorderSide(
-                color: isSelected ? _primaryRed : _borderLight,
-                width: 1,
+              onSelected: (selected) {
+                setState(() {
+                  _selectedFilter = filter;
+                });
+                HapticFeedback.lightImpact();
+              },
+              backgroundColor: Colors.white,
+              selectedColor: _primaryRed,
+              checkmarkColor: _goldAccent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+                side: BorderSide(
+                  color: isSelected ? _primaryRed : _borderLight,
+                  width: 1,
+                ),
               ),
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 16 : 12,
+                vertical: isTablet ? 10 : 8,
+              ),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            padding: EdgeInsets.symmetric(
-              horizontal: isTablet ? 16 : 12,
-              vertical: isTablet ? 10 : 8,
-            ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        );
-      },
-    ),
-  );
-}
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildPremiumFloatingActionButton(bool isTablet) {
-    return ScaleTransition(
-      scale: _pulseAnimation,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [_primaryRed, _purpleAccent, _tealAccent],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(35),
-          boxShadow: [
-            BoxShadow(
-              color: _primaryRed.withOpacity(0.5),
-              blurRadius: 25,
-              offset: Offset(0, 12),
-              spreadRadius: 3,
-            ),
-            BoxShadow(
-              color: _goldAccent.withOpacity(0.4),
-              blurRadius: 30,
-              offset: Offset(0, 0),
-            ),
-          ],
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
+    Widget button = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_primaryRed, _purpleAccent, _tealAccent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _showAddJobDialog(context),
-            borderRadius: BorderRadius.circular(35),
-            splashColor: Colors.white.withOpacity(0.3),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 28 : 24,
-                vertical: isTablet ? 16 : 14,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  RotationTransition(
-                    turns: _rotateController,
-                    child: Icon(
-                      Icons.add_business_rounded,
-                      color: Colors.white,
-                      size: isTablet ? 26 : 22,
-                    ),
-                  ),
-                  SizedBox(width: isTablet ? 12 : 10),
-                  Text(
-                    'Post a Job',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w700,
-                      fontSize: isTablet ? 18 : 16,
-                      color: Colors.white,
-                      letterSpacing: 0.3,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 8,
+        borderRadius: BorderRadius.circular(35),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryRed.withOpacity(0.5),
+            blurRadius: 25,
+            offset: Offset(0, 12),
+            spreadRadius: 3,
+          ),
+          BoxShadow(
+            color: _goldAccent.withOpacity(0.4),
+            blurRadius: 30,
+            offset: Offset(0, 0),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            final authProvider = Provider.of<AuthProvider>(context, listen: false);
+            if (authProvider.isGuestMode) {
+              _showLoginRequiredDialog(context, 'Post a Job');
+              return;
+            }
+            _showAddJobDialog(context);
+          },
+          borderRadius: BorderRadius.circular(35),
+          splashColor: Colors.white.withOpacity(0.3),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 28 : 24,
+              vertical: isTablet ? 16 : 14,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                shouldAnimate
+                    ? RotationTransition(
+                        turns: _rotateController,
+                        child: Icon(
+                          Icons.add_business_rounded,
+                          color: Colors.white,
+                          size: isTablet ? 26 : 22,
                         ),
-                      ],
-                    ),
+                      )
+                    : Icon(
+                        Icons.add_business_rounded,
+                        color: Colors.white,
+                        size: isTablet ? 26 : 22,
+                      ),
+                SizedBox(width: isTablet ? 12 : 10),
+                Text(
+                  'Post a Job',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w700,
+                    fontSize: isTablet ? 18 : 16,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
+    
+    return shouldAnimate
+        ? ScaleTransition(scale: _pulseAnimation, child: button)
+        : button;
   }
 
   Widget _buildContent() {
-    return Consumer<EntrepreneurshipProvider>(
-      builder: (context, provider, child) {
+    return Consumer2<EntrepreneurshipProvider, LocationFilterProvider>(
+      builder: (context, provider, locationProvider, child) {
         if (provider.isLoading || _isLoading) {
           return _buildLoadingState();
         }
 
-        final filteredJobs = _getFilteredJobs(provider.jobPostings);
+        final filteredJobs = _getFilteredJobs(provider.jobPostings, locationProvider);
 
         if (filteredJobs.isEmpty) {
-          return _buildEmptyState();
+          return _buildEmptyState(locationProvider);
         }
 
         return SliverPadding(
@@ -633,7 +1561,6 @@ Widget _buildFilterChips(bool isTablet) {
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final job = filteredJobs[index];
-                final user = _userCache[job.postedBy];
                 
                 return FadeTransition(
                   opacity: _fadeAnimation,
@@ -641,7 +1568,7 @@ Widget _buildFilterChips(bool isTablet) {
                     position: _slideAnimation,
                     child: Padding(
                       padding: EdgeInsets.only(bottom: 16),
-                      child: _buildPremiumJobCard(job, user, index),
+                      child: _buildPremiumJobCard(job, index),
                     ),
                   ),
                 );
@@ -672,8 +1599,8 @@ Widget _buildFilterChips(bool isTablet) {
                 return RotationTransition(
                   turns: AlwaysStoppedAnimation(value),
                   child: Container(
-                    width: isTablet ? 140 : 120,
-                    height: isTablet ? 140 : 120,
+                    width: isTablet ? 100 : 80,
+                    height: isTablet ? 100 : 80,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [_primaryRed, _purpleAccent, _tealAccent],
@@ -684,26 +1611,26 @@ Widget _buildFilterChips(bool isTablet) {
                       boxShadow: [
                         BoxShadow(
                           color: _primaryRed.withOpacity(0.3),
-                          blurRadius: 30,
-                          spreadRadius: 3,
+                          blurRadius: 20,
+                          spreadRadius: 2,
                         ),
                       ],
                     ),
                     child: Center(
                       child: Container(
-                        width: isTablet ? 110 : 90,
-                        height: isTablet ? 110 : 90,
+                        width: isTablet ? 80 : 60,
+                        height: isTablet ? 80 : 60,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
                           child: SizedBox(
-                            width: isTablet ? 60 : 50,
-                            height: isTablet ? 60 : 50,
+                            width: isTablet ? 40 : 30,
+                            height: isTablet ? 40 : 30,
                             child: CircularProgressIndicator(
                               color: _primaryRed,
-                              strokeWidth: 4,
+                              strokeWidth: 3,
                             ),
                           ),
                         ),
@@ -713,7 +1640,7 @@ Widget _buildFilterChips(bool isTablet) {
                 );
               },
             ),
-            SizedBox(height: isTablet ? 40 : 30),
+            SizedBox(height: isTablet ? 24 : 16),
             ShaderMask(
               shaderCallback: (bounds) => LinearGradient(
                 colors: [_primaryRed, _purpleAccent],
@@ -723,19 +1650,19 @@ Widget _buildFilterChips(bool isTablet) {
               child: Text(
                 'Loading Jobs...',
                 style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 30 : 26,
+                  fontSize: isTablet ? 24 : 20,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
                 ),
               ),
             ),
-            SizedBox(height: isTablet ? 16 : 12),
+            SizedBox(height: isTablet ? 12 : 8),
             ScaleTransition(
               scale: _pulseAnimation,
               child: Text(
-                'Finding the best opportunities for you',
+                'Finding opportunities for you',
                 style: GoogleFonts.inter(
-                  fontSize: isTablet ? 18 : 16,
+                  fontSize: isTablet ? 15 : 13,
                   color: _textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
@@ -747,14 +1674,23 @@ Widget _buildFilterChips(bool isTablet) {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(LocationFilterProvider locationProvider) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
+    
+    String emptyMessage = 'No jobs available';
+    if (locationProvider.isFilterActive && _hasLocalFilters) {
+      emptyMessage = 'No jobs in ${locationProvider.selectedState} with your local filters';
+    } else if (locationProvider.isFilterActive) {
+      emptyMessage = 'No jobs in ${locationProvider.selectedState}';
+    } else if (_hasLocalFilters) {
+      emptyMessage = 'No jobs match your local filters';
+    }
     
     return SliverFillRemaining(
       child: Center(
         child: Padding(
-          padding: EdgeInsets.all(isTablet ? 40 : 30),
+          padding: EdgeInsets.all(isTablet ? 30 : 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -767,7 +1703,7 @@ Widget _buildFilterChips(bool isTablet) {
                   return Transform.scale(
                     scale: 0.85 + (0.15 * value),
                     child: Container(
-                      padding: EdgeInsets.all(isTablet ? 32 : 28),
+                      padding: EdgeInsets.all(isTablet ? 24 : 20),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [_lightRed, _primaryRed.withOpacity(0.3)],
@@ -776,16 +1712,25 @@ Widget _buildFilterChips(bool isTablet) {
                         ),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        Icons.work_off_rounded,
-                        size: isTablet ? 80 : 70,
-                        color: _primaryRed,
-                      ),
+                      child: _appLifecycleState == AppLifecycleState.resumed
+                          ? RotationTransition(
+                              turns: _rotateController,
+                              child: Icon(
+                                Icons.work_off_rounded,
+                                size: isTablet ? 60 : 50,
+                                color: _primaryRed,
+                              ),
+                            )
+                          : Icon(
+                              Icons.work_off_rounded,
+                              size: isTablet ? 60 : 50,
+                              color: _primaryRed,
+                            ),
                     ),
                   );
                 },
               ),
-              SizedBox(height: isTablet ? 40 : 30),
+              SizedBox(height: isTablet ? 24 : 16),
               ShaderMask(
                 shaderCallback: (bounds) => LinearGradient(
                   colors: [_primaryRed, _purpleAccent],
@@ -793,24 +1738,86 @@ Widget _buildFilterChips(bool isTablet) {
                   end: Alignment.bottomRight,
                 ).createShader(bounds),
                 child: Text(
-                  'No Jobs Available',
+                  emptyMessage,
                   style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 30 : 26,
+                    fontSize: isTablet ? 24 : 20,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                 ),
               ),
-              SizedBox(height: isTablet ? 16 : 12),
+              SizedBox(height: isTablet ? 12 : 8),
               Text(
-                'Be the first to post a job opportunity',
+                locationProvider.isFilterActive || _hasLocalFilters
+                    ? 'Try adjusting your filters or post a job!'
+                    : 'Be the first to post a job',
                 style: GoogleFonts.inter(
-                  fontSize: isTablet ? 18 : 16,
+                  fontSize: isTablet ? 15 : 13,
                   color: _textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
               ),
+              if (locationProvider.isFilterActive || _hasLocalFilters) ...[
+                SizedBox(height: isTablet ? 20 : 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (locationProvider.isFilterActive)
+                      GestureDetector(
+                        onTap: () {
+                          locationProvider.clearLocationFilter();
+                          _loadData();
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 20 : 16,
+                            vertical: isTablet ? 10 : 8,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_primaryRed, _purpleAccent],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Clear Filter',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: isTablet ? 14 : 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (locationProvider.isFilterActive && _hasLocalFilters) SizedBox(width: 10),
+                    if (_hasLocalFilters)
+                      GestureDetector(
+                        onTap: _clearLocalFilters,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 20 : 16,
+                            vertical: isTablet ? 10 : 8,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_tealAccent, _infoBlue],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Clear Local',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: isTablet ? 14 : 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -818,7 +1825,7 @@ Widget _buildFilterChips(bool isTablet) {
     );
   }
 
-  Widget _buildPremiumJobCard(JobPosting job, UserModel? user, int index) {
+  Widget _buildPremiumJobCard(JobPosting job, int index) {
     final isDeadlineNear = job.applicationDeadline.difference(DateTime.now()).inDays <= 7;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
@@ -828,35 +1835,36 @@ Widget _buildFilterChips(bool isTablet) {
       duration: Duration(milliseconds: 500 + (index * 100)),
       curve: Curves.elasticOut,
       builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
         return Transform.scale(
-          scale: 0.92 + (0.08 * value),
+          scale: 0.92 + (0.08 * clampedValue),
           child: Opacity(
-            opacity: value,
+            opacity: clampedValue,
             child: Container(
               margin: EdgeInsets.symmetric(
-                horizontal: isTablet ? 20 : 14,
-                vertical: 8,
+                horizontal: isTablet ? 16 : 12,
+                vertical: 6,
               ),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(40),
+                borderRadius: BorderRadius.circular(30),
                 boxShadow: [
                   BoxShadow(
-                    color: _primaryRed.withOpacity(0.25),
-                    blurRadius: 30,
-                    offset: Offset(0, 16),
-                    spreadRadius: -4,
+                    color: _primaryRed.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                    spreadRadius: -2,
                   ),
                   BoxShadow(
-                    color: _goldAccent.withOpacity(0.15),
-                    blurRadius: 40,
-                    offset: Offset(0, -8),
+                    color: _goldAccent.withOpacity(0.1),
+                    blurRadius: 25,
+                    offset: Offset(0, -4),
                   ),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(40),
+                borderRadius: BorderRadius.circular(30),
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                  filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -872,12 +1880,19 @@ Widget _buildFilterChips(bool isTablet) {
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () => _showJobDetails(job, user),
-                        borderRadius: BorderRadius.circular(40),
+                        onTap: () {
+                          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                          if (authProvider.isGuestMode) {
+                            _showLoginRequiredDialog(context, 'View Job Details');
+                            return;
+                          }
+                          _showJobDetails(job);
+                        },
+                        borderRadius: BorderRadius.circular(30),
                         splashColor: _goldAccent.withOpacity(0.15),
                         highlightColor: Colors.transparent,
                         child: Padding(
-                          padding: EdgeInsets.all(isTablet ? 24 : 20),
+                          padding: EdgeInsets.all(isTablet ? 20 : 16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -890,11 +1905,12 @@ Widget _buildFilterChips(bool isTablet) {
                                     duration: Duration(milliseconds: 700 + (index * 80)),
                                     curve: Curves.elasticOut,
                                     builder: (context, value, child) {
+                                      final nestedClampedValue = value.clamp(0.0, 1.0);
                                       return Transform.scale(
-                                        scale: 0.85 + (0.15 * value),
+                                        scale: 0.85 + (0.15 * nestedClampedValue),
                                         child: Container(
-                                          width: isTablet ? 60 : 50,
-                                          height: isTablet ? 60 : 50,
+                                          width: isTablet ? 50 : 40,
+                                          height: isTablet ? 50 : 40,
                                           decoration: BoxDecoration(
                                             shape: BoxShape.circle,
                                             gradient: LinearGradient(
@@ -904,25 +1920,20 @@ Widget _buildFilterChips(bool isTablet) {
                                             ),
                                             border: Border.all(
                                               color: Colors.white,
-                                              width: 2.5,
+                                              width: 2,
                                             ),
                                             boxShadow: [
                                               BoxShadow(
                                                 color: _goldAccent.withOpacity(0.4),
-                                                blurRadius: 15,
-                                                spreadRadius: 2,
+                                                blurRadius: 12,
+                                                spreadRadius: 1,
                                               ),
                                             ],
                                           ),
                                           child: Padding(
                                             padding: EdgeInsets.all(2),
                                             child: ClipOval(
-                                              child: AnimatedSwitcher(
-                                                duration: Duration(milliseconds: 300),
-                                                child: user != null
-                                                    ? _buildUserProfileImage(user)
-                                                    : _buildLoadingProfileImage(),
-                                              ),
+                                              child: _buildJobPosterImage(job),
                                             ),
                                           ),
                                         ),
@@ -930,65 +1941,34 @@ Widget _buildFilterChips(bool isTablet) {
                                     },
                                   ),
                                   
-                                  SizedBox(width: 14),
+                                  SizedBox(width: 12),
                                   
                                   // User Info
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        AnimatedSwitcher(
-                                          duration: Duration(milliseconds: 300),
-                                          child: user != null
-                                              ? ShaderMask(
-                                                  key: ValueKey(user.fullName),
-                                                  shaderCallback: (bounds) => LinearGradient(
-                                                    colors: [_primaryRed, _purpleAccent],
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                  ).createShader(bounds),
-                                                  child: Text(
-                                                    user.fullName,
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: isTablet ? 18 : 16,
-                                                      fontWeight: FontWeight.w800,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                )
-                                              : Container(
-                                                  width: 120,
-                                                  height: 20,
-                                                  decoration: BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                      colors: [
-                                                        Colors.grey[300]!,
-                                                        Colors.grey[200]!,
-                                                        Colors.grey[300]!,
-                                                      ],
-                                                      begin: Alignment.centerLeft,
-                                                      end: Alignment.centerRight,
-                                                    ),
-                                                    borderRadius: BorderRadius.circular(10),
-                                                  ),
-                                                  child: Center(
-                                                    child: SizedBox(
-                                                      width: 80,
-                                                      height: 12,
-                                                      child: LinearProgressIndicator(
-                                                        backgroundColor: Colors.transparent,
-                                                        valueColor: AlwaysStoppedAnimation<Color>(_primaryRed.withOpacity(0.3)),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
+                                        ShaderMask(
+                                          shaderCallback: (bounds) => LinearGradient(
+                                            colors: [_primaryRed, _purpleAccent],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ).createShader(bounds),
+                                          child: Text(
+                                            job.postedByName ?? 'Unknown User',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: isTablet ? 16 : 14,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white,
+                                            ),
+                                          ),
                                         ),
                                         SizedBox(height: 2),
                                         Row(
                                           children: [
                                             Container(
-                                              width: 8,
-                                              height: 8,
+                                              width: 6,
+                                              height: 6,
                                               decoration: BoxDecoration(
                                                 gradient: LinearGradient(
                                                   colors: [_primaryRed, _purpleAccent],
@@ -998,12 +1978,12 @@ Widget _buildFilterChips(bool isTablet) {
                                                 shape: BoxShape.circle,
                                               ),
                                             ),
-                                            SizedBox(width: 4),
+                                            SizedBox(width: 3),
                                             Text(
-                                              user != null ? 'Job Provider' : 'Loading...',
+                                              'Job Provider',
                                               style: GoogleFonts.poppins(
-                                                fontSize: 11,
-                                                color: user != null ? _goldAccent : Colors.grey,
+                                                fontSize: 10,
+                                                color: _goldAccent,
                                                 fontWeight: FontWeight.w600,
                                               ),
                                             ),
@@ -1014,36 +1994,58 @@ Widget _buildFilterChips(bool isTablet) {
                                   ),
                                   
                                   // Verified Badge
-                                  Container(
-                                    padding: EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [_goldAccent, _orangeAccent, _goldAccent],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _goldAccent.withOpacity(0.4),
-                                          blurRadius: 12,
-                                          spreadRadius: 2,
+                                  if (job.isVerified)
+                                    Container(
+                                      padding: EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [_goldAccent, _orangeAccent, _goldAccent],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
                                         ),
-                                      ],
-                                    ),
-                                    child: RotationTransition(
-                                      turns: _rotateController,
-                                      child: Icon(
-                                        Icons.verified_rounded, 
-                                        color: Colors.white, 
-                                        size: isTablet ? 18 : 16,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: _goldAccent.withOpacity(0.4),
+                                            blurRadius: 8,
+                                            spreadRadius: 1,
+                                          ),
+                                        ],
                                       ),
+                                      child: _appLifecycleState == AppLifecycleState.resumed
+                                          ? RotationTransition(
+                                              turns: _rotateController,
+                                              child: Icon(
+                                                Icons.verified_rounded, 
+                                                color: Colors.white, 
+                                                size: isTablet ? 16 : 14,
+                                              ),
+                                            )
+                                          : Icon(
+                                              Icons.verified_rounded, 
+                                              color: Colors.white, 
+                                              size: isTablet ? 16 : 14,
+                                            ),
                                     ),
-                                  ),
                                 ],
                               ),
                               
-                              SizedBox(height: 20),
+                              SizedBox(height: 16),
+                              
+                              // Distance Badge - Add if location available
+                              if (job.latitude != null && job.longitude != null)
+                                Consumer<LocationFilterProvider>(
+                                  builder: (context, locationProvider, _) {
+                                    return Padding(
+                                      padding: EdgeInsets.only(bottom: 12),
+                                      child: DistanceBadge(
+                                        latitude: job.latitude!,
+                                        longitude: job.longitude!,
+                                        isTablet: isTablet,
+                                      ),
+                                    );
+                                  },
+                                ),
                               
                               // Job Title and Company
                               Column(
@@ -1061,7 +2063,7 @@ Widget _buildFilterChips(bool isTablet) {
                                           child: Text(
                                             job.jobTitle,
                                             style: GoogleFonts.poppins(
-                                              fontSize: isTablet ? 24 : 22,
+                                              fontSize: isTablet ? 20 : 18,
                                               fontWeight: FontWeight.w900,
                                               color: Colors.white,
                                               letterSpacing: -0.5,
@@ -1073,23 +2075,29 @@ Widget _buildFilterChips(bool isTablet) {
                                       ),
                                       if (job.isUrgent)
                                         Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 4,
+                                          ),
                                           decoration: BoxDecoration(
                                             gradient: LinearGradient(
                                               colors: [_primaryRed, _darkRed],
                                             ),
-                                            borderRadius: BorderRadius.circular(20),
+                                            borderRadius: BorderRadius.circular(16),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.priority_high_rounded, color: Colors.white, size: 14),
-                                              SizedBox(width: 4),
+                                              Icon(Icons.priority_high_rounded, 
+                                                color: Colors.white, 
+                                                size: 12,
+                                              ),
+                                              SizedBox(width: 3),
                                               Text(
                                                 'Urgent',
                                                 style: GoogleFonts.poppins(
                                                   color: Colors.white,
-                                                  fontSize: 11,
+                                                  fontSize: 10,
                                                   fontWeight: FontWeight.w700,
                                                 ),
                                               ),
@@ -1098,11 +2106,11 @@ Widget _buildFilterChips(bool isTablet) {
                                         ),
                                     ],
                                   ),
-                                  SizedBox(height: 8),
+                                  SizedBox(height: 6),
                                   Text(
                                     job.companyName,
                                     style: GoogleFonts.poppins(
-                                      fontSize: isTablet ? 16 : 14,
+                                      fontSize: isTablet ? 14 : 12,
                                       fontWeight: FontWeight.w600,
                                       color: _primaryRed,
                                     ),
@@ -1110,48 +2118,48 @@ Widget _buildFilterChips(bool isTablet) {
                                 ],
                               ),
                               
-                              SizedBox(height: 16),
+                              SizedBox(height: 14),
                               
                               // Tags
                               Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
+                                spacing: 6,
+                                runSpacing: 6,
                                 children: [
-                                  _buildPremiumTag(job.jobType.displayName, Icons.schedule_rounded),
-                                  _buildPremiumTag(job.experienceLevel.displayName, Icons.timeline_rounded),
-                                  _buildPremiumTag('${job.city}, ${job.state}', Icons.location_on_rounded),
+                                  _buildSmallPremiumTag(job.jobType.displayName, Icons.schedule_rounded, isTablet),
+                                  _buildSmallPremiumTag(job.experienceLevel.displayName, Icons.timeline_rounded, isTablet),
+                                  _buildSmallPremiumTag('${job.city}, ${job.state}', Icons.location_on_rounded, isTablet),
                                 ],
                               ),
                               
-                              SizedBox(height: 16),
+                              SizedBox(height: 14),
                               
                               // Description preview
                               Text(
-                                job.description.length > 100
-                                    ? '${job.description.substring(0, 100)}...'
+                                job.description.length > 90
+                                    ? '${job.description.substring(0, 90)}...'
                                     : job.description,
                                 style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 14 : 13,
+                                  fontSize: isTablet ? 13 : 12,
                                   color: _textSecondary,
-                                  height: 1.5,
+                                  height: 1.4,
                                 ),
                               ),
                               
-                              SizedBox(height: 16),
+                              SizedBox(height: 14),
                               
                               // Bottom row with deadline
                               Row(
                                 children: [
                                   Icon(
                                     Icons.calendar_today_rounded,
-                                    size: 14,
+                                    size: 12,
                                     color: isDeadlineNear ? _warningOrange : _textSecondary,
                                   ),
-                                  SizedBox(width: 4),
+                                  SizedBox(width: 3),
                                   Text(
                                     'Apply by: ${DateFormat('MMM d, yyyy').format(job.applicationDeadline)}',
                                     style: GoogleFonts.inter(
-                                      fontSize: isTablet ? 12 : 11,
+                                      fontSize: isTablet ? 11 : 10,
                                       color: isDeadlineNear ? _warningOrange : _textSecondary,
                                       fontWeight: isDeadlineNear ? FontWeight.w600 : FontWeight.normal,
                                     ),
@@ -1159,7 +2167,7 @@ Widget _buildFilterChips(bool isTablet) {
                                 ],
                               ),
                               
-                              SizedBox(height: 20),
+                              SizedBox(height: 16),
                               
                               // View Details Button
                               TweenAnimationBuilder<double>(
@@ -1167,14 +2175,22 @@ Widget _buildFilterChips(bool isTablet) {
                                 duration: Duration(milliseconds: 800),
                                 curve: Curves.elasticOut,
                                 builder: (context, value, child) {
+                                  final buttonClampedValue = value.clamp(0.0, 1.0);
                                   return Transform.scale(
-                                    scale: 0.92 + (0.08 * value),
+                                    scale: 0.92 + (0.08 * buttonClampedValue),
                                     child: GestureDetector(
-                                      onTap: () => _showJobDetails(job, user),
+                                      onTap: () {
+                                        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                                        if (authProvider.isGuestMode) {
+                                          _showLoginRequiredDialog(context, 'View Job Details');
+                                          return;
+                                        }
+                                        _showJobDetails(job);
+                                      },
                                       child: Container(
                                         width: double.infinity,
                                         padding: EdgeInsets.symmetric(
-                                          vertical: isTablet ? 18 : 16,
+                                          vertical: isTablet ? 14 : 12,
                                         ),
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(
@@ -1182,12 +2198,12 @@ Widget _buildFilterChips(bool isTablet) {
                                             begin: Alignment.centerLeft,
                                             end: Alignment.centerRight,
                                           ),
-                                          borderRadius: BorderRadius.circular(30),
+                                          borderRadius: BorderRadius.circular(24),
                                           boxShadow: [
                                             BoxShadow(
                                               color: _primaryRed.withOpacity(0.3),
-                                              blurRadius: 18,
-                                              offset: Offset(0, 8),
+                                              blurRadius: 14,
+                                              offset: Offset(0, 5),
                                             ),
                                           ],
                                         ),
@@ -1198,19 +2214,25 @@ Widget _buildFilterChips(bool isTablet) {
                                               'View Details',
                                               style: GoogleFonts.poppins(
                                                 color: Colors.white,
-                                                fontSize: isTablet ? 20 : 18,
+                                                fontSize: isTablet ? 16 : 14,
                                                 fontWeight: FontWeight.w700,
                                               ),
                                             ),
-                                            SizedBox(width: 12),
-                                            RotationTransition(
-                                              turns: _rotateController,
-                                              child: Icon(
-                                                Icons.arrow_forward_rounded,
-                                                color: Colors.white,
-                                                size: isTablet ? 22 : 20,
-                                              ),
-                                            ),
+                                            SizedBox(width: 10),
+                                            _appLifecycleState == AppLifecycleState.resumed
+                                                ? RotationTransition(
+                                                    turns: _rotateController,
+                                                    child: Icon(
+                                                      Icons.arrow_forward_rounded,
+                                                      color: Colors.white,
+                                                      size: isTablet ? 18 : 16,
+                                                    ),
+                                                  )
+                                                : Icon(
+                                                    Icons.arrow_forward_rounded,
+                                                    color: Colors.white,
+                                                    size: isTablet ? 18 : 16,
+                                                  ),
                                           ],
                                         ),
                                       ),
@@ -1233,9 +2255,12 @@ Widget _buildFilterChips(bool isTablet) {
     );
   }
 
-  Widget _buildPremiumTag(String text, IconData icon) {
+  Widget _buildSmallPremiumTag(String text, IconData icon, bool isTablet) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 10 : 8,
+        vertical: isTablet ? 6 : 4,
+      ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -1247,26 +2272,30 @@ Widget _buildFilterChips(bool isTablet) {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _goldAccent.withOpacity(0.25)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            offset: Offset(0, 2),
+            blurRadius: 4,
+            offset: Offset(0, 1),
           ),
         ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: _goldAccent),
-          SizedBox(width: 6),
+          Icon(
+            icon, 
+            size: isTablet ? 11 : 10,
+            color: _goldAccent
+          ),
+          SizedBox(width: isTablet ? 5 : 4),
           Text(
             text,
             style: GoogleFonts.poppins(
               color: _textPrimary,
-              fontSize: 12,
+              fontSize: isTablet ? 11 : 10,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1275,14 +2304,10 @@ Widget _buildFilterChips(bool isTablet) {
     );
   }
 
-  Widget _buildUserProfileImage(UserModel? user) {
-    if (user == null) {
-      return _buildLoadingProfileImage();
-    }
-    
-    if (user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty) {
+  Widget _buildJobPosterImage(JobPosting job) {
+    if (job.postedByProfileImageBase64 != null && job.postedByProfileImageBase64!.isNotEmpty) {
       try {
-        String base64String = user.profileImageUrl!;
+        String base64String = job.postedByProfileImageBase64!;
         
         if (base64String.contains('base64,')) {
           base64String = base64String.split('base64,').last;
@@ -1309,26 +2334,6 @@ Widget _buildFilterChips(bool isTablet) {
     return _buildDefaultProfileImage();
   }
 
-  Widget _buildLoadingProfileImage() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.grey[300]!, Colors.grey[100]!],
-        ),
-      ),
-      child: Center(
-        child: SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(_primaryRed),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildDefaultProfileImage() {
     return Container(
       decoration: BoxDecoration(
@@ -1348,14 +2353,13 @@ Widget _buildFilterChips(bool isTablet) {
     );
   }
 
-  void _showJobDetails(JobPosting job, UserModel? user) {
+  void _showJobDetails(JobPosting job) {
     HapticFeedback.mediumImpact();
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => JobDetailsScreen(
           job: job,
-          user: user,
           scrollController: ScrollController(),
           onLaunchPhone: _launchPhone,
           onLaunchEmail: _launchEmail,
@@ -1509,7 +2513,7 @@ Widget _buildFilterChips(bool isTablet) {
   }
 }
 
-// ====================== PREMIUM ADD JOB DIALOG ======================
+
 class PremiumAddJobDialog extends StatefulWidget {
   final VoidCallback? onJobPosted;
   final ScrollController scrollController;
@@ -1532,7 +2536,9 @@ class PremiumAddJobDialog extends StatefulWidget {
   _PremiumAddJobDialogState createState() => _PremiumAddJobDialogState();
 }
 
-class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerProviderStateMixin {
+class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   final _formKey = GlobalKey<FormState>();
   
   // Controllers
@@ -1547,6 +2553,11 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
   final TextEditingController _skillsController = TextEditingController();
   final TextEditingController _benefitsController = TextEditingController();
 
+  // ADDED: Location picking variables
+  double? _jobLatitude;
+  double? _jobLongitude;
+  String? _jobFullAddress;
+  
   String? _selectedState;
   JobType? _selectedJobType = JobType.fullTime;
   ExperienceLevel? _selectedExperienceLevel = ExperienceLevel.entry;
@@ -1560,12 +2571,19 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
   late TabController _tabController;
   late AnimationController _animationController;
   
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  
   bool _isBasicInfoValid = false;
   bool _isDetailsValid = false;
 
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _tabController = TabController(length: 2, vsync: this);
     _animationController = AnimationController(
       vsync: this,
@@ -1583,6 +2601,13 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
     _contactEmailController.addListener(_validateDetails);
     _contactPhoneController.addListener(_validateDetails);
   }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+  }
 
   void _validateBasicInfo() {
     setState(() {
@@ -1591,7 +2616,9 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
           _companyNameController.text.isNotEmpty &&
           _locationController.text.isNotEmpty &&
           _cityController.text.isNotEmpty &&
-          _selectedState != null;
+          _selectedState != null &&
+          _jobLatitude != null && // ADDED: Check location coordinates
+          _jobLongitude != null; // ADDED: Check location coordinates
     });
   }
 
@@ -1610,6 +2637,11 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
 
   @override
   void dispose() {
+    print('🗑️ PremiumAddJobDialog disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
     _jobTitleController.removeListener(_validateBasicInfo);
     _companyNameController.removeListener(_validateBasicInfo);
     _locationController.removeListener(_validateBasicInfo);
@@ -1632,12 +2664,14 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
     _benefitsController.dispose();
     _tabController.dispose();
     _animationController.dispose();
+    
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
     return FadeTransition(
       opacity: _animationController,
@@ -1669,7 +2703,12 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.work_rounded, color: widget.goldAccent, size: screenWidth > 600 ? 28 : 22),
+                  child: shouldAnimate
+                      ? RotationTransition(
+                          turns: _animationController,
+                          child: Icon(Icons.work_rounded, color: widget.goldAccent, size: screenWidth > 600 ? 28 : 22),
+                        )
+                      : Icon(Icons.work_rounded, color: widget.goldAccent, size: screenWidth > 600 ? 28 : 22),
                 ),
                 SizedBox(width: screenWidth > 600 ? 16 : 12),
                 Expanded(
@@ -1961,7 +3000,101 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
     );
   }
 
+  // ADDED: Location Picker Field
+  Widget _buildLocationPickerField(StateSetter setState, bool isTablet) {
+    return GestureDetector(
+      onTap: () async {
+        final result = await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => OSMLocationPicker(
+            initialLatitude: _jobLatitude,
+            initialLongitude: _jobLongitude,
+            initialAddress: _jobFullAddress,
+            initialState: _selectedState,
+            initialCity: _cityController.text,
+            onLocationSelected: (lat, lng, address, state, city) {
+              setState(() {
+                _jobLatitude = lat;
+                _jobLongitude = lng;
+                _jobFullAddress = address;
+                _selectedState = state;
+                _cityController.text = city ?? '';
+                _locationController.text = address;
+              });
+              _validateBasicInfo();
+            },
+          ),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.all(isTablet ? 16 : 12),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: _jobLatitude != null ? widget.primaryRed : Colors.grey.shade300,
+            width: _jobLatitude != null ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          color: _jobLatitude != null ? widget.lightRed.withOpacity(0.1) : null,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [widget.primaryRed, widget.purpleAccent],
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                _jobLatitude != null ? Icons.location_on : Icons.add_location,
+                color: Colors.white,
+                size: isTablet ? 20 : 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Location *',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 14 : 12,
+                      fontWeight: FontWeight.w600,
+                      color: widget.primaryRed,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _jobFullAddress ?? 'Tap to select location on map',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 14 : 12,
+                      color: _jobFullAddress != null ? Colors.black87 : Colors.grey[600],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: widget.primaryRed,
+              size: isTablet ? 16 : 14,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildPremiumBasicInfoTab() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    
     return SingleChildScrollView(
       controller: widget.scrollController,
       padding: EdgeInsets.all(16),
@@ -1982,36 +3115,12 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
             icon: Icons.business_rounded,
           ),
           SizedBox(height: 12),
-          _buildPremiumTextField(
-            controller: _locationController,
-            label: 'Street Name *',
-            icon: Icons.location_on_rounded,
-          ),
-          SizedBox(height: 12),
           
-          _buildPremiumDropdown(
-            value: _selectedState,
-            hint: 'Select State *',
-            items: _states.map((state) {
-              return DropdownMenuItem<String>(
-                value: state,
-                child: Text(state),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedState = value;
-                _validateBasicInfo();
-              });
+          // REPLACED: Street name field with location picker
+          StatefulBuilder(
+            builder: (context, setState) {
+              return _buildLocationPickerField(setState, isTablet);
             },
-            icon: Icons.map_rounded,
-          ),
-          SizedBox(height: 12),
-          
-          _buildPremiumTextField(
-            controller: _cityController,
-            label: 'City *',
-            icon: Icons.location_city_rounded,
           ),
           SizedBox(height: 12),
           
@@ -2265,8 +3374,7 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
           style: GoogleFonts.poppins(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-                     color: Color(0xFF1E2A3A), // Hardcode the dark text color
-
+            color: Color(0xFF1E2A3A), // Hardcode the dark text color
           ),
         ),
       ],
@@ -2313,7 +3421,7 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
     required T? value,
     required String hint,
     required List<DropdownMenuItem<T>> items,
-    required Function(T?) onChanged,
+    required void Function(T?) onChanged,
     required IconData icon,
   }) {
     return DropdownButtonFormField<T>(
@@ -2484,6 +3592,12 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
       return;
     }
 
+    // ADDED: Check location coordinates
+    if (_jobLatitude == null || _jobLongitude == null) {
+      _showErrorSnackBar('Please select a location on the map');
+      return;
+    }
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUser = authProvider.user;
     
@@ -2493,6 +3607,13 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
     }
 
     final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
+
+    // Get user's profile image (if available)
+    String? userProfileImage;
+    if (currentUser.profileImageUrl != null && currentUser.profileImageUrl!.isNotEmpty) {
+      // Store the profile image as is (whether URL or base64)
+      userProfileImage = currentUser.profileImageUrl;
+    }
 
     final newJob = JobPosting(
       jobTitle: _jobTitleController.text,
@@ -2516,6 +3637,17 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
       isUrgent: _isUrgent,
       responsibilities: '',
       postedBy: currentUser.id,
+      
+      // Store user info directly in the job document
+      postedByUserId: currentUser.id,
+      postedByName: currentUser.fullName,
+      postedByEmail: currentUser.email,
+      postedByProfileImageBase64: userProfileImage,
+      
+      // ADDED: Location coordinates
+      latitude: _jobLatitude,
+      longitude: _jobLongitude,
+      
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -2554,6 +3686,8 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog> with TickerPr
   }
 
   void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(

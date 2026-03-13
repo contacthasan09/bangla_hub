@@ -13,8 +13,11 @@ class WelcomeScreen extends StatefulWidget {
   _WelcomeScreenState createState() => _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen> {
+class _WelcomeScreenState extends State<WelcomeScreen> with WidgetsBindingObserver {
   late Timer _autoNavigateTimer;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
   // Color scheme
   final Color _primaryRed = Color(0xFFF42A41);
@@ -25,21 +28,61 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     // Auto-navigate after 4 seconds
+    _startTimer();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App resumed - restart timer
+      _startTimer();
+    } else {
+      // App paused - cancel timer to prevent navigation while app is in background
+      _autoNavigateTimer.cancel();
+    }
+  }
+  
+  void _startTimer() {
     _autoNavigateTimer = Timer(Duration(seconds: 4), () {
-      widget.onComplete();
+      if (mounted && widget.onComplete != null) {
+        widget.onComplete();
+      }
     });
   }
 
   @override
   void dispose() {
-    _autoNavigateTimer.cancel();
+    print('🗑️ WelcomeScreen disposing...');
+    
+    // ✅ Cancel timer
+    if (_autoNavigateTimer.isActive) {
+      _autoNavigateTimer.cancel();
+    }
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
     super.dispose();
   }
 
   void _skipToHome() {
-    _autoNavigateTimer.cancel();
-    widget.onComplete();
+    // Cancel timer to prevent double navigation
+    if (_autoNavigateTimer.isActive) {
+      _autoNavigateTimer.cancel();
+    }
+    
+    if (mounted && widget.onComplete != null) {
+      widget.onComplete();
+    }
   }
 
   @override
@@ -75,7 +118,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     'assets/animations/welcome.json',
                     width: min(250.0, screenSize.width * 0.7),
                     height: min(250.0, screenSize.width * 0.7),
-                    animate: true,
+                    animate: _appLifecycleState == AppLifecycleState.resumed,
                     repeat: true,
                     fit: BoxFit.contain,
                   ),

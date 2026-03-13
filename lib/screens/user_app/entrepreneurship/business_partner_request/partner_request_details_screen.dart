@@ -1,8 +1,8 @@
 // screens/user_app/entrepreneurship/partner_requests/partner_request_details_screen.dart
+import 'dart:async';
 import 'dart:convert';
 import 'package:bangla_hub/models/business_model.dart' hide BusinessPartnerRequest;
 import 'package:bangla_hub/models/entrepreneurship_models.dart';
-import 'package:bangla_hub/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,7 +11,6 @@ import 'package:flutter/services.dart';
 
 class PartnerRequestDetailsScreen extends StatefulWidget {
   final BusinessPartnerRequest request;
-  final UserModel? user;
   final ScrollController scrollController;
   final Function(String) onLaunchPhone;
   final Function(String) onLaunchEmail;
@@ -23,7 +22,6 @@ class PartnerRequestDetailsScreen extends StatefulWidget {
   const PartnerRequestDetailsScreen({
     Key? key,
     required this.request,
-    this.user,
     required this.scrollController,
     required this.onLaunchPhone,
     required this.onLaunchEmail,
@@ -37,8 +35,16 @@ class PartnerRequestDetailsScreen extends StatefulWidget {
   _PartnerRequestDetailsScreenState createState() => _PartnerRequestDetailsScreenState();
 }
 
-class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScreen> with TickerProviderStateMixin {
+class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScreen> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   late AnimationController _animationController;
+  
+  // Particle animation controllers
+  late List<AnimationController> _particleControllers;
+  
+  // Track app lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
   // Premium Color Palette - Soft Green Theme
   final Color _darkGreen = Color(0xFF1B5E20);
@@ -73,28 +79,71 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Add WidgetsBindingObserver
+    WidgetsBinding.instance.addObserver(this);
+    
     _animationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 500),
     );
-    _animationController.forward();
+    
+    // Initialize particle controllers (20 particles)
+    _particleControllers = List.generate(20, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 3 + (index % 3)),
+      )..repeat(reverse: true);
+    });
+    
+    // Start animations if app is visible
+    if (_appLifecycleState == AppLifecycleState.resumed) {
+      _animationController.forward();
+    }
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _appLifecycleState = state;
+    });
+    
+    if (state == AppLifecycleState.resumed) {
+      // App is visible - start animations
+      _animationController.forward();
+    } else {
+      // App is not visible - stop animations to save resources
+      _animationController.stop();
+    }
   }
 
   @override
   void dispose() {
+    print('🗑️ PartnerRequestDetailsScreen disposing...');
+    
+    // ✅ Remove observer
+    WidgetsBinding.instance.removeObserver(this);
+    
     _animationController.dispose();
+    
+    // ✅ Dispose particle controllers
+    for (var controller in _particleControllers) {
+      controller.dispose();
+    }
+    
     super.dispose();
   }
 
   Widget _buildAnimatedParticle(int index, double width, double height) {
+    final controller = _particleControllers[index % _particleControllers.length];
+    
     return Positioned(
       left: (index * 37) % width,
       top: (index * 53) % height,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(seconds: 3 + (index % 3)),
-        curve: Curves.easeInOut,
-        builder: (context, value, child) {
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          final value = controller.value;
           return Opacity(
             opacity: (0.1 + (value * 0.2)) * (0.5 + (index % 3) * 0.1),
             child: Transform.rotate(
@@ -130,12 +179,43 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
     }
   }
 
+  // NEW: Build requester image from request.postedByProfileImageBase64
+  Widget _buildRequesterPosterImage({bool isLarge = false}) {
+    if (widget.request.postedByProfileImageBase64 != null && widget.request.postedByProfileImageBase64!.isNotEmpty) {
+      try {
+        String base64String = widget.request.postedByProfileImageBase64!;
+        
+        if (base64String.contains('base64,')) {
+          base64String = base64String.split('base64,').last;
+        }
+        
+        base64String = base64String.replaceAll(RegExp(r'\s'), '');
+        
+        while (base64String.length % 4 != 0) {
+          base64String += '=';
+        }
+        
+        final bytes = base64Decode(base64String);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildDefaultProfileImage(isLarge: isLarge);
+          },
+        );
+      } catch (e) {
+        return _buildDefaultProfileImage(isLarge: isLarge);
+      }
+    }
+    return _buildDefaultProfileImage(isLarge: isLarge);
+  }
+
   @override
   Widget build(BuildContext context) {
     final request = widget.request;
-    final user = widget.user;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
@@ -145,6 +225,27 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_rounded, 
+              color: Colors.white, 
+              size: isTablet ? 28 : 24,
+            ),
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+            splashRadius: isTablet ? 28 : 24,
+            constraints: BoxConstraints(
+              minWidth: isTablet ? 48 : 40,
+              minHeight: isTablet ? 48 : 40,
+            ),
+          ),
+          leadingWidth: isTablet ? 60 : 50,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+          toolbarHeight: isTablet ? 70 : 60,
+        ),
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -165,7 +266,7 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
                   // Header Section
                   SliverToBoxAdapter(
                     child: Container(
-                      height: isTablet ? 280 : 220,
+                      width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [widget.primaryGreen, _darkGreen, widget.softGreen],
@@ -175,81 +276,96 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
                       ),
                       child: SafeArea(
                         bottom: false,
+                        top: true,
                         child: Padding(
-                          padding: EdgeInsets.all(isTablet ? 24 : 20),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Premium Pattern Line
-                              Container(
-                                height: 4,
-                                width: 60,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [widget.secondaryGold, _softGold],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Partner Type
-                              Text(
-                                request.partnerType.displayName,
-                                style: GoogleFonts.poppins(
-                                  fontSize: isTablet ? 32 : 28,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: isTablet ? 8 : 6),
-                              
-                              // Business Type
-                              Text(
-                                request.businessType.displayName,
-                                style: GoogleFonts.poppins(
-                                  fontSize: isTablet ? 20 : 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
-                              ),
-                              
-                              SizedBox(height: isTablet ? 16 : 12),
-                              
-                              // Urgent Badge
-                              if (request.isUrgent)
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isTablet ? 16 : 14,
-                                    vertical: isTablet ? 8 : 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(color: Colors.white.withOpacity(0.3)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.priority_high_rounded, color: widget.secondaryGold, size: isTablet ? 18 : 16),
-                                      SizedBox(width: isTablet ? 8 : 6),
-                                      Text(
-                                        'URGENT REQUEST',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 14 : 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 40 : 24,
+                            vertical: isTablet ? 16 : 12,
+                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Premium Pattern Line
+                                  Container(
+                                    height: 4,
+                                    width: 60,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [widget.secondaryGold, _softGold, widget.secondaryGold],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
                                       ),
-                                    ],
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
                                   ),
-                                ),
-                            ],
+                                  SizedBox(height: isTablet ? 12 : 8),
+                                  
+                                  // Partner Type
+                                  Text(
+                                    request.partnerType.displayName,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: isTablet ? 32 : 24,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: isTablet ? 4 : 2),
+                                  
+                                  // Business Type
+                                  Text(
+                                    request.businessType.displayName,
+                                    style: GoogleFonts.inter(
+                                      fontSize: isTablet ? 18 : 15,
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  
+                                  // Urgent Badge
+                                  if (request.isUrgent) ...[
+                                    SizedBox(height: isTablet ? 10 : 8),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isTablet ? 14 : 12,
+                                        vertical: isTablet ? 6 : 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(30),
+                                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.priority_high_rounded, 
+                                            color: widget.secondaryGold, 
+                                            size: isTablet ? 16 : 14
+                                          ),
+                                          SizedBox(width: isTablet ? 6 : 4),
+                                          Text(
+                                            'URGENT REQUEST',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: isTablet ? 13 : 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                         ),
                       ),
@@ -260,606 +376,12 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
                   SliverToBoxAdapter(
                     child: Container(
                       padding: EdgeInsets.all(isTablet ? 24 : 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Back Button
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _shadowColor,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: Icon(Icons.arrow_back_rounded, color: _textPrimary, size: isTablet ? 22 : 20),
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 20 : 16),
-                          
-                          // User Profile and Request Info
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // User Profile Image
-                              Container(
-                                width: isTablet ? 80 : 70,
-                                height: isTablet ? 80 : 70,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: widget.secondaryGold, width: 3),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: widget.secondaryGold.withOpacity(0.3),
-                                      blurRadius: 12,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                                child: ClipOval(
-                                  child: _buildUserProfileImage(user, isLarge: true),
-                                ),
-                              ),
-                              
-                              SizedBox(width: isTablet ? 20 : 16),
-                              
-                              // Request Info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // User Name
-                                    if (user != null)
-                                      Container(
-                                        margin: EdgeInsets.only(bottom: 8),
-                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: _lightGreen,
-                                          borderRadius: BorderRadius.circular(16),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.person_rounded, color: widget.primaryGreen, size: 14),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              user.fullName,
-                                              style: GoogleFonts.poppins(
-                                                color: widget.primaryGreen,
-                                                fontSize: isTablet ? 14 : 12,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    
-                                    // Posted Date
-                                    Text(
-                                      'Posted on ${DateFormat('MMM d, yyyy').format(request.createdAt)}',
-                                      style: GoogleFonts.inter(
-                                        fontSize: isTablet ? 13 : 12,
-                                        color: _textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 16 : 12),
-                          
-                          // Partner Type and Business Type Badges
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              // Partner Type Badge
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 14 : 12,
-                                  vertical: isTablet ? 8 : 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [widget.primaryGreen, _darkGreen],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(30),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: widget.primaryGreen.withOpacity(0.3),
-                                      blurRadius: 6,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.person_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 18 : 16,
-                                    ),
-                                    SizedBox(width: isTablet ? 8 : 6),
-                                    Text(
-                                      request.partnerType.displayName,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 14 : 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              
-                              // Business Type Badge
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 14 : 12,
-                                  vertical: isTablet ? 8 : 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [widget.softGreen, _darkGreen],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(30),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: widget.softGreen.withOpacity(0.3),
-                                      blurRadius: 6,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.business_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 18 : 16,
-                                    ),
-                                    SizedBox(width: isTablet ? 8 : 6),
-                                    Text(
-                                      request.businessType.displayName,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 14 : 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 20 : 16),
-                          
-                          // Verified and Views Row
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Verified Badge
-                              if (request.isVerified)
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isTablet ? 14 : 12,
-                                    vertical: isTablet ? 6 : 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [_successGreen, _darkGreen],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _successGreen.withOpacity(0.3),
-                                        blurRadius: 5,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.verified_rounded,
-                                        color: Colors.white,
-                                        size: isTablet ? 16 : 14,
-                                      ),
-                                      SizedBox(width: isTablet ? 4 : 3),
-                                      Text(
-                                        'VERIFIED',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 12 : 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              
-                              // Views Badge
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 14 : 12,
-                                  vertical: isTablet ? 6 : 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [widget.secondaryGold, _softGold],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: widget.secondaryGold.withOpacity(0.3),
-                                      blurRadius: 5,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.remove_red_eye_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 16 : 14,
-                                    ),
-                                    SizedBox(width: isTablet ? 4 : 3),
-                                    Text(
-                                      '${request.totalViews} Views',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 12 : 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Description Section
-                          _buildPremiumDetailSection(
-                            title: 'Description',
-                            icon: Icons.description_rounded,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                border: Border.all(color: _borderLight, width: 1),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                request.description,
-                                style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 15 : 14,
-                                  color: _textSecondary,
-                                  height: 1.6,
-                                ),
-                              ),
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Location and Industry Section
-                          _buildPremiumDetailSection(
-                            title: 'Location & Industry',
-                            icon: Icons.location_on_rounded,
-                            child: Column(
-                              children: [
-                                // Location Card
-                                _buildPremiumDetailCard(
-                                  icon: Icons.location_on_rounded,
-                                  title: 'Location',
-                                  value: '${request.location}, ${request.city}, ${request.state}',
-                                  gradientColors: [widget.primaryGreen, _darkGreen],
-                                  isTablet: isTablet,
-                                ),
-                                SizedBox(height: isTablet ? 14 : 12),
-                                
-                                // Industry Card
-                                if (request.industry != null && request.industry!.isNotEmpty && request.industry != 'Not specified')
-                                  _buildPremiumDetailCard(
-                                    icon: Icons.category_rounded,
-                                    title: 'Industry',
-                                    value: request.industry!,
-                                    gradientColors: [widget.softGreen, _darkGreen],
-                                    isTablet: isTablet,
-                                  ),
-                              ],
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          // Budget Section
-                          SizedBox(height: isTablet ? 32 : 24),
-                          _buildPremiumDetailSection(
-                            title: 'Budget & Duration',
-                            icon: Icons.attach_money_rounded,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _buildPremiumDetailCard(
-                                    icon: Icons.attach_money_rounded,
-                                    title: 'Budget Range',
-                                    value: '${_formatBudget(request.budgetMin)} - ${_formatBudget(request.budgetMax)}',
-                                    gradientColors: [widget.primaryGreen, _darkGreen],
-                                    isTablet: isTablet,
-                                  ),
-                                ),
-                                SizedBox(width: isTablet ? 14 : 12),
-                                Expanded(
-                                  child: _buildPremiumDetailCard(
-                                    icon: Icons.schedule_rounded,
-                                    title: 'Duration',
-                                    value: request.investmentDuration,
-                                    gradientColors: [widget.secondaryGold, _softGold],
-                                    isTablet: isTablet,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          // Skills Required Section
-                          if (request.skillsRequired.isNotEmpty) ...[
-                            SizedBox(height: isTablet ? 32 : 24),
-                            _buildPremiumDetailSection(
-                              title: 'Skills Required',
-                              icon: Icons.code_rounded,
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: request.skillsRequired.map((skill) {
-                                  return Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isTablet ? 16 : 14,
-                                      vertical: isTablet ? 10 : 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [widget.primaryGreen.withOpacity(0.1), _lightGreen],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(25),
-                                      border: Border.all(color: widget.primaryGreen.withOpacity(0.3)),
-                                    ),
-                                    child: Text(
-                                      skill,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 15 : 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: widget.primaryGreen,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              isTablet: isTablet,
-                            ),
-                          ],
-                          
-                          // Responsibilities Section
-                          if (request.responsibilities.isNotEmpty) ...[
-                            SizedBox(height: isTablet ? 32 : 24),
-                            _buildPremiumDetailSection(
-                              title: 'Responsibilities',
-                              icon: Icons.task_rounded,
-                              child: Column(
-                                children: request.responsibilities.map((responsibility) {
-                                  return Container(
-                                    margin: EdgeInsets.only(bottom: isTablet ? 12 : 10),
-                                    padding: EdgeInsets.all(isTablet ? 16 : 14),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [widget.softGreen.withOpacity(0.1), _lightGreen],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(isTablet ? 16 : 14),
-                                      border: Border.all(color: widget.softGreen.withOpacity(0.3)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          padding: EdgeInsets.all(isTablet ? 8 : 6),
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [widget.softGreen, _darkGreen],
-                                            ),
-                                            borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
-                                          ),
-                                          child: Icon(
-                                            Icons.check_circle_rounded,
-                                            color: Colors.white,
-                                            size: isTablet ? 20 : 18,
-                                          ),
-                                        ),
-                                        SizedBox(width: isTablet ? 16 : 12),
-                                        Expanded(
-                                          child: Text(
-                                            responsibility,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: isTablet ? 16 : 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: _textPrimary,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              isTablet: isTablet,
-                            ),
-                          ],
-                          
-                          // Contact Information Section
-                          SizedBox(height: isTablet ? 32 : 24),
-                          _buildPremiumDetailSection(
-                            title: 'Contact Information',
-                            icon: Icons.contact_phone_rounded,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                border: Border.all(color: _borderLight, width: 1),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  _buildPremiumContactItem(
-                                    icon: Icons.person_rounded,
-                                    title: 'Contact Person',
-                                    value: request.contactName,
-                                    isTablet: isTablet,
-                                  ),
-                                  SizedBox(height: isTablet ? 14 : 12),
-                                  _buildPremiumContactItem(
-                                    icon: Icons.email_rounded,
-                                    title: 'Email',
-                                    value: request.contactEmail,
-                                    isTablet: isTablet,
-                                    onTap: () => widget.onLaunchEmail(request.contactEmail),
-                                  ),
-                                  SizedBox(height: isTablet ? 14 : 12),
-                                  _buildPremiumContactItem(
-                                    icon: Icons.phone_rounded,
-                                    title: 'Phone',
-                                    value: request.contactPhone,
-                                    isTablet: isTablet,
-                                    onTap: () => widget.onLaunchPhone(request.contactPhone),
-                                  ),
-                                  if (request.preferredMeetingMethod != null && request.preferredMeetingMethod!.isNotEmpty) ...[
-                                    SizedBox(height: isTablet ? 14 : 12),
-                                    _buildPremiumContactItem(
-                                      icon: Icons.video_call_rounded,
-                                      title: 'Preferred Meeting',
-                                      value: request.preferredMeetingMethod!,
-                                      isTablet: isTablet,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            isTablet: isTablet,
-                          ),
-                          
-                          // Premium Footer
-                          SizedBox(height: isTablet ? 40 : 32),
-                          
-                          Container(
-                            padding: EdgeInsets.all(isTablet ? 24 : 20),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [_lightGreen50, _lightGreen],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
-                              border: Border.all(color: widget.primaryGreen.withOpacity(0.2), width: 1.5),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: isTablet ? 60 : 50,
-                                  height: isTablet ? 60 : 50,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [widget.primaryGreen, widget.softGreen],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: widget.primaryGreen.withOpacity(0.3),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.people_alt_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 28 : 24,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: isTablet ? 20 : 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Business Partner Request',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 18 : 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: widget.primaryGreen,
-                                        ),
-                                      ),
-                                      SizedBox(height: isTablet ? 4 : 2),
-                                      Text(
-                                        'Verified Opportunity',
-                                        style: GoogleFonts.inter(
-                                          fontSize: isTablet ? 14 : 12,
-                                          color: _textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 40 : 30),
-                        ],
-                      ),
+                      child: shouldAnimate
+                          ? FadeTransition(
+                              opacity: _animationController,
+                              child: _buildContent(isTablet),
+                            )
+                          : _buildContent(isTablet),
                     ),
                   ),
                 ],
@@ -911,34 +433,590 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
     );
   }
 
-  Widget _buildUserProfileImage(UserModel? user, {bool isLarge = false}) {
-    if (user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty) {
-      try {
-        String base64String = user.profileImageUrl!;
+  Widget _buildContent(bool isTablet) {
+    final request = widget.request;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: isTablet ? 20 : 16),
         
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
+        // User Profile and Request Info - Using request's stored user info
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // User Profile Image from request.postedByProfileImageBase64
+            Container(
+              width: isTablet ? 80 : 70,
+              height: isTablet ? 80 : 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: widget.secondaryGold, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.secondaryGold.withOpacity(0.3),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: _buildRequesterPosterImage(isLarge: true),
+              ),
+            ),
+            
+            SizedBox(width: isTablet ? 20 : 16),
+            
+            // Request Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Name from request.postedByName
+                  if (request.postedByName != null && request.postedByName!.isNotEmpty)
+                    Container(
+                      margin: EdgeInsets.only(bottom: 8),
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _lightGreen,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.person_rounded, color: widget.primaryGreen, size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            request.postedByName!,
+                            style: GoogleFonts.poppins(
+                              color: widget.primaryGreen,
+                              fontSize: isTablet ? 14 : 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  
+                  // Posted Date
+                  Text(
+                    'Posted on ${DateFormat('MMM d, yyyy').format(request.createdAt)}',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 13 : 12,
+                      color: _textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
+        SizedBox(height: isTablet ? 16 : 12),
         
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
+        // Partner Type and Business Type Badges
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            // Partner Type Badge
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 14 : 12,
+                vertical: isTablet ? 8 : 6,
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [widget.primaryGreen, _darkGreen],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.primaryGreen.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.person_rounded,
+                    color: Colors.white,
+                    size: isTablet ? 18 : 16,
+                  ),
+                  SizedBox(width: isTablet ? 8 : 6),
+                  Text(
+                    request.partnerType.displayName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 14 : 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Business Type Badge
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 14 : 12,
+                vertical: isTablet ? 8 : 6,
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [widget.softGreen, _darkGreen],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.softGreen.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.business_rounded,
+                    color: Colors.white,
+                    size: isTablet ? 18 : 16,
+                  ),
+                  SizedBox(width: isTablet ? 8 : 6),
+                  Text(
+                    request.businessType.displayName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 14 : 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage(isLarge: isLarge);
-          },
-        );
-      } catch (e) {
-        return _buildDefaultProfileImage(isLarge: isLarge);
-      }
-    }
-    return _buildDefaultProfileImage(isLarge: isLarge);
+        SizedBox(height: isTablet ? 20 : 16),
+        
+        // Verified and Views Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Verified Badge
+            if (request.isVerified)
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 14 : 12,
+                  vertical: isTablet ? 6 : 4,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_successGreen, _darkGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _successGreen.withOpacity(0.3),
+                      blurRadius: 5,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.verified_rounded,
+                      color: Colors.white,
+                      size: isTablet ? 16 : 14,
+                    ),
+                    SizedBox(width: isTablet ? 4 : 3),
+                    Text(
+                      'VERIFIED',
+                      style: GoogleFonts.poppins(
+                        fontSize: isTablet ? 12 : 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            
+            // Views Badge
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 14 : 12,
+                vertical: isTablet ? 6 : 4,
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [widget.secondaryGold, _softGold],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.secondaryGold.withOpacity(0.3),
+                    blurRadius: 5,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.remove_red_eye_rounded,
+                    color: Colors.white,
+                    size: isTablet ? 16 : 14,
+                  ),
+                  SizedBox(width: isTablet ? 4 : 3),
+                  Text(
+                    '${request.totalViews} Views',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 12 : 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        
+        SizedBox(height: isTablet ? 32 : 24),
+        
+        // Description Section
+        _buildPremiumDetailSection(
+          title: 'Description',
+          icon: Icons.description_rounded,
+          child: Container(
+            padding: EdgeInsets.all(isTablet ? 20 : 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+              border: Border.all(color: _borderLight, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: _shadowColor,
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Text(
+              request.description,
+              style: GoogleFonts.inter(
+                fontSize: isTablet ? 15 : 14,
+                color: _textSecondary,
+                height: 1.6,
+              ),
+            ),
+          ),
+          isTablet: isTablet,
+        ),
+        
+        SizedBox(height: isTablet ? 32 : 24),
+        
+        // Location and Industry Section
+        _buildPremiumDetailSection(
+          title: 'Location & Industry',
+          icon: Icons.location_on_rounded,
+          child: Column(
+            children: [
+              // Location Card
+              _buildPremiumDetailCard(
+                icon: Icons.location_on_rounded,
+                title: 'Location',
+                value: '${request.location}, ${request.city}, ${request.state}',
+                gradientColors: [widget.primaryGreen, _darkGreen],
+                isTablet: isTablet,
+              ),
+              SizedBox(height: isTablet ? 14 : 12),
+              
+              // Industry Card
+              if (request.industry != null && request.industry!.isNotEmpty && request.industry != 'Not specified')
+                _buildPremiumDetailCard(
+                  icon: Icons.category_rounded,
+                  title: 'Industry',
+                  value: request.industry!,
+                  gradientColors: [widget.softGreen, _darkGreen],
+                  isTablet: isTablet,
+                ),
+            ],
+          ),
+          isTablet: isTablet,
+        ),
+        
+        // Budget Section
+        SizedBox(height: isTablet ? 32 : 24),
+        _buildPremiumDetailSection(
+          title: 'Budget & Duration',
+          icon: Icons.attach_money_rounded,
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildPremiumDetailCard(
+                  icon: Icons.attach_money_rounded,
+                  title: 'Budget Range',
+                  value: '${_formatBudget(request.budgetMin)} - ${_formatBudget(request.budgetMax)}',
+                  gradientColors: [widget.primaryGreen, _darkGreen],
+                  isTablet: isTablet,
+                ),
+              ),
+              SizedBox(width: isTablet ? 14 : 12),
+              Expanded(
+                child: _buildPremiumDetailCard(
+                  icon: Icons.schedule_rounded,
+                  title: 'Duration',
+                  value: request.investmentDuration,
+                  gradientColors: [widget.secondaryGold, _softGold],
+                  isTablet: isTablet,
+                ),
+              ),
+            ],
+          ),
+          isTablet: isTablet,
+        ),
+        
+        // Skills Required Section
+        if (request.skillsRequired.isNotEmpty) ...[
+          SizedBox(height: isTablet ? 32 : 24),
+          _buildPremiumDetailSection(
+            title: 'Skills Required',
+            icon: Icons.code_rounded,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: request.skillsRequired.map((skill) {
+                return Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 16 : 14,
+                    vertical: isTablet ? 10 : 8,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [widget.primaryGreen.withOpacity(0.1), _lightGreen],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(color: widget.primaryGreen.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    skill,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 15 : 13,
+                      fontWeight: FontWeight.w600,
+                      color: widget.primaryGreen,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            isTablet: isTablet,
+          ),
+        ],
+        
+        // Responsibilities Section
+        if (request.responsibilities.isNotEmpty) ...[
+          SizedBox(height: isTablet ? 32 : 24),
+          _buildPremiumDetailSection(
+            title: 'Responsibilities',
+            icon: Icons.task_rounded,
+            child: Column(
+              children: request.responsibilities.map((responsibility) {
+                return Container(
+                  margin: EdgeInsets.only(bottom: isTablet ? 12 : 10),
+                  padding: EdgeInsets.all(isTablet ? 16 : 14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [widget.softGreen.withOpacity(0.1), _lightGreen],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(isTablet ? 16 : 14),
+                    border: Border.all(color: widget.softGreen.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(isTablet ? 8 : 6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [widget.softGreen, _darkGreen],
+                          ),
+                          borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
+                        ),
+                        child: Icon(
+                          Icons.check_circle_rounded,
+                          color: Colors.white,
+                          size: isTablet ? 20 : 18,
+                        ),
+                      ),
+                      SizedBox(width: isTablet ? 16 : 12),
+                      Expanded(
+                        child: Text(
+                          responsibility,
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w500,
+                            color: _textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            isTablet: isTablet,
+          ),
+        ],
+        
+        // Contact Information Section
+        SizedBox(height: isTablet ? 32 : 24),
+        _buildPremiumDetailSection(
+          title: 'Contact Information',
+          icon: Icons.contact_phone_rounded,
+          child: Container(
+            padding: EdgeInsets.all(isTablet ? 20 : 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+              border: Border.all(color: _borderLight, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: _shadowColor,
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                _buildPremiumContactItem(
+                  icon: Icons.person_rounded,
+                  title: 'Contact Person',
+                  value: request.contactName,
+                  isTablet: isTablet,
+                ),
+                SizedBox(height: isTablet ? 14 : 12),
+                _buildPremiumContactItem(
+                  icon: Icons.email_rounded,
+                  title: 'Email',
+                  value: request.contactEmail,
+                  isTablet: isTablet,
+                  onTap: () => widget.onLaunchEmail(request.contactEmail),
+                ),
+                SizedBox(height: isTablet ? 14 : 12),
+                _buildPremiumContactItem(
+                  icon: Icons.phone_rounded,
+                  title: 'Phone',
+                  value: request.contactPhone,
+                  isTablet: isTablet,
+                  onTap: () => widget.onLaunchPhone(request.contactPhone),
+                ),
+                if (request.preferredMeetingMethod != null && request.preferredMeetingMethod!.isNotEmpty) ...[
+                  SizedBox(height: isTablet ? 14 : 12),
+                  _buildPremiumContactItem(
+                    icon: Icons.video_call_rounded,
+                    title: 'Preferred Meeting',
+                    value: request.preferredMeetingMethod!,
+                    isTablet: isTablet,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          isTablet: isTablet,
+        ),
+        
+        // Premium Footer
+        SizedBox(height: isTablet ? 40 : 32),
+        
+        Container(
+          padding: EdgeInsets.all(isTablet ? 24 : 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_lightGreen50, _lightGreen],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
+            border: Border.all(color: widget.primaryGreen.withOpacity(0.2), width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: isTablet ? 60 : 50,
+                height: isTablet ? 60 : 50,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [widget.primaryGreen, widget.softGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.primaryGreen.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.people_alt_rounded,
+                    color: Colors.white,
+                    size: isTablet ? 28 : 24,
+                  ),
+                ),
+              ),
+              SizedBox(width: isTablet ? 20 : 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Business Partner Request',
+                      style: GoogleFonts.poppins(
+                        fontSize: isTablet ? 18 : 16,
+                        fontWeight: FontWeight.w700,
+                        color: widget.primaryGreen,
+                      ),
+                    ),
+                    SizedBox(height: isTablet ? 4 : 2),
+                    Text(
+                      'Verified Opportunity',
+                      style: GoogleFonts.inter(
+                        fontSize: isTablet ? 14 : 12,
+                        color: _textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        SizedBox(height: isTablet ? 40 : 30),
+      ],
+    );
   }
 
   Widget _buildDefaultProfileImage({bool isLarge = false}) {
