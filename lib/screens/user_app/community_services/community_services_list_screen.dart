@@ -7,9 +7,11 @@ import 'package:bangla_hub/providers/auth_provider.dart';
 import 'package:bangla_hub/providers/location_filter_provider.dart';
 import 'package:bangla_hub/providers/service_provider_provider.dart';
 import 'package:bangla_hub/screens/auth/login_screen.dart';
+import 'package:bangla_hub/screens/auth/signup_screen.dart';
 import 'package:bangla_hub/screens/user_app/community_services/service_provider_detail_screen.dart';
 import 'package:bangla_hub/widgets/common/distance_widget.dart';
 import 'package:bangla_hub/widgets/common/global_location_filter_bar.dart';
+import 'package:bangla_hub/widgets/common/global_location_guard.dart';
 import 'package:bangla_hub/widgets/common/osm_location_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
@@ -91,14 +93,12 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
   late final TextEditingController _suggestEmailController;
   late final TextEditingController _suggestAddressController;
   
-  // LOCAL FILTER STATE - separate from global filter
-  String? _localTempSelectedState;
+  // LOCAL FILTER STATE - NO STATE filter (removed)
   String? _localTempSelectedCity;
   ServiceCategory? _localTempSelectedCategory;
   String? _localTempSelectedServiceProvider;
   
-  // Applied LOCAL filters
-  String? _localAppliedState;
+  // Applied LOCAL filters - NO STATE filter
   String? _localAppliedCity;
   ServiceCategory? _localAppliedCategory;
   String? _localAppliedServiceProvider;
@@ -177,7 +177,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
       curve: Curves.easeInOut,
     );
 
-    // Add scroll listener to hide/show app bar items
+    // Add scroll listener
     _scrollController.addListener(_onScroll);
 
     // Load data after first frame
@@ -340,7 +340,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
     );
   }
 
-  // Get filtered providers - applying BOTH global and local filters
+  // Get filtered providers - applying BOTH global and local filters (NO STATE from local)
   List<ServiceProviderModel> _getFilteredProviders(
     List<ServiceProviderModel> providers,
     LocationFilterProvider locationProvider,
@@ -358,17 +358,9 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
       print('📍 After GLOBAL filter (${locationProvider.selectedState}): ${filteredProviders.length} providers');
     }
     
-    // Apply LOCAL filters if any (from this screen's filter view)
+    // Apply LOCAL filters if any (from this screen's filter view) - NO STATE FILTER
     if (_hasLocalFilters) {
-      // State filter
-      if (_localAppliedState != null) {
-        filteredProviders = filteredProviders.where((provider) => 
-          provider.state == _localAppliedState
-        ).toList();
-        print('📍 After LOCAL state filter (${_localAppliedState}): ${filteredProviders.length} providers');
-      }
-      
-      // City filter
+      // City filter (local only)
       if (_localAppliedCity != null && _localAppliedCity!.isNotEmpty) {
         filteredProviders = filteredProviders.where((provider) => 
           provider.city.toLowerCase().contains(_localAppliedCity!.toLowerCase())
@@ -376,7 +368,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
         print('🏙️ After LOCAL city filter (${_localAppliedCity}): ${filteredProviders.length} providers');
       }
       
-      // Category filter
+      // Category filter (local only)
       if (_localAppliedCategory != null) {
         filteredProviders = filteredProviders.where((provider) => 
           provider.serviceCategory == _localAppliedCategory
@@ -384,7 +376,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
         print('📁 After LOCAL category filter (${_localAppliedCategory!.displayName}): ${filteredProviders.length} providers');
       }
       
-      // Service Provider filter
+      // Service Provider filter (local only)
       if (_localAppliedServiceProvider != null && _localAppliedServiceProvider!.isNotEmpty) {
         filteredProviders = filteredProviders.where((provider) => 
           provider.serviceProvider == _localAppliedServiceProvider
@@ -396,9 +388,180 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
     return filteredProviders;
   }
 
+
+
+void _showLocationFilterDialog(BuildContext context) {
+  final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+  final screenHeight = MediaQuery.of(context).size.height;
+  
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true, // Add this to allow the bottom sheet to be scrollable
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+    ),
+    builder: (context) => SafeArea(
+      child: Container(
+        height: screenHeight * 0.8, // Limit height to 80% of screen
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Filter by State', 
+                  style: GoogleFonts.poppins(
+                    fontSize: 20, 
+                    fontWeight: FontWeight.w700, 
+                    color: _primaryGreen
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close), 
+                  onPressed: () => Navigator.pop(context)
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            
+            // All States option
+            GestureDetector(
+              onTap: () {
+                print('📍 Services: Clearing filter - All States selected');
+                
+                filterProvider.clearLocationFilter();
+                
+                final serviceProvider = Provider.of<ServiceProviderProvider>(context, listen: false);
+                serviceProvider.setSelectedState(null);
+                
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    setState(() {
+                      _imageCache.clear();
+                    });
+                  }
+                });
+                
+                Navigator.pop(context);
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Showing services from all states'),
+                    backgroundColor: Color(0xFF006A4E),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.public, color: _primaryGreen),
+                    const SizedBox(width: 15),
+                    Text(
+                      'All States', 
+                      style: GoogleFonts.poppins(
+                        fontSize: 16, 
+                        fontWeight: FontWeight.w600
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 10),
+            
+            // States List - Make it flexible
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: CommunityStates.states.length,
+                itemBuilder: (context, index) {
+                  final state = CommunityStates.states[index];
+                  final isSelected = filterProvider.selectedState == state;
+                  
+                  return GestureDetector(
+                    onTap: () {
+                      print('📍 Services: Setting filter to: $state');
+                      
+                      filterProvider.setLocationFilter(state, fromEvents: true);
+                      
+                      final serviceProvider = Provider.of<ServiceProviderProvider>(context, listen: false);
+                      serviceProvider.setSelectedState(state);
+                      
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          setState(() {
+                            _imageCache.clear();
+                          });
+                        }
+                      });
+                      
+                      Navigator.pop(context);
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Showing services in $state'),
+                          backgroundColor: _primaryGreen,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? _primaryGreen.withOpacity(0.1) : null,
+                        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on, color: isSelected ? _primaryGreen : Colors.grey),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: Text(
+                              state,
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected ? _primaryGreen : Colors.black87,
+                              ),
+                            ),
+                          ),
+                          if (isSelected) Icon(Icons.check_circle, color: _primaryGreen),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    return LocationGuard(
+      required: true, // Community Services require location selection
+      showBackButton: false,
+      child: _buildMainContent(context),
+    );
+  }
+
+  Widget _buildMainContent(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width >= 600;
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenHeight < 700;
@@ -431,7 +594,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
               preferredSize: Size.fromHeight(isTablet ? 160 : 130),
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: _appBarGradient, // Lighter gradient
+                  gradient: _appBarGradient,
                   borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(25),
                     bottomRight: Radius.circular(25),
@@ -597,7 +760,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
           child: InkWell(
             onTap: () {
               if (FirebaseAuth.instance.currentUser == null) {
-                _showLoginDialog(context, 'suggest a service provider');
+                _showLoginRequiredDialog(context, 'suggest a service provider');
               } else {
                 _showSuggestionDialog(context, isTablet);
               }
@@ -639,8 +802,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
   }
 
   Widget _buildFiltersView(ServiceProviderProvider provider, bool isTablet) {
-    // Initialize temp filters with current LOCAL applied values
-    _localTempSelectedState ??= _localAppliedState;
+    // Initialize temp filters with current LOCAL applied values (NO STATE)
     _localTempSelectedCity ??= _localAppliedCity;
     _localTempSelectedCategory ??= _localAppliedCategory;
     _localTempSelectedServiceProvider ??= _localAppliedServiceProvider;
@@ -651,7 +813,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
       slivers: [
         SliverToBoxAdapter(child: SizedBox(height: isTablet ? 180 : 150)), // Space for app bar
         
-        // Add global location filter bar (SEPARATE)
+        // Add global location filter bar
         SliverToBoxAdapter(
           child: Consumer<LocationFilterProvider>(
             builder: (context, locationProvider, _) {
@@ -665,6 +827,15 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
             },
           ),
         ),
+        
+        // Change Location Button (like Events screen)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: 8),
+            child: _buildChangeLocationButton(isTablet),
+          ),
+        ),
+        
         SliverToBoxAdapter(
           child: Container(
             margin: EdgeInsets.all(isTablet ? 20 : 16),
@@ -676,212 +847,314 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
     );
   }
 
-  Widget _buildLocalFilterCard(ServiceProviderProvider provider, bool isTablet) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
-        ],
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(isTablet ? 20 : 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [_primaryRed, _primaryGreen],
+  // Change Location Button (similar to Events screen)
+  Widget _buildChangeLocationButton(bool isTablet) {
+    return Consumer<LocationFilterProvider>(
+      builder: (context, filterProvider, child) {
+        final hasFilter = filterProvider.isFilterActive;
+        final selectedState = filterProvider.selectedState ?? '';
+        
+        return GestureDetector(
+          onTap: () => _showLocationFilterDialog(context),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 10, vertical: isTablet ? 8 : 6),
+            decoration: BoxDecoration(
+              gradient: hasFilter
+                  ? const LinearGradient(
+                      colors: [Color(0xFF006A4E), Color(0xFF004D38)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.2),
+                        Colors.white.withOpacity(0.1),
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.tune_rounded, color: Colors.white, size: 18),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Filters',
-                        style: GoogleFonts.poppins(
-                          fontSize: isTablet ? 18 : 16,
-                          fontWeight: FontWeight.w600,
-                          color: _textPrimary,
-                        ),
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(
+                color: hasFilter 
+                    ? const Color(0xFFFFD700).withOpacity(0.6)
+                    : _goldAccent.withOpacity(0.4),
+                width: 1,
+              ),
+              boxShadow: hasFilter
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFFFFD700).withOpacity(0.25),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
                       ),
-                      Text(
-                        'Apply screen-specific filters',
-                        style: GoogleFonts.inter(
-                          fontSize: isTablet ? 13 : 11,
-                          color: _textSecondary,
-                        ),
-                      ),
-                    ],
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  hasFilter ? Icons.edit_location_rounded : Icons.location_on_rounded,
+                  size: isTablet ? 16 : 14,
+                  color: hasFilter ? const Color(0xFFFFD700) : _goldAccent,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  hasFilter ? "Change Location" : "Select Location",
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 12 : 11,
+                    fontWeight: hasFilter ? FontWeight.w600 : FontWeight.w500,
+                    color: Colors.white,
                   ),
                 ),
+                if (!hasFilter) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_drop_down_rounded,
+                    size: isTablet ? 18 : 16,
+                    color: _goldAccent,
+                  ),
+                ],
+                if (hasFilter) ...[
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFD700),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
               ],
             ),
-            
-            const SizedBox(height: 20),
-            
-            // State Dropdown
-            _buildDropdown<String?>(
-              value: _localTempSelectedState,
-              label: 'State',
-              icon: Icons.location_on_rounded,
-              items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('All States')),
-                ...CommunityStates.states.map((state) => 
-                  DropdownMenuItem<String?>(value: state, child: Text(state))
+          ),
+        );
+      },
+    );
+  }
+
+
+
+
+Widget _buildLocalFilterCard(ServiceProviderProvider provider, bool isTablet) {
+  return Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: const [
+        BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
+      ],
+    ),
+    child: Padding(
+      padding: EdgeInsets.all(isTablet ? 20 : 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_primaryRed, _primaryGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
-              onChanged: (String? newValue) {
-                setState(() {
-                  _localTempSelectedState = newValue;
-                  _localTempSelectedCity = null;
-                });
-              },
-            ),
-            
-            if (_localTempSelectedState != null) ...[
-              const SizedBox(height: 12),
-              FutureBuilder<List<String>>(
-                future: provider.getCitiesForState(_localTempSelectedState!),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return _buildDropdown<String?>(
-                    value: _localTempSelectedCity,
-                    label: 'City',
-                    icon: Icons.location_city_rounded,
-                    items: [
-                      const DropdownMenuItem<String?>(value: null, child: Text('All Cities')),
-                      ...snapshot.data!.map((city) => 
-                        DropdownMenuItem<String?>(value: city, child: Text(city))
+                child: const Icon(Icons.tune_rounded, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Local Filters',
+                      style: GoogleFonts.poppins(
+                        fontSize: isTablet ? 18 : 16,
+                        fontWeight: FontWeight.w600,
+                        color: _textPrimary,
                       ),
-                    ],
-                    onChanged: (String? newValue) {
-                      setState(() => _localTempSelectedCity = newValue);
-                    },
-                  );
-                },
+                    ),
+                    Text(
+                      'Apply screen-specific filters (State filter is global)',
+                      style: GoogleFonts.inter(
+                        fontSize: isTablet ? 13 : 11,
+                        color: _textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
-            
-            const SizedBox(height: 12),
-            
-            // Category Dropdown
-            _buildDropdown<ServiceCategory?>(
-              value: _localTempSelectedCategory,
-              label: 'Category',
-              icon: Icons.category_rounded,
-              items: [
-                const DropdownMenuItem<ServiceCategory?>(value: null, child: Text('All Categories')),
-                ...ServiceCategory.values.map((category) => 
-                  DropdownMenuItem<ServiceCategory?>(
-                    value: category,
-                    child: Row(
-                      children: [
-                        Icon(category.icon, color: _primaryRed, size: 16),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            category.displayName,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
+          ),
+          
+          const SizedBox(height: 20),
+          
+          // City Dropdown (uses GLOBAL state from LocationFilterProvider)
+          Consumer<LocationFilterProvider>(
+            builder: (context, locationProvider, _) {
+              final globalState = locationProvider.selectedState;
+              
+              if (globalState == null) {
+                return Container(
+                  padding: EdgeInsets.all(isTablet ? 12 : 10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: _primaryGreen, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Select a state from global filter first to see cities',
+                          style: GoogleFonts.inter(
+                            fontSize: isTablet ? 12 : 11,
+                            color: _textSecondary,
                           ),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                );
+              }
+              
+              return FutureBuilder<List<String>>(
+                future: provider.getCitiesForState(globalState),
+                builder: (context, snapshot) {
+                  final cities = snapshot.data ?? [];
+                  if (cities.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    children: [
+                      _buildDropdown<String?>(
+                        value: _localTempSelectedCity,
+                        label: 'City',
+                        icon: Icons.location_city_rounded,
+                        items: [
+                          const DropdownMenuItem<String?>(value: null, child: Text('All Cities')),
+                          ...cities.map((city) => 
+                            DropdownMenuItem<String?>(value: city, child: Text(city))
+                          ),
+                        ],
+                        onChanged: (String? newValue) {
+                          setState(() => _localTempSelectedCity = newValue);
+                        },
+                      ),
+                      if (_localTempSelectedCity != null) const SizedBox(height: 12),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+          
+          // Category Dropdown
+          _buildDropdown<ServiceCategory?>(
+            value: _localTempSelectedCategory,
+            label: 'Category',
+            icon: Icons.category_rounded,
+            items: [
+              const DropdownMenuItem<ServiceCategory?>(value: null, child: Text('All Categories')),
+              ...ServiceCategory.values.map((category) => 
+                DropdownMenuItem<ServiceCategory?>(
+                  value: category,
+                  child: Row(
+                    children: [
+                      Icon(category.icon, color: _primaryRed, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          category.displayName,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              ),
+            ],
+            onChanged: (ServiceCategory? newValue) {
+              setState(() {
+                _localTempSelectedCategory = newValue;
+                _localTempSelectedServiceProvider = null;
+              });
+            },
+          ),
+          
+          if (_localTempSelectedCategory != null) ...[
+            const SizedBox(height: 12),
+            _buildDropdown<String?>(
+              value: _localTempSelectedServiceProvider,
+              label: 'Service Type',
+              icon: Icons.work_rounded,
+              items: [
+                const DropdownMenuItem<String?>(value: null, child: Text('All Types')),
+                ..._localTempSelectedCategory!.serviceProviders.map((provider) => 
+                  DropdownMenuItem<String?>(
+                    value: provider,
+                    child: Text(
+                      provider,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   )
                 ),
               ],
-              onChanged: (ServiceCategory? newValue) {
-                setState(() {
-                  _localTempSelectedCategory = newValue;
-                  _localTempSelectedServiceProvider = null;
-                });
+              onChanged: (String? newValue) {
+                setState(() => _localTempSelectedServiceProvider = newValue);
               },
             ),
-            
-            if (_localTempSelectedCategory != null) ...[
-              const SizedBox(height: 12),
-              _buildDropdown<String?>(
-                value: _localTempSelectedServiceProvider,
-                label: 'Service Type',
-                icon: Icons.work_rounded,
-                items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('All Types')),
-                  ..._localTempSelectedCategory!.serviceProviders.map((provider) => 
-                    DropdownMenuItem<String?>(
-                      value: provider,
-                      child: Text(
-                        provider,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    )
-                  ),
-                ],
-                onChanged: (String? newValue) {
-                  setState(() => _localTempSelectedServiceProvider = newValue);
-                },
+          ],
+          
+          const SizedBox(height: 20),
+          
+          // Action Buttons
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  label: 'Apply',
+                  onTap: _applyLocalFilters,
+                  isPrimary: true,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildActionButton(
+                  label: 'Clear',
+                  onTap: _clearLocalFilters,
+                  isPrimary: false,
+                ),
               ),
             ],
-            
-            const SizedBox(height: 20),
-            
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionButton(
-                    label: 'Apply',
-                    onTap: _applyLocalFilters,
-                    isPrimary: true,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildActionButton(
-                    label: 'Clear',
-                    onTap: _clearLocalFilters,
-                    isPrimary: false,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Future<void> _applyLocalFilters() async {
     final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
     
-    // Build active filters map for display
+    // Build active filters map for display (NO STATE)
     Map<String, dynamic> newActiveFilters = {};
     
-    // Apply new local filters
+    // Apply new local filters (NO STATE)
     setState(() {
-      _localAppliedState = _localTempSelectedState;
       _localAppliedCity = _localTempSelectedCity;
       _localAppliedCategory = _localTempSelectedCategory;
       _localAppliedServiceProvider = _localTempSelectedServiceProvider;
       
-      if (_localAppliedState != null) {
-        newActiveFilters['local_state'] = _localAppliedState;
-      }
       if (_localAppliedCity != null && _localAppliedCity!.isNotEmpty) {
         newActiveFilters['local_city'] = _localAppliedCity;
       }
@@ -901,26 +1174,24 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
     await provider.loadServiceProviders();
   }
 
-  void _clearLocalFilters() {
-    setState(() {
-      _localTempSelectedState = null;
-      _localTempSelectedCity = null;
-      _localTempSelectedCategory = null;
-      _localTempSelectedServiceProvider = null;
-      _localAppliedState = null;
-      _localAppliedCity = null;
-      _localAppliedCategory = null;
-      _localAppliedServiceProvider = null;
-      _hasLocalFilters = false;
-      _activeLocalFilters.clear();
-      _isFilterView = false;
-    });
-    
-    // Reload data without local filters
-    final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
-    provider.loadServiceProviders();
-  }
-
+ void _clearLocalFilters() {
+  setState(() {
+    _localTempSelectedCity = null;
+    _localTempSelectedCategory = null;
+    _localTempSelectedServiceProvider = null;
+    _localAppliedCity = null;
+    _localAppliedCategory = null;
+    _localAppliedServiceProvider = null;
+    _hasLocalFilters = false;
+    _activeLocalFilters.clear();
+    _isFilterView = false;
+  });
+  
+  // Reload data without local filters
+  final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
+  provider.loadServiceProviders();
+}
+  
   Widget _buildDropdown<T>({
     required T? value,
     required String label,
@@ -996,7 +1267,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
       slivers: [
         SliverToBoxAdapter(child: SizedBox(height: isTablet ? 180 : 150)), // Space for app bar
         
-        // Add global location filter bar (SEPARATE)
+        // Add global location filter bar
         SliverToBoxAdapter(
           child: Consumer<LocationFilterProvider>(
             builder: (context, locationProvider, _) {
@@ -1008,6 +1279,14 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
                 },
               );
             },
+          ),
+        ),
+        
+        // Change Location Button (like Events screen)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: 8),
+            child: _buildChangeLocationButton(isTablet),
           ),
         ),
         
@@ -1166,10 +1445,6 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
       String label = value.toString();
       
       switch (key) {
-        case 'local_state':
-          icon = Icons.location_on_rounded;
-          label = 'State: $value';
-          break;
         case 'local_city':
           icon = Icons.location_city_rounded;
           label = 'City: $value';
@@ -1191,10 +1466,6 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
           // Remove this specific local filter
           setState(() {
             switch (key) {
-              case 'local_state':
-                _localAppliedState = null;
-                _localTempSelectedState = null;
-                break;
               case 'local_city':
                 _localAppliedCity = null;
                 _localTempSelectedCity = null;
@@ -1392,8 +1663,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
     );
   }
 
-  // ✅ FINAL FIXED: Provider card with dynamic height
- /* Widget _buildProviderCard(
+  Widget _buildProviderCard(
     ServiceProviderModel provider,
     String? userId,
     LocationFilterProvider locationProvider,
@@ -1417,7 +1687,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
             child: GestureDetector(
               onTap: () {
                 if (userId == null || userId.isEmpty) {
-                  _showLoginDialog(context, 'view details');
+                  _showLoginRequiredDialog(context, 'view details');
                   return;
                 }
                 HapticFeedback.mediumImpact();
@@ -1444,15 +1714,15 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
                   borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
                   child: Stack(
                     children: [
-                      // Premium Gradient Background
+                      // Premium Green Gradient Background (NO RED)
                       Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
                               _primaryGreen,
                               _darkGreen,
-                              _primaryRed,
-                              _coralRed,
+                              const Color(0xFF2E7D32), // Darker green
+                              const Color(0xFF1B5E20), // Even darker green
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -1642,15 +1912,15 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
                               
                               const SizedBox(height: 12),
                               
-                              // View Details Button
+                              // View Details Button (Green gradient only)
                               Container(
                                 width: double.infinity,
                                 padding: EdgeInsets.symmetric(
                                   vertical: isTablet ? 10 : 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFFF42A41), Color(0xFF006A4E)],
+                                  gradient: LinearGradient(
+                                    colors: [_primaryGreen, _darkGreen],
                                   ),
                                   borderRadius: BorderRadius.circular(15),
                                 ),
@@ -1679,301 +1949,6 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
       ),
     );
   }
-
-  */
-
-  // ✅ UPDATED: Provider card with only green gradients
- Widget _buildProviderCard(
-  ServiceProviderModel provider,
-  String? userId,
-  LocationFilterProvider locationProvider,
-  bool isTablet,
-  int index,
-) {
-  final categoryGradient = _getCategoryGradient(provider.serviceCategory);
-  
-  return Padding(
-    padding: EdgeInsets.symmetric(
-      horizontal: isTablet ? 16 : 12,
-      vertical: 6,
-    ),
-    child: TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.95, end: 1.0),
-      duration: Duration(milliseconds: 200 + (index * 30)),
-      curve: Curves.easeOut,
-      builder: (context, scale, child) {
-        return Transform.scale(
-          scale: scale,
-          child: GestureDetector(
-            onTap: () {
-              if (userId == null || userId.isEmpty) {
-                _showLoginDialog(context, 'view details');
-                return;
-              }
-              HapticFeedback.mediumImpact();
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ServiceProviderDetailScreen(providerId: provider.id!),
-                ),
-              );
-            },
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
-                child: Stack(
-                  children: [
-                    // Premium Green Gradient Background (NO RED)
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            _primaryGreen,
-                            _darkGreen,
-                            const Color(0xFF2E7D32), // Darker green
-                            const Color(0xFF1B5E20), // Even darker green
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          stops: const [0.0, 0.3, 0.7, 1.0],
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header Row
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Profile Image
-                                Container(
-                                  width: isTablet ? 70 : 60,
-                                  height: isTablet ? 70 : 60,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 2,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 8,
-                                      ),
-                                    ],
-                                  ),
-                                  child: _buildProviderImage(provider),
-                                ),
-                                
-                                const SizedBox(width: 12),
-                                
-                                // Name and Company
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              provider.fullName,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: isTablet ? 18 : 16,
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.white,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          if (provider.isVerified)
-                                            Container(
-                                              margin: const EdgeInsets.only(left: 4),
-                                              padding: const EdgeInsets.all(2),
-                                              decoration: const BoxDecoration(
-                                                color: Colors.blue,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Icon(
-                                                Icons.check,
-                                                color: Colors.white,
-                                                size: 10,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        provider.companyName,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: isTablet ? 13 : 11,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.white.withOpacity(0.9),
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            
-                            const SizedBox(height: 12),
-                            
-                            // Location and Distance
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.location_on,
-                                  color: _goldAccent,
-                                  size: isTablet ? 16 : 14,
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    provider.city ?? provider.state ?? 'Location',
-                                    style: GoogleFonts.inter(
-                                      fontSize: isTablet ? 13 : 11,
-                                      color: Colors.white,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (provider.latitude != null && provider.longitude != null) ...[
-                                  const Spacer(),
-                                  DistanceBadge(
-                                    latitude: provider.latitude!,
-                                    longitude: provider.longitude!,
-                                    isTablet: isTablet,
-                                  ),
-                                ],
-                              ],
-                            ),
-                            
-                            const SizedBox(height: 8),
-                            
-                            // Category and Service Type
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    provider.serviceCategory.icon,
-                                    color: _goldAccent,
-                                    size: isTablet ? 16 : 14,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      provider.serviceProvider ?? 'Service',
-                                      style: GoogleFonts.inter(
-                                        fontSize: isTablet ? 12 : 10,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            
-                            const SizedBox(height: 12),
-                            
-                            // Contact Buttons
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildContactButton(
-                                    icon: Icons.phone,
-                                    label: 'Call',
-                                    onTap: () {
-                                      // Add phone call functionality
-                                    },
-                                    isTablet: isTablet,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _buildContactButton(
-                                    icon: Icons.email,
-                                    label: 'Email',
-                                    onTap: () {
-                                      // Add email functionality
-                                    },
-                                    isTablet: isTablet,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                // Like Button
-                                _buildCompactLikeButton(provider, userId, isTablet),
-                              ],
-                            ),
-                            
-                            const SizedBox(height: 12),
-                            
-                            // View Details Button (Green gradient only)
-                            Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.symmetric(
-                                vertical: isTablet ? 10 : 8,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [_primaryGreen, _darkGreen],
-                                ),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'View Details',
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: isTablet ? 13 : 11,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    ),
-  );
-}
-  
-  
-
-
-
 
   // Helper method for contact buttons
   Widget _buildContactButton({
@@ -2012,8 +1987,8 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
     );
   }
 
-  // Compact Like Button
-/*  Widget _buildCompactLikeButton(ServiceProviderModel provider, String? userId, bool isTablet) {
+  // Updated Like Button with proper 100+ formatting
+  Widget _buildCompactLikeButton(ServiceProviderModel provider, String? userId, bool isTablet) {
     return Consumer<ServiceProviderProvider>(
       builder: (context, providerState, _) {
         final currentProvider = providerState.allProviders.firstWhere(
@@ -2027,7 +2002,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
         return GestureDetector(
           onTap: () {
             if (userId == null || userId.isEmpty) {
-              _showLoginDialog(context, 'like');
+              _showLoginRequiredDialog(context, 'like');
               return;
             }
             HapticFeedback.lightImpact();
@@ -2061,11 +2036,11 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
                   size: isTablet ? 14 : 12,
                 ),
                 if (totalLikes > 0) ...[
-                  const SizedBox(width: 2),
+                  const SizedBox(width: 4),
                   Text(
                     _formatLikes(totalLikes),
                     style: GoogleFonts.poppins(
-                      fontSize: isTablet ? 10 : 9,
+                      fontSize: isTablet ? 11 : 10,
                       fontWeight: FontWeight.w600,
                       color: isLiked ? Colors.white : _goldAccent,
                     ),
@@ -2078,85 +2053,17 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
       },
     );
   }
-*/
 
-// Updated Like Button with proper 100+ formatting
-Widget _buildCompactLikeButton(ServiceProviderModel provider, String? userId, bool isTablet) {
-  return Consumer<ServiceProviderProvider>(
-    builder: (context, providerState, _) {
-      final currentProvider = providerState.allProviders.firstWhere(
-        (p) => p.id == provider.id,
-        orElse: () => provider,
-      );
-      
-      final isLiked = currentProvider.isLikedByUser(userId ?? '');
-      final totalLikes = currentProvider.totalLikes;
-      
-      return GestureDetector(
-        onTap: () {
-          if (userId == null || userId.isEmpty) {
-            _showLoginDialog(context, 'like');
-            return;
-          }
-          HapticFeedback.lightImpact();
-          providerState.toggleLike(provider.id!, userId);
-        },
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: isTablet ? 10 : 8,
-            vertical: isTablet ? 8 : 6,
-          ),
-          decoration: BoxDecoration(
-            gradient: isLiked
-                ? LinearGradient(
-                    colors: [_primaryRed, _coralRed],
-                  )
-                : LinearGradient(
-                    colors: [Colors.white.withOpacity(0.15), Colors.white.withOpacity(0.1)],
-                  ),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isLiked ? Colors.transparent : Colors.white24,
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isLiked ? Icons.favorite : Icons.favorite_border,
-                color: isLiked ? Colors.white : _goldAccent,
-                size: isTablet ? 14 : 12,
-              ),
-              if (totalLikes > 0) ...[
-                const SizedBox(width: 4),
-                Text(
-                  _formatLikes(totalLikes),
-                  style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 11 : 10,
-                    fontWeight: FontWeight.w600,
-                    color: isLiked ? Colors.white : _goldAccent,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-// Updated formatLikes to handle 100+ properly
-String _formatLikes(int count) {
-  if (count < 1000) {
-    return count.toString(); // Shows exact number for 0-999
-  } else if (count < 1000000) {
-    return '${(count / 1000).toStringAsFixed(1)}K'; // Shows 1.2K, 45.6K, etc.
-  } else {
-    return '${(count / 1000000).toStringAsFixed(1)}M'; // Shows 1.2M, 3.4M, etc.
+  // Updated formatLikes to handle 100+ properly
+  String _formatLikes(int count) {
+    if (count < 1000) {
+      return count.toString(); // Shows exact number for 0-999
+    } else if (count < 1000000) {
+      return '${(count / 1000).toStringAsFixed(1)}K'; // Shows 1.2K, 45.6K, etc.
+    } else {
+      return '${(count / 1000000).toStringAsFixed(1)}M'; // Shows 1.2M, 3.4M, etc.
+    }
   }
-}
 
   // Helper method to get gradient based on category
   LinearGradient _getCategoryGradient(ServiceCategory category) {
@@ -2179,12 +2086,6 @@ String _formatLikes(int count) {
         return const LinearGradient(colors: [Color(0xFF95A5A6), Color(0xFF7F8C8D)]);
     }
   }
-
- /* String _formatLikes(int count) {
-    if (count < 1000) return count.toString();
-    if (count < 1000000) return '${(count / 1000).toStringAsFixed(1)}K';
-    return '${(count / 1000000).toStringAsFixed(1)}M';
-  }  */
 
   Widget _buildLoadingState(bool isTablet) {
     return SliverFillRemaining(
@@ -2330,33 +2231,61 @@ String _formatLikes(int count) {
     );
   }
 
-  void _showLoginDialog(BuildContext context, String feature) {
+  void _showLoginRequiredDialog(BuildContext context, String feature) {
+    final Color _primaryRed = Color(0xFFE03C32);
+    final Color _primaryGreen = Color(0xFF006A4E);
+    final Color _goldAccent = Color(0xFFFFD700);
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('Login Required'),
-        content: Text('Please login to $feature'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          constraints: BoxConstraints(maxWidth: 320),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [_primaryGreen, _primaryRed]),
+            borderRadius: BorderRadius.circular(24),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: _primaryGreen),
-            child: const Text('Login'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryRed, _primaryGreen]), borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                child: Column(
+                  children: [
+                    Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(gradient: LinearGradient(colors: [_goldAccent, Color(0xFFFFC107)]), shape: BoxShape.circle), child: Icon(Icons.lock_rounded, color: Colors.white, size: 24)),
+                    SizedBox(height: 8),
+                    Text('Login Required', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Text('to access $feature', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withOpacity(0.9))),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen())); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: _primaryGreen, padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Login', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterScreen(role: 'user'))); }, style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white, width: 1.5), padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Create Account', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    TextButton(onPressed: () => Navigator.pop(context), child: Text('Continue Browsing', style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withOpacity(0.7)))),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
+
+  
+
+
+
+
 
   void _showSuggestionDialog(BuildContext context, bool isTablet) {
     HapticFeedback.mediumImpact();
@@ -2507,73 +2436,72 @@ String _formatLikes(int count) {
                   ),
                   
                   // Footer
-                 Container(
-  padding: const EdgeInsets.all(12),
-  decoration: BoxDecoration(
-    border: Border(top: BorderSide(color: Colors.grey.shade200)),
-  ),
-  child: Row(
-    children: [
-      // Cancel Button - Now matches Submit button design
-      Expanded(
-        child: ElevatedButton(
-          onPressed: () => Navigator.pop(context),
-          style: ElevatedButton.styleFrom(
-          //  backgroundColor: Colors.grey.shade300,
-          backgroundColor: _primaryRed,
-            foregroundColor: Colors.grey.shade800,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            elevation: 2,
-          ),
-          child: Text(
-            'Cancel',
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
-            ),
-          ),
-        ),
-      ),
-      
-      const SizedBox(width: 8),
-      
-      // Submit Button - Kept exactly as is
-      Expanded(
-        child: ElevatedButton(
-          onPressed: _isSubmittingSuggestion ? null : () => _submitSuggestion(context, setState),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _primaryGreen,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: _isSubmittingSuggestion
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                    ),
+                    child: Row(
+                      children: [
+                        // Cancel Button
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primaryRed,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(width: 8),
+                        
+                        // Submit Button
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _isSubmittingSuggestion ? null : () => _submitSuggestion(context, setState),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primaryGreen,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: _isSubmittingSuggestion
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : Text(
+                                    'Submit',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                )
-              : Text(
-                  'Submit',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 13,
-                  ),
-                ),
-        ),
-      ),
-    ],
-  ),
-),
                 ],
               ),
             ),
@@ -2851,4 +2779,20 @@ String _formatLikes(int count) {
       ),
     );
   }
+}
+
+// Helper class for states list
+class CommunityStates {
+  static const List<String> states = [
+    'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
+    'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho',
+    'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana',
+    'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
+    'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada',
+    'New Hampshire', 'New Jersey', 'New Mexico', 'New York',
+    'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon',
+    'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
+    'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington',
+    'West Virginia', 'Wisconsin', 'Wyoming'
+  ];
 }

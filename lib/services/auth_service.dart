@@ -52,6 +52,8 @@ class AuthService {
     }
   }
 
+
+
   Future<User?> signInWithEmail({
     required String email,
     required String password,
@@ -273,7 +275,7 @@ class AuthService {
     }
   }
 
-  Future<void> deleteAccount() async {
+/*  Future<void> deleteAccount() async {
     try {
       final user = _auth.currentUser;
       if (user != null) {
@@ -282,7 +284,167 @@ class AuthService {
     } catch (e) {
       throw AppConstants.errorGeneric;
     }
+  }  */
+
+
+  // Add/Replace this method in your AuthService class
+Future<void> deleteAccount() async {
+  try {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No user logged in');
+    }
+    
+    final userId = user.uid;
+    print('🗑️ Starting account deletion for user: $userId');
+    
+    // 1. Delete user document from Firestore
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .delete();
+    print('✅ User document deleted');
+    
+    // 2. Delete user's events
+    final eventsSnapshot = await FirebaseFirestore.instance
+        .collection('events')
+        .where('createdBy', isEqualTo: userId)
+        .get();
+    
+    for (var doc in eventsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${eventsSnapshot.docs.length} events');
+    
+    // 3. Delete user's interested events subcollection
+    final interestedEventsSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('interested_events')
+        .get();
+    
+    for (var doc in interestedEventsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${interestedEventsSnapshot.docs.length} interested events');
+    
+    // 4. Delete user's job postings
+    final jobsSnapshot = await FirebaseFirestore.instance
+        .collection('job_postings')
+        .where('postedBy', isEqualTo: userId)
+        .get();
+    
+    for (var doc in jobsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${jobsSnapshot.docs.length} job postings');
+    
+    // 5. Delete user's business promotions
+    final promotionsSnapshot = await FirebaseFirestore.instance
+        .collection('small_business_promotions')
+        .where('postedBy', isEqualTo: userId)
+        .get();
+    
+    for (var doc in promotionsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${promotionsSnapshot.docs.length} business promotions');
+    
+    // 6. Delete user's service provider listings
+    final servicesSnapshot = await FirebaseFirestore.instance
+        .collection('service_providers')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in servicesSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${servicesSnapshot.docs.length} service provider listings');
+    
+    // 7. Delete user's business partner requests
+    final partnerRequestsSnapshot = await FirebaseFirestore.instance
+        .collection('business_partner_requests')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in partnerRequestsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${partnerRequestsSnapshot.docs.length} business partner requests');
+    
+    // 8. Delete user's networking business partners
+    final networkingSnapshot = await FirebaseFirestore.instance
+        .collection('networking_business_partners')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in networkingSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${networkingSnapshot.docs.length} networking business partners');
+    
+    // 9. Delete user's tutoring services
+    final tutoringSnapshot = await FirebaseFirestore.instance
+        .collection('tutoring_services')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in tutoringSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${tutoringSnapshot.docs.length} tutoring services');
+    
+    // 10. Delete user's admissions guidance
+    final admissionsSnapshot = await FirebaseFirestore.instance
+        .collection('admissions_guidance')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in admissionsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${admissionsSnapshot.docs.length} admissions guidance entries');
+    
+    // 11. Delete user's Bangla classes
+    final banglaClassesSnapshot = await FirebaseFirestore.instance
+        .collection('bangla_classes')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in banglaClassesSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${banglaClassesSnapshot.docs.length} Bangla classes');
+    
+    // 12. Delete user's sports clubs
+    final sportsClubsSnapshot = await FirebaseFirestore.instance
+        .collection('sports_clubs')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in sportsClubsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${sportsClubsSnapshot.docs.length} sports clubs');
+    
+    // 13. Finally, delete the Firebase Auth account
+    await user.delete();
+    print('✅ Firebase Auth account deleted');
+    
+    print('🎉 Account and all associated data deleted successfully');
+    
+  } on FirebaseAuthException catch (e) {
+    print('❌ FirebaseAuth error: ${e.code} - ${e.message}');
+    if (e.code == 'requires-recent-login') {
+      throw 'For security reasons, please log in again before deleting your account.';
+    } else {
+      throw 'Failed to delete account: ${e.message}';
+    }
+  } catch (e) {
+    print('❌ Unexpected error: $e');
+    throw 'Failed to delete account. Please try again later.';
   }
+}
 
   // Check if user is admin by email
   bool isAdminEmail(String email) {

@@ -12,6 +12,7 @@ import 'package:bangla_hub/screens/auth/signup_screen.dart';
 import 'package:bangla_hub/screens/user_app/education_youth/tutoring/tutoring_details_screen.dart';
 import 'package:bangla_hub/widgets/common/distance_widget.dart';
 import 'package:bangla_hub/widgets/common/global_location_filter_bar.dart';
+import 'package:bangla_hub/widgets/common/global_location_guard.dart';
 import 'package:bangla_hub/widgets/common/osm_location_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -54,6 +55,7 @@ class _TutoringScreenState extends State<TutoringScreen>
   late Animation<Offset> _slideAnimation;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  late AnimationController _rotateController;
   
   // Particle animation controllers
   late List<AnimationController> _particleControllers;
@@ -72,7 +74,6 @@ class _TutoringScreenState extends State<TutoringScreen>
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     // Initialize animations
@@ -95,10 +96,14 @@ class _TutoringScreenState extends State<TutoringScreen>
       vsync: this,
       duration: Duration(milliseconds: 1500),
     );
-    
     _pulseAnimation = CurvedAnimation(
       parent: _pulseController,
       curve: Curves.easeInOut,
+    );
+    
+    _rotateController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 1500),
     );
     
     // Initialize particle controllers
@@ -132,10 +137,8 @@ class _TutoringScreenState extends State<TutoringScreen>
     });
     
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _startAnimations();
     } else {
-      // App is not visible - stop animations to save resources
       _stopAnimations();
     }
   }
@@ -145,7 +148,7 @@ class _TutoringScreenState extends State<TutoringScreen>
       _fadeController.forward();
       _slideController.forward();
       _pulseController.repeat(reverse: true);
-      // Particle controllers already running via repeat
+      _rotateController.repeat();
     }
   }
   
@@ -153,14 +156,13 @@ class _TutoringScreenState extends State<TutoringScreen>
     _fadeController.stop();
     _slideController.stop();
     _pulseController.stop();
-    // Particle controllers will continue but we don't stop them as they're repetitive
+    _rotateController.stop();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     
-    // ✅ FIXED: Use post-frame callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       
@@ -182,21 +184,20 @@ class _TutoringScreenState extends State<TutoringScreen>
   @override
   void dispose() {
     print('🗑️ TutoringScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
-    
-    // ✅ Dispose animation controllers
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
-    
-    // ✅ Dispose particle controllers
+    _rotateController.dispose();
     for (var controller in _particleControllers) {
       controller.dispose();
     }
-    
     super.dispose();
+  }
+
+  // Helper function to check if string is a URL
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
   }
 
   Future<void> _loadData() async {
@@ -212,7 +213,164 @@ class _TutoringScreenState extends State<TutoringScreen>
     if (mounted) setState(() => _isLoading = false);
   }
 
-  // Get filtered services - ONLY SHOW VERIFIED SERVICES and apply location filter
+  void _showLocationFilterDialog(BuildContext context) {
+    final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+      ),
+      builder: (context) => SafeArea(
+        child: Container(
+          height: screenHeight * 0.8,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Filter by State', 
+                    style: GoogleFonts.poppins(
+                      fontSize: 20, 
+                      fontWeight: FontWeight.w700, 
+                      color: _primaryBlue
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close), 
+                    onPressed: () => Navigator.pop(context)
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              
+              GestureDetector(
+                onTap: () {
+                  filterProvider.clearLocationFilter();
+                  _loadData();
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Showing tutors from all states'), 
+                      backgroundColor: Color(0xFF1976D2), 
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade200))
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.public, color: _primaryBlue),
+                      const SizedBox(width: 15),
+                      Text(
+                        'All States', 
+                        style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 10),
+              
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: CommunityStates.states.length,
+                  itemBuilder: (context, index) {
+                    final state = CommunityStates.states[index];
+                    final isSelected = filterProvider.selectedState == state;
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        filterProvider.setLocationFilter(state, fromEvents: true);
+                        _loadData();
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Showing tutors in $state'), 
+                            backgroundColor: _primaryBlue, 
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? _primaryBlue.withOpacity(0.1) : null,
+                          border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.location_on, color: isSelected ? _primaryBlue : Colors.grey),
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: Text(
+                                state, 
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16, 
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, 
+                                  color: isSelected ? _primaryBlue : Colors.black87
+                                ),
+                              ),
+                            ),
+                            if (isSelected) Icon(Icons.check_circle, color: _primaryBlue),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChangeLocationButton(bool isTablet) {
+    return Consumer<LocationFilterProvider>(
+      builder: (context, filterProvider, child) {
+        final hasFilter = filterProvider.isFilterActive;
+        
+        return GestureDetector(
+          onTap: () => _showLocationFilterDialog(context),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: isTablet ? 12 : 10, vertical: isTablet ? 6 : 4),
+            decoration: BoxDecoration(
+              gradient: hasFilter ? LinearGradient(colors: [_primaryBlue, _darkBlue]) : LinearGradient(colors: [Colors.white.withOpacity(0.2), Colors.white.withOpacity(0.1)]),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: hasFilter ? _goldAccent.withOpacity(0.5) : _goldAccent.withOpacity(0.4), width: 0.8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(hasFilter ? Icons.edit_location_rounded : Icons.location_on_rounded, size: isTablet ? 14 : 12, color: hasFilter ? _goldAccent : _goldAccent),
+                const SizedBox(width: 4),
+                Text(hasFilter ? "Change Location" : "Select Location", style: GoogleFonts.poppins(fontSize: isTablet ? 11 : 10, fontWeight: hasFilter ? FontWeight.w600 : FontWeight.w500, color: Colors.white)),
+                if (hasFilter) ...[
+                  const SizedBox(width: 4),
+                  Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFFFFB300), shape: BoxShape.circle)),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   List<TutoringService> _getFilteredServices(
     List<TutoringService> services,
     LocationFilterProvider locationProvider,
@@ -246,7 +404,7 @@ class _TutoringScreenState extends State<TutoringScreen>
   }
 
   void _showLoginRequiredDialog(BuildContext context, String feature) {
-    final Color _primaryRed = Color(0xFFF42A41);
+    final Color _primaryRed = Color(0xFFE03C32);
     final Color _primaryGreen = Color(0xFF006A4E);
     final Color _goldAccent = Color(0xFFFFD700);
     
@@ -255,158 +413,36 @@ class _TutoringScreenState extends State<TutoringScreen>
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          constraints: BoxConstraints(maxWidth: 320),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 30,
-                offset: Offset(0, 15),
-              ),
-            ],
+            gradient: LinearGradient(colors: [_primaryGreen, _primaryRed]),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header with gradient - reduced size
               Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_primaryRed, _primaryGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                ),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryRed, _primaryGreen]), borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.lock_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
+                    Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(gradient: LinearGradient(colors: [_goldAccent, Color(0xFFFFC107)]), shape: BoxShape.circle), child: Icon(Icons.lock_rounded, color: Colors.white, size: 24)),
                     SizedBox(height: 8),
-                    Text(
-                      'Login Required',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
+                    Text('Login Required', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Text('to access $feature', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withOpacity(0.9))),
                   ],
                 ),
               ),
-              
               Padding(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.all(16),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'You need to login to $feature',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Create an account or sign in to access full details',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 16),
-                    
-                    // Login Button - reduced size
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => LoginScreen(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primaryGreen,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Login',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    
-                    // Sign Up Button - reduced size
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RegisterScreen(role: 'user'),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _primaryGreen,
-                          side: BorderSide(color: _primaryGreen, width: 2),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Create Account',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    
-                    // Continue Browsing - slightly reduced size
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        'Continue Browsing',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
+                    SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen())); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: _primaryGreen, padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Login', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterScreen(role: 'user'))); }, style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white, width: 1.5), padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Create Account', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    TextButton(onPressed: () => Navigator.pop(context), child: Text('Continue Browsing', style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withOpacity(0.7)))),
                   ],
                 ),
               ),
@@ -420,7 +456,15 @@ class _TutoringScreenState extends State<TutoringScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
+    return LocationGuard(
+      required: true, 
+      showBackButton: true,
+      child: _buildMainContent(context),
+    );
+  }
+
+  Widget _buildMainContent(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     
@@ -430,14 +474,12 @@ class _TutoringScreenState extends State<TutoringScreen>
         backgroundColor: _creamWhite,
         body: Stack(
           children: [
-            // Animated Background Particles
             ...List.generate(8, (index) => _buildAnimatedParticle(index, screenWidth, MediaQuery.of(context).size.height)),
             
             CustomScrollView(
               slivers: [
                 _buildPremiumAppBar(isTablet),
                 
-                // Global Location Filter Bar
                 SliverToBoxAdapter(
                   child: Consumer<LocationFilterProvider>(
                     builder: (context, locationProvider, _) {
@@ -470,10 +512,8 @@ class _TutoringScreenState extends State<TutoringScreen>
   }
 
   SliverAppBar _buildPremiumAppBar(bool isTablet) {
-    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
-    
     return SliverAppBar(
-      expandedHeight: isTablet ? 280 : 220,
+      expandedHeight: isTablet ? 260 : 200,
       floating: false,
       pinned: true,
       snap: false,
@@ -492,17 +532,17 @@ class _TutoringScreenState extends State<TutoringScreen>
             bottom: false,
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 40 : 24,
-                vertical: isTablet ? 30 : 20,
+                horizontal: isTablet ? 32 : 20,
+                vertical: isTablet ? 20 : 12,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Premium Pattern Line
                   Container(
-                    height: 4,
-                    width: 80,
+                    height: 3,
+                    width: 60,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [_goldAccent, _orangeAccent, _goldAccent],
@@ -512,9 +552,8 @@ class _TutoringScreenState extends State<TutoringScreen>
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  SizedBox(height: isTablet ? 20 : 16),
+                  SizedBox(height: isTablet ? 12 : 8),
                   
-                  // Title with Gradient
                   ShaderMask(
                     shaderCallback: (bounds) => LinearGradient(
                       colors: [Colors.white, _goldAccent],
@@ -524,27 +563,45 @@ class _TutoringScreenState extends State<TutoringScreen>
                     child: Text(
                       'Tutoring & Homework Help',
                       style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 36 : 28,
+                        fontSize: isTablet ? 32 : 24,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  
                   SizedBox(height: isTablet ? 12 : 8),
                   
-                  // Subtitle
-                  Text(
-                    '🌟 Find qualified tutors for all subjects',
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 18 : 16,
-                      color: Colors.white.withOpacity(0.9),
-                      fontWeight: FontWeight.w500,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '🌟 Find qualified tutors for all subjects',
+                          style: GoogleFonts.inter(
+                            fontSize: isTablet ? 14 : 12,
+                            color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w500,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      
+                      SizedBox(width: isTablet ? 12 : 8),
+                      
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: _buildChangeLocationButton(isTablet),
+                      ),
+                    ],
                   ),
                   
-                  SizedBox(height: isTablet ? 20 : 16),
+                  SizedBox(height: isTablet ? 12 : 8),
                   
-                  // Stats Row
                   Consumer<EducationProvider>(
                     builder: (context, provider, child) {
                       final verifiedCount = provider.tutoringServices
@@ -555,8 +612,8 @@ class _TutoringScreenState extends State<TutoringScreen>
                         children: [
                           Container(
                             padding: EdgeInsets.symmetric(
-                              horizontal: isTablet ? 16 : 12,
-                              vertical: isTablet ? 8 : 6,
+                              horizontal: isTablet ? 12 : 8,
+                              vertical: isTablet ? 6 : 4,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
@@ -565,17 +622,12 @@ class _TutoringScreenState extends State<TutoringScreen>
                             ),
                             child: Row(
                               children: [
-                                shouldAnimate
-                                    ? RotationTransition(
-                                        turns: AlwaysStoppedAnimation(0),
-                                        child: Icon(Icons.verified_rounded, color: _goldAccent, size: isTablet ? 18 : 16),
-                                      )
-                                    : Icon(Icons.verified_rounded, color: _goldAccent, size: isTablet ? 18 : 16),
-                                SizedBox(width: isTablet ? 8 : 6),
+                                Icon(Icons.verified_rounded, color: _goldAccent, size: isTablet ? 14 : 12),
+                                SizedBox(width: isTablet ? 6 : 4),
                                 Text(
                                   '$verifiedCount Verified Tutors',
                                   style: GoogleFonts.inter(
-                                    fontSize: isTablet ? 14 : 12,
+                                    fontSize: isTablet ? 12 : 10,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.white,
                                   ),
@@ -594,7 +646,7 @@ class _TutoringScreenState extends State<TutoringScreen>
         ),
       ),
       leading: IconButton(
-        icon: Icon(Icons.arrow_back_rounded, color: Colors.white, fontWeight: FontWeight.bold, size: isTablet ? 28 : 24,),
+        icon: Icon(Icons.arrow_back_rounded, color: Colors.white, fontWeight: FontWeight.bold, size: isTablet ? 28 : 24),
         onPressed: () => Navigator.pop(context),
       ),
     );
@@ -602,8 +654,8 @@ class _TutoringScreenState extends State<TutoringScreen>
 
   Widget _buildFilterChips(bool isTablet) {
     return Container(
-      height: 50,
-      margin: EdgeInsets.only(bottom: 8),
+      height: 44,
+      margin: EdgeInsets.only(top: 8, bottom: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
@@ -613,38 +665,14 @@ class _TutoringScreenState extends State<TutoringScreen>
           final isSelected = _selectedFilter == filter;
           
           return Padding(
-            padding: EdgeInsets.only(right: 12),
+            padding: EdgeInsets.only(right: 10),
             child: FilterChip(
               selected: isSelected,
-              label: Text(
-                filter,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : _textPrimary,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  fontSize: isTablet ? 14 : 12,
-                ),
-              ),
-              onSelected: (selected) {
-                setState(() {
-                  _selectedFilter = filter;
-                });
-                HapticFeedback.lightImpact();
-              },
+              label: Text(filter, style: GoogleFonts.poppins(color: isSelected ? Colors.white : _textPrimary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal, fontSize: isTablet ? 12 : 11)),
+              onSelected: (selected) { setState(() { _selectedFilter = filter; }); HapticFeedback.lightImpact(); },
               backgroundColor: Colors.white,
               selectedColor: _primaryBlue,
-              checkmarkColor: _goldAccent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-                side: BorderSide(
-                  color: isSelected ? _primaryBlue : Color(0xFFE0E7E9),
-                  width: 1,
-                ),
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 16 : 12,
-                vertical: isTablet ? 10 : 8,
-              ),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25), side: BorderSide(color: isSelected ? _primaryBlue : Color(0xFFE0E7E9), width: 0.8)),
             ),
           );
         },
@@ -658,7 +686,6 @@ class _TutoringScreenState extends State<TutoringScreen>
     Widget button = FloatingActionButton.extended(
       onPressed: () {
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        // Check if guest mode
         if (authProvider.isGuestMode) {
           _showLoginRequiredDialog(context, 'Add Tutoring Service');
           return;
@@ -669,8 +696,8 @@ class _TutoringScreenState extends State<TutoringScreen>
       elevation: 12,
       label: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: isTablet ? 24 : 20,
-          vertical: isTablet ? 16 : 14,
+          horizontal: isTablet ? 20 : 16,
+          vertical: isTablet ? 12 : 10,
         ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -690,12 +717,12 @@ class _TutoringScreenState extends State<TutoringScreen>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person_add_rounded, color: Colors.white, size: isTablet ? 24 : 20),
-            SizedBox(width: isTablet ? 12 : 8),
+            Icon(Icons.person_add_rounded, color: Colors.white, size: isTablet ? 20 : 18),
+            SizedBox(width: isTablet ? 8 : 6),
             Text(
               'Add Tutoring',
               style: GoogleFonts.poppins(
-                fontSize: isTablet ? 18 : 16,
+                fontSize: isTablet ? 14 : 12,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
@@ -969,7 +996,91 @@ class _TutoringScreenState extends State<TutoringScreen>
     );
   }
 
-  // UPDATED: Now uses service's own user info fields instead of separate UserModel
+  // UPDATED: Build service poster image with URL and Base64 support
+  Widget _buildServicePosterImage(TutoringService service) {
+    final imageData = service.postedByProfileImageBase64;
+    
+    if (imageData != null && imageData.isNotEmpty) {
+      // Check if it's a URL
+      if (_isUrlString(imageData)) {
+        return ClipOval(
+          child: Image.network(
+            imageData,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading tutor poster image: $error');
+              return _buildDefaultProfileImage();
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(_goldAccent),
+                ),
+              );
+            },
+          ),
+        );
+      } else {
+        // It's Base64 data
+        try {
+          String base64String = imageData;
+          
+          if (base64String.contains('base64,')) {
+            base64String = base64String.split('base64,').last;
+          }
+          
+          base64String = base64String.replaceAll(RegExp(r'\s'), '');
+          
+          while (base64String.length % 4 != 0) {
+            base64String += '=';
+          }
+          
+          final bytes = base64Decode(base64String);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                print('Error decoding tutor poster image: $error');
+                return _buildDefaultProfileImage();
+              },
+            ),
+          );
+        } catch (e) {
+          print('Error processing tutor poster image: $e');
+          return _buildDefaultProfileImage();
+        }
+      }
+    }
+    
+    return _buildDefaultProfileImage();
+  }
+
+  Widget _buildDefaultProfileImage() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [_primaryBlue, _purpleAccent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.person_rounded,
+          color: Colors.white,
+          size: 30,
+        ),
+      ),
+    );
+  }
+
   Widget _buildPremiumTutoringCard(TutoringService service, int index) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
@@ -980,7 +1091,6 @@ class _TutoringScreenState extends State<TutoringScreen>
       duration: Duration(milliseconds: 500 + (index * 100)),
       curve: Curves.elasticOut,
       builder: (context, value, child) {
-        // Clamp the value to ensure it's between 0.0 and 1.0
         final clampedValue = value.clamp(0.0, 1.0);
         return Transform.scale(
           scale: 0.92 + (0.08 * clampedValue),
@@ -1089,12 +1199,10 @@ class _TutoringScreenState extends State<TutoringScreen>
                                   
                                   SizedBox(width: 12),
                                   
-                                  // User Info
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        // User Name from service.postedByName
                                         ShaderMask(
                                           shaderCallback: (bounds) => LinearGradient(
                                             colors: [_primaryBlue, _purpleAccent],
@@ -1108,6 +1216,8 @@ class _TutoringScreenState extends State<TutoringScreen>
                                               fontWeight: FontWeight.w800,
                                               color: Colors.white,
                                             ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         SizedBox(height: 2),
@@ -1140,7 +1250,6 @@ class _TutoringScreenState extends State<TutoringScreen>
                                     ),
                                   ),
                                   
-                                  // Verified Badge
                                   Container(
                                     padding: EdgeInsets.all(6),
                                     decoration: BoxDecoration(
@@ -1160,7 +1269,7 @@ class _TutoringScreenState extends State<TutoringScreen>
                                     ),
                                     child: shouldAnimate
                                         ? RotationTransition(
-                                            turns: AlwaysStoppedAnimation(0),
+                                            turns: _rotateController,
                                             child: Icon(
                                               Icons.verified_rounded, 
                                               color: Colors.white, 
@@ -1178,7 +1287,6 @@ class _TutoringScreenState extends State<TutoringScreen>
                               
                               SizedBox(height: 16),
                               
-                              // Tutor Name and Organization
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -1214,7 +1322,6 @@ class _TutoringScreenState extends State<TutoringScreen>
                               
                               SizedBox(height: 12),
                               
-                              // Subjects Preview
                               Wrap(
                                 spacing: 6,
                                 runSpacing: 6,
@@ -1260,10 +1367,8 @@ class _TutoringScreenState extends State<TutoringScreen>
                               
                               SizedBox(height: 12),
                               
-                              // Location, Distance, and Rate Row
                               Row(
                                 children: [
-                                  // Location
                                   Expanded(
                                     flex: 2,
                                     child: Row(
@@ -1310,7 +1415,6 @@ class _TutoringScreenState extends State<TutoringScreen>
                                     ),
                                   ),
                                   
-                                  // Distance Badge
                                   if (service.latitude != null && service.longitude != null)
                                     Padding(
                                       padding: EdgeInsets.only(right: isTablet ? 10 : 8),
@@ -1321,7 +1425,6 @@ class _TutoringScreenState extends State<TutoringScreen>
                                       ),
                                     ),
                                   
-                                  // Rate
                                   Container(
                                     padding: EdgeInsets.symmetric(
                                       horizontal: isTablet ? 12 : 10,
@@ -1368,7 +1471,6 @@ class _TutoringScreenState extends State<TutoringScreen>
                               
                               SizedBox(height: 12),
                               
-                              // Teaching Methods Preview
                               Row(
                                 children: service.teachingMethods.take(2).map((method) {
                                   return Container(
@@ -1411,7 +1513,6 @@ class _TutoringScreenState extends State<TutoringScreen>
                               
                               SizedBox(height: 16),
                               
-                              // View Details Button
                               TweenAnimationBuilder<double>(
                                 tween: Tween(begin: 0, end: 1),
                                 duration: Duration(milliseconds: 800),
@@ -1461,11 +1562,20 @@ class _TutoringScreenState extends State<TutoringScreen>
                                               ),
                                             ),
                                             SizedBox(width: 10),
-                                            Icon(
-                                              Icons.arrow_forward_rounded,
-                                              color: Colors.white,
-                                              size: isTablet ? 18 : 16,
-                                            ),
+                                            shouldAnimate
+                                                ? RotationTransition(
+                                                    turns: _rotateController,
+                                                    child: Icon(
+                                                      Icons.arrow_forward_rounded,
+                                                      color: Colors.white,
+                                                      size: isTablet ? 18 : 16,
+                                                    ),
+                                                  )
+                                                : Icon(
+                                                    Icons.arrow_forward_rounded,
+                                                    color: Colors.white,
+                                                    size: isTablet ? 18 : 16,
+                                                  ),
                                           ],
                                         ),
                                       ),
@@ -1488,57 +1598,6 @@ class _TutoringScreenState extends State<TutoringScreen>
     );
   }
 
-  // NEW: Build poster image from service.postedByProfileImageBase64
-  Widget _buildServicePosterImage(TutoringService service) {
-    if (service.postedByProfileImageBase64 != null && service.postedByProfileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = service.postedByProfileImageBase64!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage();
-          },
-        );
-      } catch (e) {
-        return _buildDefaultProfileImage();
-      }
-    }
-    return _buildDefaultProfileImage();
-  }
-
-  Widget _buildDefaultProfileImage() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_primaryBlue, _purpleAccent],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.person_rounded,
-          color: Colors.white,
-          size: 30,
-        ),
-      ),
-    );
-  }
-
-  // UPDATED: Now only passes service, not user
   void _showTutoringDetails(TutoringService service) {
     HapticFeedback.mediumImpact();
     Navigator.push(
@@ -1648,6 +1707,7 @@ class _TutoringScreenState extends State<TutoringScreen>
   }
 }
 
+
 // ====================== PREMIUM ADD TUTORING DIALOG ======================
 class PremiumAddTutoringDialog extends StatefulWidget {
   final VoidCallback? onTutoringAdded;
@@ -1700,6 +1760,11 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
   List<EducationLevel> _selectedLevels = [];
   List<TeachingMethod> _selectedMethods = [];
 
+  // Character counter for description
+  int _descriptionLength = 0;
+  final int _minDescriptionLength = 20;
+  final int _maxDescriptionLength = 1000;
+
   final Color _textPrimary = const Color(0xFF1A2B3C);
 
   final List<String> _states = CommunityStates.states;
@@ -1714,7 +1779,6 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     _tabController = TabController(length: 3, vsync: this);
@@ -1725,6 +1789,13 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
     _animationController.forward();
     
     _dialogLifecycleState = widget.appLifecycleState;
+    
+    // Add listener for description character count
+    _descriptionController.addListener(() {
+      setState(() {
+        _descriptionLength = _descriptionController.text.length;
+      });
+    });
   }
   
   @override
@@ -1736,7 +1807,6 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
 
   @override
   void dispose() {
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
     
     _tutorNameController.dispose();
@@ -1942,6 +2012,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           _buildPremiumTextField(
             controller: _tutorNameController,
             label: 'Tutor Name *',
+            hintText: 'e.g., Dr. Sarah Johnson, Prof. Michael Chen',
             icon: Icons.person_rounded,
             isRequired: true,
             isTablet: isTablet,
@@ -1951,6 +2022,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           _buildPremiumTextField(
             controller: _organizationController,
             label: 'Organization (Optional)',
+            hintText: 'e.g., Harvard Tutoring Center, Math Academy',
             icon: Icons.business_rounded,
             isRequired: false,
             isTablet: isTablet,
@@ -1960,6 +2032,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           _buildPremiumTextField(
             controller: _emailController,
             label: 'Email Address *',
+            hintText: 'your@email.com',
             icon: Icons.email_rounded,
             keyboardType: TextInputType.emailAddress,
             isRequired: true,
@@ -1967,11 +2040,11 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           ),
           SizedBox(height: isTablet ? 16 : 12),
           
-          _buildPremiumTextField(
+          _buildPremiumPhoneField(
             controller: _phoneController,
             label: 'Phone Number *',
+            hintText: '(555) 123-4567 or 555-123-4567',
             icon: Icons.phone_rounded,
-            keyboardType: TextInputType.phone,
             isRequired: true,
             isTablet: isTablet,
           ),
@@ -2067,11 +2140,11 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
                   if (_latitude != null && _longitude != null) ...[
                     SizedBox(height: 4),
                     Text(
-                      'Lat: ${_latitude!.toStringAsFixed(4)}, Lng: ${_longitude!.toStringAsFixed(4)}',
+                      '📍 Coordinates: ${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)}',
                       style: GoogleFonts.inter(
                         fontSize: isTablet ? 11 : 10,
                         color: widget.primaryBlue,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -2099,15 +2172,30 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           _buildSectionHeader('Subjects', Icons.subject_rounded, widget.primaryBlue, isTablet),
           SizedBox(height: isTablet ? 20 : 16),
           
-          Text(
-            'Select Subjects *',
-            style: GoogleFonts.poppins(
-              fontSize: isTablet ? 16 : 14,
-              fontWeight: FontWeight.w600,
-              color: widget.primaryBlue,
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: isTablet ? 8 : 6),
+            decoration: BoxDecoration(
+              color: widget.primaryBlue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: widget.primaryBlue, size: isTablet ? 20 : 16),
+                SizedBox(width: isTablet ? 12 : 8),
+                Expanded(
+                  child: Text(
+                    'Select all subjects you can teach',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 14 : 12,
+                      color: widget.primaryBlue,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: isTablet ? 12 : 8),
+          SizedBox(height: isTablet ? 16 : 12),
           
           Container(
             decoration: BoxDecoration(
@@ -2149,15 +2237,30 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           _buildSectionHeader('Education Levels', Icons.school_rounded, widget.successGreen, isTablet),
           SizedBox(height: isTablet ? 16 : 12),
           
-          Text(
-            'Select Levels *',
-            style: GoogleFonts.poppins(
-              fontSize: isTablet ? 16 : 14,
-              fontWeight: FontWeight.w600,
-              color: widget.successGreen,
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: isTablet ? 8 : 6),
+            decoration: BoxDecoration(
+              color: widget.successGreen.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: widget.successGreen, size: isTablet ? 20 : 16),
+                SizedBox(width: isTablet ? 12 : 8),
+                Expanded(
+                  child: Text(
+                    'Select which grade levels you can teach',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 14 : 12,
+                      color: widget.successGreen,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: isTablet ? 12 : 8),
+          SizedBox(height: isTablet ? 16 : 12),
           
           Container(
             decoration: BoxDecoration(
@@ -2199,15 +2302,30 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           _buildSectionHeader('Teaching Methods', Icons.video_call_rounded, widget.tealAccent, isTablet),
           SizedBox(height: isTablet ? 16 : 12),
           
-          Text(
-            'Select Methods *',
-            style: GoogleFonts.poppins(
-              fontSize: isTablet ? 16 : 14,
-              fontWeight: FontWeight.w600,
-              color: widget.tealAccent,
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: isTablet ? 8 : 6),
+            decoration: BoxDecoration(
+              color: widget.tealAccent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: widget.tealAccent, size: isTablet ? 20 : 16),
+                SizedBox(width: isTablet ? 12 : 8),
+                Expanded(
+                  child: Text(
+                    'Select how you can teach (in-person, online, or both)',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 14 : 12,
+                      color: widget.tealAccent,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: isTablet ? 12 : 8),
+          SizedBox(height: isTablet ? 16 : 12),
           
           Container(
             decoration: BoxDecoration(
@@ -2258,19 +2376,50 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           _buildSectionHeader('Description', Icons.description_rounded, widget.purpleAccent, isTablet),
           SizedBox(height: isTablet ? 20 : 16),
           
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: isTablet ? 8 : 6),
+            decoration: BoxDecoration(
+              color: widget.purpleAccent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: widget.purpleAccent, size: isTablet ? 20 : 16),
+                SizedBox(width: isTablet ? 12 : 8),
+                Expanded(
+                  child: Text(
+                    'Minimum $_minDescriptionLength characters, maximum $_maxDescriptionLength characters',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 14 : 12,
+                      color: widget.purpleAccent,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: isTablet ? 16 : 12),
+          
           _buildPremiumTextField(
             controller: _descriptionController,
             label: 'Description *',
+            hintText: 'Describe your teaching experience, approach, and what makes your tutoring special...',
             icon: Icons.description_rounded,
-            maxLines: 3,
+            maxLines: 5,
             isRequired: true,
             isTablet: isTablet,
+            showCounter: true,
+            currentLength: _descriptionLength,
+            minLength: _minDescriptionLength,
+            maxLength: _maxDescriptionLength,
           ),
           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _hourlyRateController,
             label: 'Hourly Rate (\$) *',
+            hintText: 'e.g., 50 ',
             icon: Icons.attach_money_rounded,
             keyboardType: TextInputType.number,
             isRequired: true,
@@ -2281,6 +2430,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           _buildPremiumTextField(
             controller: _experienceController,
             label: 'Experience (Optional)',
+            hintText: 'e.g., 5+ years teaching, Former Math Teacher',
             icon: Icons.work_history_rounded,
             isRequired: false,
             isTablet: isTablet,
@@ -2290,6 +2440,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           _buildPremiumTextField(
             controller: _qualificationsController,
             label: 'Qualifications (Optional)',
+            hintText: 'e.g., PhD in Mathematics, Certified Teacher',
             icon: Icons.school_rounded,
             isRequired: false,
             isTablet: isTablet,
@@ -2305,6 +2456,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
                 child: _buildPremiumTextField(
                   controller: _availableDaysController,
                   label: 'Available Days',
+                  hintText: 'Mon, Wed, Fri',
                   icon: Icons.calendar_today_rounded,
                   isRequired: false,
                   isTablet: isTablet,
@@ -2315,6 +2467,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
                 child: _buildPremiumTextField(
                   controller: _availableTimesController,
                   label: 'Available Times',
+                  hintText: '4 PM - 8 PM',
                   icon: Icons.schedule_rounded,
                   isRequired: false,
                   isTablet: isTablet,
@@ -2327,20 +2480,21 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           Container(
             padding: EdgeInsets.all(isTablet ? 16 : 12),
             decoration: BoxDecoration(
-              color: Colors.blue[50],
+              color: widget.tealAccent.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: widget.primaryBlue.withOpacity(0.3)),
+              border: Border.all(color: widget.tealAccent.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                Icon(Icons.info_rounded, color: widget.primaryBlue, size: isTablet ? 20 : 18),
+                Icon(Icons.lightbulb_outline, color: widget.tealAccent, size: isTablet ? 20 : 18),
                 SizedBox(width: isTablet ? 12 : 8),
                 Expanded(
                   child: Text(
-                    'Example: Monday, Wednesday, Friday | 4 PM - 8 PM',
+                    '💡 Example: Monday, Wednesday, Friday | 4 PM - 8 PM',
                     style: GoogleFonts.inter(
                       fontSize: isTablet ? 14 : 12,
-                      color: widget.primaryBlue,
+                      color: widget.tealAccent,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -2380,11 +2534,12 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
     );
   }
 
-  Widget _buildPremiumTextField({
+  Widget _buildPremiumPhoneField({
     required TextEditingController controller,
     required String label,
+    required String hintText,
     required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
+    TextInputType keyboardType = TextInputType.phone,
     int maxLines = 1,
     required bool isRequired,
     required bool isTablet,
@@ -2400,6 +2555,12 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
       ),
       decoration: InputDecoration(
         labelText: label,
+        hintText: hintText,
+        hintStyle: GoogleFonts.inter(
+          fontSize: isTablet ? 14 : 12,
+          color: Colors.grey[500],
+          fontStyle: FontStyle.italic,
+        ),
         labelStyle: GoogleFonts.poppins(
           fontSize: isTablet ? 14 : 12,
           color: widget.primaryBlue,
@@ -2427,14 +2588,135 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
       ),
       validator: (value) {
         if (isRequired && (value == null || value.isEmpty)) {
-          return 'This field is required';
+          return '📞 Phone number is required';
+        }
+        if (value != null && value.isNotEmpty) {
+          // Remove all non-digit characters for validation
+          String digitsOnly = value.replaceAll(RegExp(r'\D'), '');
+          if (digitsOnly.length < 10) {
+            return '📞 Please enter a valid 10-digit phone number';
+          }
+          if (digitsOnly.length > 11) {
+            return '📞 Phone number is too long';
+          }
         }
         return null;
       },
     );
   }
 
-  Widget _buildNavButton({
+Widget _buildPremiumTextField({
+  required TextEditingController controller,
+  required String label,
+  required String hintText,
+  required IconData icon,
+  TextInputType keyboardType = TextInputType.text,
+  int maxLines = 1,
+  required bool isRequired,
+  required bool isTablet,
+  bool showCounter = false,
+  int currentLength = 0,
+  int minLength = 0,
+  int maxLength = 0,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        maxLength: showCounter ? maxLength : null,
+        style: GoogleFonts.inter(
+          fontSize: isTablet ? 16 : 14,
+          color: Colors.grey[800],
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hintText,
+          hintStyle: GoogleFonts.inter(
+            fontSize: isTablet ? 14 : 12,
+            color: Colors.grey[500],
+            fontStyle: FontStyle.italic,
+          ),
+          labelStyle: GoogleFonts.poppins(
+            fontSize: isTablet ? 14 : 12,
+            color: widget.primaryBlue,
+            fontWeight: FontWeight.w600,
+          ),
+          prefixIcon: Icon(icon, color: widget.primaryBlue, size: isTablet ? 22 : 18),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: widget.primaryBlue, width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 20 : 16,
+            vertical: maxLines > 1 ? (isTablet ? 20 : 16) : (isTablet ? 18 : 14),
+          ),
+          counterText: showCounter ? '$currentLength / $maxLength characters' : null,
+        ),
+        validator: (value) {
+          if (isRequired && (value == null || value.isEmpty)) {
+            return 'This field is required';
+          }
+          if (showCounter && value != null && value.isNotEmpty) {
+            if (value.length < minLength) {
+              return 'Please enter at least $minLength characters (currently ${value.length})';
+            }
+          }
+          return null;
+        },
+      ),
+      if (showCounter && currentLength > 0 && currentLength < minLength)
+        Padding(
+          padding: const EdgeInsets.only(top: 8, left: 12),
+          child: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 14),
+              SizedBox(width: 6),
+              Text(
+                'Need $minLength characters minimum (${minLength - currentLength} more)',
+                style: GoogleFonts.inter(
+                  fontSize: isTablet ? 11 : 10,
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      if (showCounter && currentLength >= minLength && currentLength > 0)
+        Padding(
+          padding: const EdgeInsets.only(top: 8, left: 12),
+          child: Row(
+            children: [
+              Icon(Icons.check_circle, color: widget.successGreen, size: 14),
+              SizedBox(width: 6),
+              Text(
+                '✓ Good length (minimum $minLength characters)',
+                style: GoogleFonts.inter(
+                  fontSize: isTablet ? 11 : 10,
+                  color: widget.successGreen,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
+}  Widget _buildNavButton({
     required String label,
     required VoidCallback onPressed,
     required bool isPrimary,
@@ -2532,17 +2814,25 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
       return false;
     }
     if (!_emailController.text.contains('@')) {
-      _showErrorSnackBar('Please enter a valid email address');
+      _showErrorSnackBar('Please enter a valid email address (e.g., name@example.com)');
       return false;
     }
     if (_phoneController.text.isEmpty) {
       _showErrorSnackBar('Please enter phone number');
       return false;
     }
-    if (_phoneController.text.length < 10) {
-      _showErrorSnackBar('Please enter a valid phone number');
+    
+    // Validate phone number (10-11 digits)
+    String phoneDigits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+    if (phoneDigits.length < 10) {
+      _showErrorSnackBar('Please enter a valid 10-digit phone number');
       return false;
     }
+    if (phoneDigits.length > 11) {
+      _showErrorSnackBar('Phone number is too long. Please enter a valid number');
+      return false;
+    }
+    
     if (_latitude == null || _longitude == null) {
       _showErrorSnackBar('Please select a location on the map');
       return false;
@@ -2560,7 +2850,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
 
   bool _validateSubjects() {
     if (_selectedSubjects.isEmpty) {
-      _showErrorSnackBar('Please select at least one subject');
+      _showErrorSnackBar('Please select at least one subject you can teach');
       return false;
     }
     if (_selectedLevels.isEmpty) {
@@ -2579,12 +2869,12 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
     if (!_validateSubjects()) return;
     
     if (_descriptionController.text.isEmpty) {
-      _showErrorSnackBar('Please enter description');
+      _showErrorSnackBar('Please enter a description');
       return;
     }
     
-    if (_descriptionController.text.length < 20) {
-      _showErrorSnackBar('Description should be at least 20 characters');
+    if (_descriptionController.text.length < _minDescriptionLength) {
+      _showErrorSnackBar('Description must be at least $_minDescriptionLength characters (currently ${_descriptionController.text.length})');
       return;
     }
     
@@ -2595,7 +2885,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
 
     final rate = double.tryParse(_hourlyRateController.text);
     if (rate == null || rate <= 0) {
-      _showErrorSnackBar('Please enter a valid hourly rate');
+      _showErrorSnackBar('Please enter a valid hourly rate (e.g., 50 for \$50/hour)');
       return;
     }
 
@@ -2658,7 +2948,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
     );
 
     print('📝 Creating tutoring service with createdBy: ${newService.createdBy} (user ID)');
-    print('📍 Location: ${_latitude}, ${_longitude} in ${_selectedState}');
+    print('📍 Location: $_latitude, $_longitude in $_selectedState');
     print('📝 Service will be hidden until admin verification (isVerified: false)');
 
     // Show loading

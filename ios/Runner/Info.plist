@@ -4,7 +4,10 @@
 <plist version="1.0">
 <dict>
 
-    <!-- App Basic Info -->
+    <!-- ========================= -->
+    <!-- 📱 APP BASIC INFO -->
+    <!-- ========================= -->
+    
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
 
@@ -35,14 +38,20 @@
     <key>LSRequiresIPhoneOS</key>
     <true/>
 
-    <!-- Launch Screen -->
+    <!-- ========================= -->
+    <!-- 🚀 LAUNCH SCREEN -->
+    <!-- ========================= -->
+
     <key>UILaunchStoryboardName</key>
     <string>LaunchScreen</string>
 
     <key>UIMainStoryboardFile</key>
     <string>Main</string>
 
-    <!-- Orientation -->
+    <!-- ========================= -->
+    <!-- 🔄 ORIENTATION -->
+    <!-- ========================= -->
+
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
@@ -65,55 +74,73 @@
     <true/>
 
     <!-- ========================= -->
-    <!-- 🔐 PERMISSIONS SECTION -->
+    <!-- 🔐 PERMISSIONS (ONLY NEEDED) -->
     <!-- ========================= -->
 
-    <!-- Location Permission -->
+    <!-- Location - When In Use (Required for nearby services) -->
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>This app needs location access to show nearby services and content.</string>
+    <string>Bangla Hub uses your location to show nearby events, services, and businesses in your area.</string>
 
-    <!-- Camera Permission -->
+    <!-- Camera - For profile pictures and event photos -->
     <key>NSCameraUsageDescription</key>
-    <string>This app needs camera access to capture photos.</string>
+    <string>Bangla Hub needs camera access to take photos for your profile, events, and service listings.</string>
 
-    <!-- Photo Library Read -->
+    <!-- Photo Library - For uploading images -->
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>This app needs access to your photo library to upload images.</string>
+    <string>Bangla Hub needs access to your photo library to upload profile pictures and event images.</string>
 
-    <!-- Photo Library Write -->
+    <!-- Photo Library Add - For saving images -->
     <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>This app needs permission to save images to your gallery.</string>
+    <string>Bangla Hub needs permission to save images to your gallery.</string>
 
     <!-- ========================= -->
-    <!-- 🌐 Deep Linking -->
+    <!-- 🌐 DEEP LINKING (Custom Scheme Only) -->
     <!-- ========================= -->
 
     <key>CFBundleURLTypes</key>
     <array>
-        <!-- Custom Scheme (banglahub://) -->
         <dict>
+            <key>CFBundleURLName</key>
+            <string>Bangla Hub Custom Scheme</string>
             <key>CFBundleURLSchemes</key>
             <array>
                 <string>banglahub</string>
             </array>
         </dict>
-
-        <!-- Google Sign-In (IMPORTANT) -->
-        <!-- Replace THIS with your REVERSED_CLIENT_ID -->
-        <dict>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>REPLACE_WITH_REVERSED_CLIENT_ID</string>
-            </array>
-        </dict>
     </array>
 
-    <!-- Allow http (only if you use non-https API) -->
+    <!-- ========================= -->
+    <!-- 🔒 NETWORK SECURITY (SECURE) -->
+    <!-- ========================= -->
+
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>
-        <true/>
+        <false/>
     </dict>
+
+    <!-- ========================= -->
+    <!-- 📧 URL SCHEMES FOR EXTERNAL APPS -->
+    <!-- ========================= -->
+
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>mailto</string>
+        <string>tel</string>
+        <string>https</string>
+        <string>http</string>
+        <string>whatsapp</string>
+    </array>
+
+    <!-- ========================= -->
+    <!-- 🎨 UI REQUIREMENTS -->
+    <!-- ========================= -->
+
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
+
+    <key>UIStatusBarStyle</key>
+    <string>UIStatusBarStyleLightContent</string>
 
 </dict>
 </plist>

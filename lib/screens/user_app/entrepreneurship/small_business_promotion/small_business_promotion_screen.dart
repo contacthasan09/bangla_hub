@@ -1,4 +1,3 @@
-// screens/user_app/entrepreneurship/small_business_promotion/small_business_promotion_screen.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -13,12 +12,15 @@ import 'package:bangla_hub/screens/auth/signup_screen.dart';
 import 'package:bangla_hub/screens/user_app/entrepreneurship/small_business_promotion/business_promotion_details_screen.dart';
 import 'package:bangla_hub/widgets/common/distance_widget.dart';
 import 'package:bangla_hub/widgets/common/global_location_filter_bar.dart';
+import 'package:bangla_hub/widgets/common/global_location_guard.dart';
 import 'package:bangla_hub/widgets/common/osm_location_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 
 class SmallBusinessPromotionScreen extends StatefulWidget {
@@ -29,23 +31,19 @@ class SmallBusinessPromotionScreen extends StatefulWidget {
 class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScreen> 
     with AutomaticKeepAliveClientMixin, TickerProviderStateMixin, WidgetsBindingObserver {
   
-  // Premium Color Palette - Following BanglaClassesScreen Theme
+  // Premium Color Palette
   final Color _primaryOrange = Color(0xFFFF9800);
   final Color _darkOrange = Color(0xFFF57C00);
   final Color _lightOrange = Color(0xFFFFF3E0);
   final Color _redAccent = Color(0xFFE53935);
   final Color _greenAccent = Color(0xFF43A047);
   final Color _goldAccent = Color(0xFFFFB300);
-  final Color _purpleAccent = Color(0xFF8E24AA);
   final Color _tealAccent = Color(0xFF00897B);
   final Color _creamWhite = Color(0xFFFAF7F2);
-  final Color _softGray = Color(0xFFECF0F1);
   final Color _textPrimary = Color(0xFF1E2A3A);
   final Color _textSecondary = Color(0xFF5D6D7E);
   final Color _borderLight = Color(0xFFE0E7E9);
   final Color _successGreen = Color(0xFF4CAF50);
-  final Color _warningOrange = Color(0xFFFF9800);
-  final Color _infoBlue = Color(0xFF2196F3);
   
   // Animation Controllers
   late AnimationController _fadeController;
@@ -54,17 +52,12 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
   late Animation<Offset> _slideAnimation;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
-  late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
   late AnimationController _rotateController;
   
-  // Particle animation controllers
   late List<AnimationController> _particleControllers;
   late List<AnimationController> _bubbleControllers;
 
-  // LOCAL FILTER STATE - separate from global filter
-  String? _localSelectedState;
-  String? _localSelectedCity;
+  // LOCAL FILTER STATE - NO STATE, NO CITY (removed)
   String? _localSelectedIndustry;
   bool _isFilterView = false;
   final ScrollController _filterScrollController = ScrollController();
@@ -90,75 +83,39 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     // Initialize animations
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 1200),
-    );
+    _fadeController = AnimationController(vsync: this, duration: Duration(milliseconds: 1200));
     _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut);
     
-    _slideController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 800),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+    _slideController = AnimationController(vsync: this, duration: Duration(milliseconds: 800));
+    _slideAnimation = Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
     
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 2000),
-    );
+    _pulseController = AnimationController(vsync: this, duration: Duration(milliseconds: 2000));
+    _pulseAnimation = CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut);
     
-    _pulseAnimation = CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    );
+    _rotateController = AnimationController(vsync: this, duration: Duration(milliseconds: 1500));
     
-    _scaleController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 800),
-    );
-    _scaleAnimation = CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.elasticOut,
-    );
-    
-    _rotateController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 1500),
-    );
-    
-    // Initialize particle controllers (30 particles)
     _particleControllers = List.generate(30, (index) {
-      return AnimationController(
-        vsync: this,
-        duration: Duration(seconds: 3 + (index % 3)),
-      )..repeat(reverse: true);
+      return AnimationController(vsync: this, duration: Duration(seconds: 3 + (index % 3)))
+        ..repeat(reverse: true);
     });
     
-    // Initialize bubble controllers (8 bubbles)
     _bubbleControllers = List.generate(8, (index) {
-      return AnimationController(
-        vsync: this,
-        duration: Duration(seconds: 8 + (index * 2)),
-      )..repeat(reverse: true);
+      return AnimationController(vsync: this, duration: Duration(seconds: 8 + (index * 2)))
+        ..repeat(reverse: true);
     });
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
       
-      // Get user location if not already
       final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
       if (locationProvider.currentUserLocation == null) {
         locationProvider.getUserLocation(showLoading: false);
       }
       
-      // Start animations if app is visible
       if (_appLifecycleState == AppLifecycleState.resumed) {
         _startAnimations();
       }
@@ -167,15 +124,10 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
   
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    setState(() {
-      _appLifecycleState = state;
-    });
-    
+    setState(() => _appLifecycleState = state);
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _startAnimations();
     } else {
-      // App is not visible - stop animations to save resources
       _stopAnimations();
     }
   }
@@ -184,10 +136,8 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
     if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
       _fadeController.forward();
       _slideController.forward();
-      _scaleController.forward();
       _pulseController.repeat(reverse: true);
-      _rotateController.repeat(reverse: true);
-      // Particle and bubble controllers already running via repeat
+      _rotateController.repeat();
     }
   }
   
@@ -195,19 +145,14 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
     _fadeController.stop();
     _slideController.stop();
     _pulseController.stop();
-    _scaleController.stop();
     _rotateController.stop();
-    // Particle and bubble controllers will continue but we don't stop them
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     
-    // Listen to location provider changes but DON'T automatically apply filter
     final locationProvider = Provider.of<LocationFilterProvider>(context);
-    
-    // Only reload when global filter changes to show/hide global filter bar
     if (locationProvider.isFilterActive != _previousGlobalFilterState) {
       _previousGlobalFilterState = locationProvider.isFilterActive;
       _loadData();
@@ -217,29 +162,20 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
   @override
   void dispose() {
     print('🗑️ SmallBusinessPromotionScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
-    
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
-    _scaleController.dispose();
     _rotateController.dispose();
-    
-    // ✅ Dispose particle controllers
-    for (var controller in _particleControllers) {
-      controller.dispose();
-    }
-    
-    // ✅ Dispose bubble controllers
-    for (var controller in _bubbleControllers) {
-      controller.dispose();
-    }
-    
+    for (var controller in _particleControllers) { controller.dispose(); }
+    for (var controller in _bubbleControllers) { controller.dispose(); }
     _filterScrollController.dispose();
-    
     super.dispose();
+  }
+
+  // Helper function to check if string is a URL
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
   }
 
   Future<void> _loadData() async {
@@ -249,17 +185,7 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
       final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
       final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
       
-      // IMPORTANT: Do NOT apply global filter automatically
-      // The provider will handle global filter separately
-      
-      // Apply LOCAL filters if any
       if (_hasLocalFilters) {
-        if (_localSelectedState != null) {
-          provider.setFilter(EntrepreneurshipCategory.smallBusinessPromotion, 'local_state', _localSelectedState);
-        }
-        if (_localSelectedCity != null && _localSelectedCity!.isNotEmpty) {
-          provider.setFilter(EntrepreneurshipCategory.smallBusinessPromotion, 'local_city', _localSelectedCity);
-        }
         if (_localSelectedIndustry != null && _localSelectedIndustry!.isNotEmpty) {
           provider.setFilter(EntrepreneurshipCategory.smallBusinessPromotion, 'local_industry', _localSelectedIndustry);
         }
@@ -274,24 +200,197 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
     }
   }
 
+  void _showLocationFilterDialog(BuildContext context) {
+    final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+      ),
+      builder: (context) => SafeArea(
+        child: Container(
+          height: screenHeight * 0.8,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Filter by State', 
+                    style: GoogleFonts.poppins(
+                      fontSize: 20, 
+                      fontWeight: FontWeight.w700, 
+                      color: _primaryOrange
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close), 
+                    onPressed: () => Navigator.pop(context)
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              
+              GestureDetector(
+                onTap: () {
+                  filterProvider.clearLocationFilter();
+                  _loadData();
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Showing promotions from all states'), 
+                      backgroundColor: Color(0xFFFF9800), 
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade200))
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.public, color: _primaryOrange),
+                      const SizedBox(width: 15),
+                      Text(
+                        'All States', 
+                        style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 10),
+              
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: CommunityStates.states.length,
+                  itemBuilder: (context, index) {
+                    final state = CommunityStates.states[index];
+                    final isSelected = filterProvider.selectedState == state;
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        filterProvider.setLocationFilter(state, fromEvents: true);
+                        _loadData();
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Showing promotions in $state'), 
+                            backgroundColor: _primaryOrange, 
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? _primaryOrange.withOpacity(0.1) : null,
+                          border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.location_on, color: isSelected ? _primaryOrange : Colors.grey),
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: Text(
+                                state, 
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16, 
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, 
+                                  color: isSelected ? _primaryOrange : Colors.black87
+                                ),
+                              ),
+                            ),
+                            if (isSelected) Icon(Icons.check_circle, color: _primaryOrange),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChangeLocationButton(bool isTablet) {
+    return Consumer<LocationFilterProvider>(
+      builder: (context, filterProvider, child) {
+        final hasFilter = filterProvider.isFilterActive;
+        
+        return GestureDetector(
+          onTap: () => _showLocationFilterDialog(context),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 12 : 10,
+              vertical: isTablet ? 6 : 4,
+            ),
+            decoration: BoxDecoration(
+              gradient: hasFilter
+                  ? LinearGradient(colors: [_primaryOrange, _darkOrange])
+                  : LinearGradient(colors: [Colors.white.withOpacity(0.2), Colors.white.withOpacity(0.1)]),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: hasFilter ? _goldAccent.withOpacity(0.5) : _goldAccent.withOpacity(0.4),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  hasFilter ? Icons.edit_location_rounded : Icons.location_on_rounded,
+                  size: isTablet ? 14 : 12,
+                  color: hasFilter ? _goldAccent : _goldAccent,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  hasFilter ? "Change Location" : "Select Location",
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 11 : 10,
+                    fontWeight: hasFilter ? FontWeight.w600 : FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+                if (hasFilter) ...[
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFB300),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
   Future<void> _applyLocalFilters() async {
     final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
     
-    // Clear any existing local filters first
     provider.clearAllFilters(EntrepreneurshipCategory.smallBusinessPromotion);
     
-    // Build active filters map for display
     Map<String, dynamic> newActiveFilters = {};
     
-    // Apply new local filters
-    if (_localSelectedState != null) {
-      provider.setFilter(EntrepreneurshipCategory.smallBusinessPromotion, 'local_state', _localSelectedState);
-      newActiveFilters['local_state'] = _localSelectedState;
-    }
-    if (_localSelectedCity != null && _localSelectedCity!.isNotEmpty) {
-      provider.setFilter(EntrepreneurshipCategory.smallBusinessPromotion, 'local_city', _localSelectedCity);
-      newActiveFilters['local_city'] = _localSelectedCity;
-    }
     if (_localSelectedIndustry != null && _localSelectedIndustry!.isNotEmpty) {
       provider.setFilter(EntrepreneurshipCategory.smallBusinessPromotion, 'local_industry', _localSelectedIndustry);
       newActiveFilters['local_industry'] = _localSelectedIndustry;
@@ -309,13 +408,9 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
   void _clearLocalFilters() {
     final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
     
-    // Clear all local filters from provider
     provider.clearAllFilters(EntrepreneurshipCategory.smallBusinessPromotion);
     
-    // Reset local state
     setState(() {
-      _localSelectedState = null;
-      _localSelectedCity = null;
       _localSelectedIndustry = null;
       _hasLocalFilters = false;
       _activeLocalFilters.clear();
@@ -325,60 +420,27 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
     provider.loadBusinessPromotions();
   }
 
-  // Get filtered promotions - applying BOTH global and local filters
   List<SmallBusinessPromotion> _getFilteredPromotions(
     List<SmallBusinessPromotion> promotions,
     LocationFilterProvider locationProvider,
   ) {
-    // Start with all verified and active promotions
-    var filteredPromotions = promotions
-        .where((p) => p.isVerified && p.isActive && !p.isDeleted)
-        .toList();
+    var filteredPromotions = promotions.where((p) => p.isVerified && p.isActive && !p.isDeleted).toList();
     
-    print('📊 Initial verified promotions: ${filteredPromotions.length}');
-    
-    // Apply GLOBAL location filter if active (from LocationFilterProvider)
     if (locationProvider.isFilterActive && locationProvider.selectedState != null) {
-      filteredPromotions = filteredPromotions.where((promotion) {
-        return promotion.state == locationProvider.selectedState;
-      }).toList();
-      print('📍 After GLOBAL filter (${locationProvider.selectedState}): ${filteredPromotions.length} promotions');
+      filteredPromotions = filteredPromotions.where((promotion) => promotion.state == locationProvider.selectedState).toList();
     }
     
-    // Apply LOCAL filters if any (from this screen's filter view)
     if (_hasLocalFilters) {
-      // State filter
-      if (_localSelectedState != null) {
-        filteredPromotions = filteredPromotions.where((promotion) => 
-          promotion.state == _localSelectedState
-        ).toList();
-      }
-      
-      // City filter
-      if (_localSelectedCity != null && _localSelectedCity!.isNotEmpty) {
-        filteredPromotions = filteredPromotions.where((promotion) => 
-          promotion.city.toLowerCase().contains(_localSelectedCity!.toLowerCase())
-        ).toList();
-      }
-      
-      // Industry filter
       if (_localSelectedIndustry != null && _localSelectedIndustry!.isNotEmpty) {
         filteredPromotions = filteredPromotions.where((promotion) => 
-          promotion.productsServices.any((service) => 
-            service.toLowerCase().contains(_localSelectedIndustry!.toLowerCase())
-          )
+          promotion.productsServices.any((service) => service.toLowerCase().contains(_localSelectedIndustry!.toLowerCase()))
         ).toList();
       }
-      
-      print('📊 After LOCAL filters: ${filteredPromotions.length} promotions');
     }
     
-    // Apply category filter (from chips)
     if (_selectedCategoryFilter != 'All') {
       filteredPromotions = filteredPromotions.where((p) {
-        return p.productsServices.any((service) => 
-          service.toLowerCase().contains(_selectedCategoryFilter!.toLowerCase())
-        );
+        return p.productsServices.any((service) => service.toLowerCase().contains(_selectedCategoryFilter!.toLowerCase()));
       }).toList();
     }
     
@@ -387,98 +449,44 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
 
   Future<void> _launchPhone(String phone) async {
     String formattedPhone = phone.replaceAll(RegExp(r'\D'), '');
-    if (!formattedPhone.startsWith('1') && formattedPhone.length == 10) {
-      formattedPhone = '1$formattedPhone';
-    }
-    if (!formattedPhone.startsWith('+')) {
-      formattedPhone = '+$formattedPhone';
-    }
-    
+    if (!formattedPhone.startsWith('1') && formattedPhone.length == 10) formattedPhone = '1$formattedPhone';
+    if (!formattedPhone.startsWith('+')) formattedPhone = '+$formattedPhone';
     final Uri phoneUri = Uri(scheme: 'tel', path: formattedPhone);
     try {
-      if (await canLaunchUrl(phoneUri)) {
-        await launchUrl(phoneUri);
-        if (mounted) _showSuccessSnackBar('Opening phone dialer...');
-      }
-    } catch (e) {
-      if (mounted) _showErrorSnackBar('Could not launch phone dialer');
-    }
+      if (await canLaunchUrl(phoneUri)) await launchUrl(phoneUri);
+    } catch (e) { if (mounted) _showErrorSnackBar('Could not launch phone dialer'); }
   }
 
   Future<void> _launchEmail(String email) async {
-    final Uri emailUri = Uri(
-      scheme: 'mailto',
-      path: email,
-      query: 'subject=Inquiry about your business',
-    );
+    final Uri emailUri = Uri(scheme: 'mailto', path: email, query: 'subject=Inquiry about your business');
     try {
-      if (await canLaunchUrl(emailUri)) {
-        await launchUrl(emailUri);
-        if (mounted) _showSuccessSnackBar('Opening email app...');
-      }
-    } catch (e) {
-      if (mounted) _showErrorSnackBar('Could not launch email app');
-    }
+      if (await canLaunchUrl(emailUri)) await launchUrl(emailUri);
+    } catch (e) { if (mounted) _showErrorSnackBar('Could not launch email app'); }
   }
 
   Future<void> _launchUrl(String url) async {
     try {
-      String finalUrl = url;
-      if (!finalUrl.startsWith('http')) {
-        finalUrl = 'https://$finalUrl';
-      }
-      
-      final Uri uri = Uri.parse(finalUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (mounted) _showSuccessSnackBar('Opening link...');
-      }
-    } catch (e) {
-      if (mounted) _showErrorSnackBar('Invalid URL');
-    }
+      String finalUrl = url.startsWith('http') ? url : 'https://$url';
+      if (await canLaunchUrl(Uri.parse(finalUrl))) await launchUrl(Uri.parse(finalUrl), mode: LaunchMode.externalApplication);
+    } catch (e) { if (mounted) _showErrorSnackBar('Invalid URL'); }
   }
 
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 12),
-            Expanded(child: Text(message, style: TextStyle(fontWeight: FontWeight.w500))),
-          ],
-        ),
-        backgroundColor: _successGreen,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: EdgeInsets.all(16),
-        duration: Duration(seconds: 2),
-      ),
+      SnackBar(content: Row(children: [Icon(Icons.check_circle_rounded, color: Colors.white, size: 20), SizedBox(width: 12), Expanded(child: Text(message))],), backgroundColor: _successGreen, behavior: SnackBarBehavior.floating),
     );
   }
 
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.error_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 12),
-            Expanded(child: Text(message, style: TextStyle(fontWeight: FontWeight.w500))),
-          ],
-        ),
-        backgroundColor: _redAccent,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: EdgeInsets.all(16),
-      ),
+      SnackBar(content: Row(children: [Icon(Icons.error_rounded, color: Colors.white, size: 20), SizedBox(width: 12), Expanded(child: Text(message))],), backgroundColor: _redAccent, behavior: SnackBarBehavior.floating),
     );
   }
 
   void _showLoginRequiredDialog(BuildContext context, String feature) {
-    final Color _primaryRed = Color(0xFFF42A41);
+    final Color _primaryRed = Color(0xFFE03C32);
     final Color _primaryGreen = Color(0xFF006A4E);
     final Color _goldAccent = Color(0xFFFFD700);
     
@@ -487,158 +495,36 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          constraints: BoxConstraints(maxWidth: 320),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 30,
-                offset: Offset(0, 15),
-              ),
-            ],
+            gradient: LinearGradient(colors: [_primaryGreen, _primaryRed]),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header with gradient - reduced size
               Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_primaryRed, _primaryGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                ),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryRed, _primaryGreen]), borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.lock_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
+                    Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(gradient: LinearGradient(colors: [_goldAccent, Color(0xFFFFC107)]), shape: BoxShape.circle), child: Icon(Icons.lock_rounded, color: Colors.white, size: 24)),
                     SizedBox(height: 8),
-                    Text(
-                      'Login Required',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
+                    Text('Login Required', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Text('to access $feature', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withOpacity(0.9))),
                   ],
                 ),
               ),
-              
               Padding(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.all(16),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'You need to login to $feature',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Create an account or sign in to access full details',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 16),
-                    
-                    // Login Button - reduced size
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => LoginScreen(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primaryGreen,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Login',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    
-                    // Sign Up Button - reduced size
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RegisterScreen(role: 'user'),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _primaryGreen,
-                          side: BorderSide(color: _primaryGreen, width: 2),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Create Account',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    
-                    // Continue Browsing - slightly reduced size
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        'Continue Browsing',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
+                    SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen())); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: _primaryGreen, padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Login', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterScreen(role: 'user'))); }, style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white, width: 1.5), padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Create Account', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    TextButton(onPressed: () => Navigator.pop(context), child: Text('Continue Browsing', style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withOpacity(0.7)))),
                   ],
                 ),
               ),
@@ -652,43 +538,27 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+    return LocationGuard(required: true, showBackButton: true, child: _buildMainContent(context));
+  }
+
+  Widget _buildMainContent(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-      ),
+      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
         body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                _lightOrange.withOpacity(0.3),
-                _creamWhite,
-                Colors.white,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
+          decoration: BoxDecoration(gradient: LinearGradient(colors: [_lightOrange.withOpacity(0.3), _creamWhite, Colors.white], begin: Alignment.topLeft, end: Alignment.bottomRight)),
           child: Stack(
             children: [
-              // Animated Background Particles
               ...List.generate(30, (index) => _buildAnimatedParticle(index, screenWidth, MediaQuery.of(context).size.height)),
-              
-              // Floating Bubbles
               ...List.generate(8, (index) => _buildFloatingBubble(index, screenWidth, MediaQuery.of(context).size.height)),
-              
-              // Main Content
               RefreshIndicator(
                 color: _goldAccent,
-                backgroundColor: Colors.white,
                 onRefresh: _loadData,
                 child: _isFilterView
                     ? _buildFiltersView(isTablet)
@@ -696,53 +566,15 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                         physics: BouncingScrollPhysics(),
                         slivers: [
                           _buildPremiumAppBar(isTablet),
-                          
-                          // Global Location Filter Bar - SEPARATE
-                          SliverToBoxAdapter(
-                            child: Consumer<LocationFilterProvider>(
-                              builder: (context, locationProvider, _) {
-                                return GlobalLocationFilterBar(
-                                  isTablet: isTablet,
-                                  onClearTap: () {
-                                    // This only clears GLOBAL filter
-                                    locationProvider.clearLocationFilter();
-                                    _loadData(); // Reload with global filter cleared
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                          
-                          // Local Filter Toggle Button - SEPARATE
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: isTablet ? 20 : 16,
-                                vertical: 8,
-                              ),
-                              child: _buildLocalFilterToggleButton(isTablet),
-                            ),
-                          ),
-                          
-                          // Active LOCAL Filters Display
+                          SliverToBoxAdapter(child: Consumer<LocationFilterProvider>(builder: (context, locationProvider, _) => GlobalLocationFilterBar(isTablet: isTablet, onClearTap: () { locationProvider.clearLocationFilter(); _loadData(); }))),
+                          SliverToBoxAdapter(child: Padding(padding: EdgeInsets.symmetric(horizontal: isTablet ? 20 : 16, vertical: 8), child: _buildLocalFilterToggleButton(isTablet))),
                           _buildActiveLocalFilters(isTablet),
-                          
-                          // Category Filters (always visible)
-                          SliverToBoxAdapter(
-                            child: _buildCategoryFilterChips(isTablet),
-                          ),
-                          
+                          SliverToBoxAdapter(child: _buildCategoryFilterChips(isTablet)),
                           _buildContent(),
                         ],
                       ),
               ),
-              
-              // Premium Floating Action Button
-              Positioned(
-                bottom: 30,
-                right: 30,
-                child: _buildPremiumFloatingActionButton(isTablet, shouldAnimate),
-              ),
+              Positioned(bottom: 30, right: 30, child: _buildPremiumFloatingActionButton(isTablet, shouldAnimate)),
             ],
           ),
         ),
@@ -757,35 +589,11 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
       slivers: [
         _buildPremiumAppBar(isTablet),
         const SliverToBoxAdapter(child: SizedBox(height: 8)),
-        
-        // Global Location Filter Bar - still visible but separate
-        SliverToBoxAdapter(
-          child: Consumer<LocationFilterProvider>(
-            builder: (context, locationProvider, _) {
-              return GlobalLocationFilterBar(
-                isTablet: isTablet,
-                onClearTap: () {
-                  locationProvider.clearLocationFilter();
-                },
-              );
-            },
-          ),
-        ),
-        
+        SliverToBoxAdapter(child: Consumer<LocationFilterProvider>(builder: (context, locationProvider, _) => GlobalLocationFilterBar(isTablet: isTablet, onClearTap: () { locationProvider.clearLocationFilter(); }))),
         SliverToBoxAdapter(
           child: Container(
             margin: EdgeInsets.all(isTablet ? 24 : 16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: Offset(0, 10))]),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(30),
               child: BackdropFilter(
@@ -797,153 +605,42 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                     children: [
                       Row(
                         children: [
-                          Container(
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [_primaryOrange, _redAccent],
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Icon(Icons.tune_rounded, color: Colors.white),
-                          ),
+                          Container(padding: EdgeInsets.all(12), decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryOrange, _redAccent]), borderRadius: BorderRadius.circular(16)), child: Icon(Icons.tune_rounded, color: Colors.white)),
                           SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Filters',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: isTablet ? 24 : 20,
-                                    fontWeight: FontWeight.w700,
-                                    color: _textPrimary,
-                                  ),
-                                ),
-                                Text(
-                                  'Apply filters specific to this screen',
-                                  style: GoogleFonts.inter(
-                                    fontSize: isTablet ? 14 : 12,
-                                    color: _textSecondary,
-                                  ),
-                                ),
+                                Text('Local Filters', style: GoogleFonts.poppins(fontSize: isTablet ? 24 : 20, fontWeight: FontWeight.w700, color: _textPrimary)),
+                                Text('Apply screen-specific filters (State/City are global)', style: GoogleFonts.inter(fontSize: isTablet ? 14 : 12, color: _textSecondary)),
                               ],
                             ),
                           ),
                         ],
                       ),
-                      
                       SizedBox(height: 24),
-                      
-                      // State Dropdown
-                      _buildDropdown<String?>(
-                        value: _localSelectedState,
-                        label: 'Select State',
-                        icon: Icons.location_on_rounded,
-                        items: [
-                          DropdownMenuItem<String?>(value: null, child: Text('All States')),
-                          ...CommunityStates.states.map((state) => 
-                            DropdownMenuItem<String?>(value: state, child: Text(state))
-                          ),
-                        ],
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _localSelectedState = newValue;
-                            _localSelectedCity = null;
-                          });
-                        },
-                        isTablet: isTablet,
-                      ),
-                      
-                      if (_localSelectedState != null) ...[
-                        SizedBox(height: 16),
-                        // City Text Field (optional)
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 8,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: TextFormField(
-                            initialValue: _localSelectedCity,
-                            onChanged: (value) => _localSelectedCity = value,
-                            decoration: InputDecoration(
-                              labelText: 'City (Optional)',
-                              labelStyle: GoogleFonts.poppins(fontSize: 13),
-                              prefixIcon: Icon(Icons.location_city_rounded, color: _primaryOrange, size: 20),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                              filled: true,
-                              fillColor: Colors.transparent,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                          ),
-                        ),
-                      ],
-                      
-                      SizedBox(height: 16),
-                      
-                      // Industry Text Field
                       Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 8,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: Offset(0, 4))]),
                         child: TextFormField(
                           initialValue: _localSelectedIndustry,
                           onChanged: (value) => _localSelectedIndustry = value,
                           decoration: InputDecoration(
-                            labelText: 'Industry/Category (Optional)',
+                            labelText: 'Industry/Category',
                             labelStyle: GoogleFonts.poppins(fontSize: 13),
                             prefixIcon: Icon(Icons.category_rounded, color: _primaryOrange, size: 20),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                             filled: true,
                             fillColor: Colors.transparent,
                             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           ),
                         ),
                       ),
-                      
                       SizedBox(height: 24),
-                      
-                      // Action Buttons
                       Row(
                         children: [
-                          Expanded(
-                            child: _buildActionButton(
-                              label: 'Apply',
-                              onTap: _applyLocalFilters,
-                              isPrimary: true,
-                              isTablet: isTablet,
-                            ),
-                          ),
+                          Expanded(child: _buildActionButton(label: 'Apply', onTap: _applyLocalFilters, isPrimary: true, isTablet: isTablet)),
                           SizedBox(width: 12),
-                          Expanded(
-                            child: _buildActionButton(
-                              label: 'Clear',
-                              onTap: _clearLocalFilters,
-                              isPrimary: false,
-                              isTablet: isTablet,
-                            ),
-                          ),
+                          Expanded(child: _buildActionButton(label: 'Clear', onTap: _clearLocalFilters, isPrimary: false, isTablet: isTablet)),
                         ],
                       ),
                     ],
@@ -960,63 +657,24 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
 
   Widget _buildLocalFilterToggleButton(bool isTablet) {
     return GestureDetector(
-      onTap: () {
-        setState(() => _isFilterView = true);
-        HapticFeedback.lightImpact();
-      },
+      onTap: () { setState(() => _isFilterView = true); HapticFeedback.lightImpact(); },
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(
-          horizontal: isTablet ? 20 : 16,
-          vertical: isTablet ? 14 : 12,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: isTablet ? 20 : 16, vertical: isTablet ? 14 : 12),
         decoration: BoxDecoration(
-          gradient: _hasLocalFilters
-              ? LinearGradient(colors: [_primaryOrange, _redAccent])
-              : LinearGradient(colors: [_primaryOrange, _darkOrange]),
+          gradient: _hasLocalFilters ? LinearGradient(colors: [_primaryOrange, _redAccent]) : LinearGradient(colors: [_primaryOrange, _darkOrange]),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: _primaryOrange.withOpacity(0.3),
-              blurRadius: 15,
-              offset: Offset(0, 6),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: _primaryOrange.withOpacity(0.3), blurRadius: 15, offset: Offset(0, 6))],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              _hasLocalFilters ? Icons.filter_alt_rounded : Icons.tune_rounded,
-              color: Colors.white,
-              size: isTablet ? 20 : 18,
-            ),
+            Icon(_hasLocalFilters ? Icons.filter_alt_rounded : Icons.tune_rounded, color: Colors.white, size: isTablet ? 20 : 18),
             SizedBox(width: 8),
-            Text(
-              _hasLocalFilters ? 'Edit Filters' : 'Filters',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: isTablet ? 16 : 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            Text(_hasLocalFilters ? 'Edit Local Filters' : 'Local Filters', style: GoogleFonts.poppins(color: Colors.white, fontSize: isTablet ? 16 : 14, fontWeight: FontWeight.w600)),
             if (_hasLocalFilters) ...[
               SizedBox(width: 8),
-              Container(
-                padding: EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  '${_activeLocalFilters.length}',
-                  style: GoogleFonts.poppins(
-                    color: _primaryOrange,
-                    fontSize: isTablet ? 12 : 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
+              Container(padding: EdgeInsets.all(2), decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: Text('${_activeLocalFilters.length}', style: GoogleFonts.poppins(color: _primaryOrange, fontSize: isTablet ? 12 : 10, fontWeight: FontWeight.w700))),
             ],
           ],
         ),
@@ -1028,56 +686,26 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
     if (_activeLocalFilters.isEmpty) return SliverToBoxAdapter(child: SizedBox.shrink());
     
     final chips = <Widget>[];
-    
     _activeLocalFilters.forEach((key, value) {
       if (value != null && value.toString().isNotEmpty) {
         String label = '';
         IconData icon = Icons.filter_alt_rounded;
-        
         switch (key) {
-          case 'local_state':
-            label = 'State: $value';
-            icon = Icons.location_on_rounded;
-            break;
-          case 'local_city':
-            label = 'City: $value';
-            icon = Icons.location_city_rounded;
-            break;
           case 'local_industry':
             label = 'Industry: $value';
             icon = Icons.category_rounded;
             break;
         }
-        
-        chips.add(_buildFilterChip(
-          label: label,
-          icon: icon,
-          onRemove: () {
-            // Remove this specific local filter
-            final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
-            provider.clearFilter(EntrepreneurshipCategory.smallBusinessPromotion, key);
-            
-            setState(() {
-              _activeLocalFilters.remove(key);
-              _hasLocalFilters = _activeLocalFilters.isNotEmpty;
-              
-              // Also clear the corresponding local state variable
-              switch (key) {
-                case 'local_state':
-                  _localSelectedState = null;
-                  break;
-                case 'local_city':
-                  _localSelectedCity = null;
-                  break;
-                case 'local_industry':
-                  _localSelectedIndustry = null;
-                  break;
-              }
-            });
-            
-            provider.loadBusinessPromotions();
-          },
-        ));
+        chips.add(_buildFilterChip(label: label, icon: icon, onRemove: () {
+          final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
+          provider.clearFilter(EntrepreneurshipCategory.smallBusinessPromotion, key);
+          setState(() {
+            _activeLocalFilters.remove(key);
+            _hasLocalFilters = _activeLocalFilters.isNotEmpty;
+            _localSelectedIndustry = null;
+          });
+          provider.loadBusinessPromotions();
+        }));
       }
     });
     
@@ -1087,17 +715,7 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 8),
-              child: Text(
-                'Active Filters:',
-                style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 14 : 12,
-                  fontWeight: FontWeight.w600,
-                  color: _primaryOrange,
-                ),
-              ),
-            ),
+            Padding(padding: const EdgeInsets.only(left: 4, bottom: 8), child: Text('Active Local Filters:', style: GoogleFonts.poppins(fontSize: isTablet ? 14 : 12, fontWeight: FontWeight.w600, color: _primaryOrange))),
             Wrap(spacing: 8, runSpacing: 8, children: chips),
           ],
         ),
@@ -1105,122 +723,43 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
     );
   }
 
-  Widget _buildFilterChip({
-    required String label,
-    required IconData icon,
-    required VoidCallback onRemove,
-  }) {
+  Widget _buildFilterChip({required String label, required IconData icon, required VoidCallback onRemove}) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [_primaryOrange, _darkOrange]),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryOrange, _darkOrange]), borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: Colors.white, size: 14),
           SizedBox(width: 6),
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
+          Text(label, style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis, maxLines: 1),
           SizedBox(width: 6),
-          GestureDetector(
-            onTap: onRemove,
-            child: Icon(Icons.close, color: Colors.white, size: 14),
-          ),
+          GestureDetector(onTap: onRemove, child: Icon(Icons.close, color: Colors.white, size: 14)),
         ],
       ),
     );
   }
 
-  Widget _buildDropdown<T>({
-    required T? value,
-    required String label,
-    required IconData icon,
-    required List<DropdownMenuItem<T>> items,
-    required void Function(T?) onChanged,
-    required bool isTablet,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: DropdownButtonFormField<T>(
-        value: value,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: GoogleFonts.poppins(fontSize: 13),
-          prefixIcon: Icon(icon, color: _primaryOrange, size: 20),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.transparent,
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        ),
-        items: items,
-        onChanged: onChanged,
-        isExpanded: true,
-        icon: Icon(Icons.arrow_drop_down, color: _primaryOrange),
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required String label,
-    required VoidCallback onTap,
-    required bool isPrimary,
-    required bool isTablet,
-  }) {
+  Widget _buildActionButton({required String label, required VoidCallback onTap, required bool isPrimary, required bool isTablet}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          gradient: isPrimary
-              ? LinearGradient(colors: [_primaryOrange, _redAccent])
-              : null,
+          gradient: isPrimary ? LinearGradient(colors: [_primaryOrange, _redAccent]) : null,
           color: isPrimary ? null : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: isPrimary ? null : Border.all(color: _primaryOrange, width: 2),
-          boxShadow: isPrimary
-              ? [BoxShadow(color: _primaryOrange.withOpacity(0.3), blurRadius: 15, offset: Offset(0, 6))]
-              : null,
+          boxShadow: isPrimary ? [BoxShadow(color: _primaryOrange.withOpacity(0.3), blurRadius: 15, offset: Offset(0, 6))] : null,
         ),
-        child: Center(
-          child: Text(
-            label,
-            style: GoogleFonts.poppins(
-              color: isPrimary ? Colors.white : _primaryOrange,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
-        ),
+        child: Center(child: Text(label, style: GoogleFonts.poppins(color: isPrimary ? Colors.white : _primaryOrange, fontWeight: FontWeight.w700, fontSize: 13))),
       ),
     );
   }
 
   SliverAppBar _buildPremiumAppBar(bool isTablet) {
     return SliverAppBar(
-      expandedHeight: isTablet ? 280 : 220,
+      expandedHeight: isTablet ? 260 : 200,
       floating: false,
       pinned: true,
       snap: false,
@@ -1240,16 +779,15 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: isTablet ? 40 : 24,
-                vertical: isTablet ? 30 : 20,
+                vertical: isTablet ? 20 : 16,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Premium Pattern Line
                   Container(
                     height: 4,
-                    width: 80,
+                    width: 60,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [_goldAccent, _greenAccent, _goldAccent],
@@ -1259,41 +797,56 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  SizedBox(height: isTablet ? 20 : 16),
+                  SizedBox(height: isTablet ? 16 : 12),
                   
-                  // Title
-                  Text(
-                    'Small Business',
-                    style: GoogleFonts.poppins(
-                      fontSize: isTablet ? 36 : 28,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                  ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: [Colors.white, _goldAccent],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ).createShader(bounds),
+                    child: Text(
+                      'Business Promotions',
+                      style: GoogleFonts.poppins(
+                        fontSize: isTablet ? 32 : 24,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  SizedBox(height: isTablet ? 8 : 4),
-                  Text(
-                    'Promotions',
-                    style: GoogleFonts.poppins(
-                      fontSize: isTablet ? 32 : 24,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
+                  
                   SizedBox(height: isTablet ? 12 : 8),
                   
-                  // Subtitle
-                  Text(
-                    '🌟 Discover and support local businesses',
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 18 : 16,
-                      color: Colors.white.withOpacity(0.9),
-                      fontWeight: FontWeight.w500,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '🌟 Discover and support local businesses',
+                          style: GoogleFonts.inter(
+                            fontSize: isTablet ? 14 : 12,
+                            color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w500,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      
+                      SizedBox(width: isTablet ? 12 : 8),
+                      
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: _buildChangeLocationButton(isTablet),
+                      ),
+                    ],
                   ),
                   
-                  SizedBox(height: isTablet ? 20 : 16),
+                  SizedBox(height: isTablet ? 16 : 12),
                   
-                  // Stats Row
                   Consumer<EntrepreneurshipProvider>(
                     builder: (context, provider, child) {
                       final verifiedCount = provider.businessPromotions
@@ -1304,8 +857,8 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                         children: [
                           Container(
                             padding: EdgeInsets.symmetric(
-                              horizontal: isTablet ? 16 : 12,
-                              vertical: isTablet ? 8 : 6,
+                              horizontal: isTablet ? 12 : 10,
+                              vertical: isTablet ? 6 : 4,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
@@ -1314,12 +867,12 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.storefront_rounded, color: _goldAccent, size: isTablet ? 18 : 16),
-                                SizedBox(width: isTablet ? 8 : 6),
+                                Icon(Icons.storefront_rounded, color: _goldAccent, size: isTablet ? 14 : 12),
+                                SizedBox(width: isTablet ? 6 : 4),
                                 Text(
                                   '$verifiedCount Active Businesses',
                                   style: GoogleFonts.inter(
-                                    fontSize: isTablet ? 14 : 12,
+                                    fontSize: isTablet ? 12 : 10,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.white,
                                   ),
@@ -1338,15 +891,20 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
         ),
       ),
       leading: IconButton(
-        icon: Icon(Icons.arrow_back_rounded, color: Colors.white, fontWeight: FontWeight.bold, size: isTablet ? 28 : 24,),
+        icon: Icon(
+          Icons.arrow_back_rounded, 
+          color: Colors.white, 
+          fontWeight: FontWeight.bold, 
+          size: isTablet ? 28 : 24,
+        ),
         onPressed: () => Navigator.pop(context),
       ),
     );
   }
-
+  
   Widget _buildCategoryFilterChips(bool isTablet) {
     return Container(
-      height: 50,
+      height: 44,
       margin: EdgeInsets.only(top: 16, bottom: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -1355,40 +913,15 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
         itemBuilder: (context, index) {
           final filter = _categoryFilters[index];
           final isSelected = _selectedCategoryFilter == filter;
-          
           return Padding(
-            padding: EdgeInsets.only(right: 12),
+            padding: EdgeInsets.only(right: 10),
             child: FilterChip(
               selected: isSelected,
-              label: Text(
-                filter,
-                style: GoogleFonts.poppins(
-                  color: isSelected ? Colors.white : _textPrimary,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  fontSize: isTablet ? 14 : 12,
-                ),
-              ),
-              onSelected: (selected) {
-                setState(() {
-                  _selectedCategoryFilter = filter;
-                });
-                HapticFeedback.lightImpact();
-              },
+              label: Text(filter, style: GoogleFonts.poppins(color: isSelected ? Colors.white : _textPrimary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal, fontSize: isTablet ? 12 : 11)),
+              onSelected: (selected) { setState(() { _selectedCategoryFilter = filter; }); HapticFeedback.lightImpact(); },
               backgroundColor: Colors.white,
               selectedColor: _primaryOrange,
-              checkmarkColor: _goldAccent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-                side: BorderSide(
-                  color: isSelected ? _primaryOrange : _borderLight,
-                  width: 1,
-                ),
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 16 : 12,
-                vertical: isTablet ? 10 : 8,
-              ),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25), side: BorderSide(color: isSelected ? _primaryOrange : _borderLight, width: 0.8)),
             ),
           );
         },
@@ -1398,10 +931,8 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
 
   Widget _buildAnimatedParticle(int index, double width, double height) {
     final controller = _particleControllers[index % _particleControllers.length];
-    
     return Positioned(
-      left: (index * 37) % width,
-      top: (index * 53) % height,
+      left: (index * 37) % width, top: (index * 53) % height,
       child: AnimatedBuilder(
         animation: controller,
         builder: (context, child) {
@@ -1410,20 +941,7 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
             opacity: (0.1 + (value * 0.2)) * (0.5 + (index % 3) * 0.1),
             child: Transform.rotate(
               angle: value * 6.28,
-              child: Container(
-                width: 2 + (index % 3) * 2,
-                height: 2 + (index % 3) * 2,
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      _primaryOrange.withOpacity(0.5),
-                      _greenAccent.withOpacity(0.3),
-                      Colors.transparent,
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-              ),
+              child: Container(width: 2 + (index % 3) * 2, height: 2 + (index % 3) * 2, decoration: BoxDecoration(gradient: RadialGradient(colors: [_primaryOrange.withOpacity(0.5), _greenAccent.withOpacity(0.3), Colors.transparent]), shape: BoxShape.circle)),
             ),
           );
         },
@@ -1434,10 +952,8 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
   Widget _buildFloatingBubble(int index, double width, double height) {
     final controller = _bubbleControllers[index % _bubbleControllers.length];
     final size = 50 + (index * 15).toDouble();
-    
     return Positioned(
-      left: (index * 73) % width,
-      top: (index * 47) % height,
+      left: (index * 73) % width, top: (index * 47) % height,
       child: AnimatedBuilder(
         animation: controller,
         builder: (context, child) {
@@ -1446,24 +962,7 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
             offset: Offset(0, 20 * (value - 0.5)),
             child: Opacity(
               opacity: 0.1 + (value * 0.1),
-              child: Container(
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      _lightOrange.withOpacity(0.3),
-                      _greenAccent.withOpacity(0.2),
-                      Colors.transparent,
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _goldAccent.withOpacity(0.1),
-                    width: 1,
-                  ),
-                ),
-              ),
+              child: Container(width: size, height: size, decoration: BoxDecoration(gradient: RadialGradient(colors: [_lightOrange.withOpacity(0.3), _greenAccent.withOpacity(0.2), Colors.transparent]), shape: BoxShape.circle, border: Border.all(color: _goldAccent.withOpacity(0.1), width: 1))),
             ),
           );
         },
@@ -1477,88 +976,41 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
       child: FloatingActionButton.extended(
         onPressed: () {
           final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          if (authProvider.isGuestMode) {
-            _showLoginRequiredDialog(context, 'Add Promotion');
-            return;
-          }
+          if (authProvider.isGuestMode) { _showLoginRequiredDialog(context, 'Add Promotion'); return; }
           _showAddPromotionDialog(context);
         },
         backgroundColor: Colors.transparent,
         elevation: 12,
         label: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: isTablet ? 24 : 20,
-            vertical: isTablet ? 16 : 14,
-          ),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_primaryOrange, _redAccent, _greenAccent],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: _primaryOrange.withOpacity(0.4),
-                blurRadius: 15,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
+          padding: EdgeInsets.symmetric(horizontal: isTablet ? 20 : 16, vertical: isTablet ? 12 : 10),
+          decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryOrange, _redAccent, _greenAccent]), borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: _primaryOrange.withOpacity(0.4), blurRadius: 15, offset: Offset(0, 8))]),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_business_rounded, color: Colors.white, size: isTablet ? 24 : 20),
-              SizedBox(width: isTablet ? 12 : 8),
-              Text(
-                'Promote Business',
-                style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 18 : 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
+              Icon(Icons.add_business_rounded, color: Colors.white, size: isTablet ? 20 : 18),
+              SizedBox(width: isTablet ? 8 : 6),
+              Text('Promote', style: GoogleFonts.poppins(fontSize: isTablet ? 14 : 12, fontWeight: FontWeight.w700, color: Colors.white)),
             ],
           ),
         ),
       ),
     );
-    
-    return shouldAnimate
-        ? ScaleTransition(scale: _pulseAnimation, child: button)
-        : button;
+    return shouldAnimate ? ScaleTransition(scale: _pulseAnimation, child: button) : button;
   }
 
   Widget _buildContent() {
     return Consumer2<EntrepreneurshipProvider, LocationFilterProvider>(
       builder: (context, provider, locationProvider, child) {
-        if (provider.isLoading || _isLoading) {
-          return _buildLoadingState();
-        }
-
+        if (provider.isLoading || _isLoading) return _buildLoadingState();
         final filteredPromotions = _getFilteredPromotions(provider.businessPromotions, locationProvider);
-
-        if (filteredPromotions.isEmpty) {
-          return _buildEmptyState(locationProvider);
-        }
-
+        if (filteredPromotions.isEmpty) return _buildEmptyState(locationProvider);
         return SliverPadding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.all(12),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final promotion = filteredPromotions[index];
-                
-                return FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: Padding(
-                      padding: EdgeInsets.only(bottom: 16),
-                      child: _buildPremiumPromotionCard(promotion, index),
-                    ),
-                  ),
-                );
+                return Padding(padding: EdgeInsets.only(bottom: 12), child: _buildPremiumPromotionCard(promotion, index));
               },
               childCount: filteredPromotions.length,
             ),
@@ -1569,102 +1021,15 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
   }
 
   Widget _buildLoadingState() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 600;
-    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
-    
+    final isTablet = MediaQuery.of(context).size.width >= 600;
     return SliverFillRemaining(
       child: Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: Duration(seconds: 2),
-              curve: Curves.easeInOut,
-              builder: (context, value, child) {
-                return RotationTransition(
-                  turns: AlwaysStoppedAnimation(value),
-                  child: Container(
-                    width: isTablet ? 100 : 80,
-                    height: isTablet ? 100 : 80,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryOrange.withOpacity(0.1), _lightOrange],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: _primaryOrange.withOpacity(0.3),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: isTablet ? 80 : 60,
-                        height: isTablet ? 80 : 60,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: SizedBox(
-                            width: isTablet ? 40 : 30,
-                            height: isTablet ? 40 : 30,
-                            child: CircularProgressIndicator(
-                              color: _primaryOrange,
-                              strokeWidth: 3,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            SizedBox(height: isTablet ? 24 : 16),
-            ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [_primaryOrange, _redAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-              child: Text(
-                'Loading Businesses...',
-                style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 24 : 20,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            SizedBox(height: isTablet ? 12 : 8),
-            shouldAnimate
-                ? ScaleTransition(
-                    scale: _pulseAnimation,
-                    child: Text(
-                      'Discover local businesses ✨',
-                      style: GoogleFonts.inter(
-                        fontSize: isTablet ? 15 : 13,
-                        color: _textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  )
-                : Text(
-                    'Discover local businesses ✨',
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 15 : 13,
-                      color: _textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+            CircularProgressIndicator(color: _primaryOrange),
+            SizedBox(height: 16),
+            Text('Loading businesses...', style: GoogleFonts.poppins(color: _textSecondary)),
           ],
         ),
       ),
@@ -1672,147 +1037,116 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
   }
 
   Widget _buildEmptyState(LocationFilterProvider locationProvider) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 600;
-    
+    final isTablet = MediaQuery.of(context).size.width >= 600;
     String emptyMessage = 'No businesses found';
-    if (locationProvider.isFilterActive && _hasLocalFilters) {
-      emptyMessage = 'No businesses in ${locationProvider.selectedState} with your local filters';
-    } else if (locationProvider.isFilterActive) {
-      emptyMessage = 'No businesses in ${locationProvider.selectedState}';
-    } else if (_hasLocalFilters) {
-      emptyMessage = 'No businesses match your local filters';
-    }
+    if (locationProvider.isFilterActive && _hasLocalFilters) emptyMessage = 'No businesses in ${locationProvider.selectedState} with your local filters';
+    else if (locationProvider.isFilterActive) emptyMessage = 'No businesses in ${locationProvider.selectedState}';
+    else if (_hasLocalFilters) emptyMessage = 'No businesses match your local filters';
     
     return SliverFillRemaining(
       child: Center(
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 30 : 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: Duration(milliseconds: 700),
-                curve: Curves.elasticOut,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: 0.85 + (0.15 * value),
-                    child: Container(
-                      padding: EdgeInsets.all(isTablet ? 24 : 20),
-                      decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          colors: [
-                            _lightOrange,
-                            _primaryOrange.withOpacity(0.3),
-                          ],
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.storefront_rounded,
-                        size: isTablet ? 60 : 50,
-                        color: _primaryOrange,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              SizedBox(height: isTablet ? 24 : 16),
-              ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [_primaryOrange, _redAccent],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ).createShader(bounds),
-                child: Text(
-                  emptyMessage,
-                  style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 24 : 20,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              SizedBox(height: isTablet ? 12 : 8),
-              Text(
-                'Try adjusting your filters or be the first to promote!',
-                style: GoogleFonts.inter(
-                  fontSize: isTablet ? 15 : 13,
-                  color: _textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              if (locationProvider.isFilterActive || _hasLocalFilters) ...[
-                SizedBox(height: isTablet ? 20 : 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (locationProvider.isFilterActive)
-                      GestureDetector(
-                        onTap: () {
-                          locationProvider.clearLocationFilter();
-                          _loadData();
-                        },
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isTablet ? 20 : 16,
-                            vertical: isTablet ? 10 : 8,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [_primaryOrange, _darkOrange],
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'Clear Filter',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: isTablet ? 14 : 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (locationProvider.isFilterActive && _hasLocalFilters) SizedBox(width: 10),
-                    if (_hasLocalFilters)
-                      GestureDetector(
-                        onTap: _clearLocalFilters,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isTablet ? 20 : 16,
-                            vertical: isTablet ? 10 : 8,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [_primaryOrange, _redAccent],
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'Clear Local',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: isTablet ? 14 : 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ],
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.storefront_rounded, size: 60, color: _primaryOrange.withOpacity(0.5)),
+            SizedBox(height: 16),
+            Text(emptyMessage, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: _textPrimary)),
+            SizedBox(height: 8),
+            Text('Try adjusting your filters or be the first to promote!', style: GoogleFonts.inter(fontSize: 12, color: _textSecondary)),
+          ],
         ),
       ),
     );
   }
 
-  // UPDATED: Now uses promotion's own user info fields and includes distance badge
+  // UPDATED: Build promotion poster image with URL and Base64 support
+  Widget _buildPromotionPosterImage(SmallBusinessPromotion promotion) {
+    final imageData = promotion.postedByProfileImageBase64;
+    
+    if (imageData != null && imageData.isNotEmpty) {
+      // Check if it's a URL
+      if (_isUrlString(imageData)) {
+        return ClipOval(
+          child: Image.network(
+            imageData,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading promotion poster image: $error');
+              return _buildDefaultProfileImage();
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(_goldAccent),
+                ),
+              );
+            },
+          ),
+        );
+      } else {
+        // It's Base64 data
+        try {
+          String base64String = imageData;
+          
+          if (base64String.contains('base64,')) {
+            base64String = base64String.split('base64,').last;
+          }
+          
+          base64String = base64String.replaceAll(RegExp(r'\s'), '');
+          
+          while (base64String.length % 4 != 0) {
+            base64String += '=';
+          }
+          
+          final bytes = base64Decode(base64String);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                print('Error decoding promotion poster image: $error');
+                return _buildDefaultProfileImage();
+              },
+            ),
+          );
+        } catch (e) {
+          print('Error processing promotion poster image: $e');
+          return _buildDefaultProfileImage();
+        }
+      }
+    }
+    
+    return _buildDefaultProfileImage();
+  }
+
+  Widget _buildDefaultProfileImage() {
+    return Container(
+      decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryOrange, _redAccent])),
+      child: Center(child: Icon(Icons.person_rounded, color: Colors.white, size: 24)),
+    );
+  }
+
+  Widget _buildCompactTag(String text, IconData icon, bool isTablet) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: isTablet ? 8 : 6, vertical: isTablet ? 4 : 3),
+      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: _goldAccent.withOpacity(0.3), width: 0.5)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: isTablet ? 10 : 9, color: _goldAccent),
+          SizedBox(width: 4),
+          Text(text, style: GoogleFonts.poppins(color: _textSecondary, fontSize: isTablet ? 10 : 9, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPremiumPromotionCard(SmallBusinessPromotion promotion, int index) {
     final isOfferActive = promotion.specialOfferDiscount != null && promotion.specialOfferDiscount! > 0;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1885,13 +1219,11 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Content Section
                             Padding(
                               padding: EdgeInsets.all(isTablet ? 20 : 16),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Special Offer Badge
                                   if (isOfferActive)
                                     Container(
                                       margin: EdgeInsets.only(bottom: 16),
@@ -1932,10 +1264,8 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                                       ),
                                     ),
                                   
-                                  // User Info Row - Using promotion's stored user info
                                   Row(
                                     children: [
-                                      // User Profile Image from promotion.postedByProfileImageBase64
                                       TweenAnimationBuilder<double>(
                                         tween: Tween(begin: 0, end: 1),
                                         duration: Duration(milliseconds: 700 + (index * 80)),
@@ -1977,12 +1307,10 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                                       
                                       SizedBox(width: 12),
                                       
-                                      // User Info
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            // User Name from promotion.postedByName
                                             ShaderMask(
                                               shaderCallback: (bounds) => LinearGradient(
                                                 colors: [_primaryOrange, _redAccent],
@@ -1996,6 +1324,8 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                                                   fontWeight: FontWeight.w800,
                                                   color: Colors.white,
                                                 ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                             SizedBox(height: 2),
@@ -2026,7 +1356,6 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                                         ),
                                       ),
                                       
-                                      // Verified Badge
                                       if (promotion.isVerified)
                                         Container(
                                           padding: EdgeInsets.all(6),
@@ -2063,7 +1392,6 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                                   
                                   SizedBox(height: 16),
                                   
-                                  // Business Name and Owner
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
@@ -2099,7 +1427,6 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                                   
                                   SizedBox(height: 14),
                                   
-                                  // Distance Badge - Add if location available
                                   if (promotion.latitude != null && promotion.longitude != null)
                                     Consumer<LocationFilterProvider>(
                                       builder: (context, locationProvider, _) {
@@ -2114,20 +1441,19 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                                       },
                                     ),
                                   
-                                  // Tags
                                   Wrap(
                                     spacing: 6,
                                     runSpacing: 6,
                                     children: [
-                                      _buildPremiumTagSmall(promotion.city, Icons.location_on_rounded, isTablet),
-                                      _buildPremiumTagSmall('${promotion.productsServices.length} products', Icons.shopping_bag_rounded, isTablet),
+                                      _buildCompactTag(promotion.city, Icons.location_on_rounded, isTablet),
+                                      _buildCompactTag('${promotion.productsServices.length} products', Icons.shopping_bag_rounded, isTablet),
                                     ],
                                   ),
                                   
                                   SizedBox(height: 14),
                                   
-                                  // Stats Row
                                   Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Container(
                                         padding: EdgeInsets.symmetric(
@@ -2191,23 +1517,6 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                                     ],
                                   ),
                                   
-                                  SizedBox(height: 12),
-                                  
-                                  // Description preview
-                                  Text(
-                                    promotion.description.length > 80
-                                        ? '${promotion.description.substring(0, 80)}...'
-                                        : promotion.description,
-                                    style: GoogleFonts.inter(
-                                      fontSize: isTablet ? 13 : 12,
-                                      color: _textSecondary,
-                                      height: 1.4,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  
-                                  // Payment Methods Preview
                                   if (promotion.paymentMethods.isNotEmpty) ...[
                                     SizedBox(height: 10),
                                     Wrap(
@@ -2239,7 +1548,6 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
                                   
                                   SizedBox(height: 16),
                                   
-                                  // View Details Button
                                   TweenAnimationBuilder<double>(
                                     tween: Tween(begin: 0, end: 1),
                                     duration: Duration(milliseconds: 800),
@@ -2327,138 +1635,23 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
     );
   }
 
-  // NEW: Build poster image from promotion.postedByProfileImageBase64
-  Widget _buildPromotionPosterImage(SmallBusinessPromotion promotion) {
-    if (promotion.postedByProfileImageBase64 != null && promotion.postedByProfileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = promotion.postedByProfileImageBase64!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage();
-          },
-        );
-      } catch (e) {
-        return _buildDefaultProfileImage();
-      }
-    }
-    return _buildDefaultProfileImage();
-  }
-
-  Widget _buildPremiumTagSmall(String text, IconData icon, bool isTablet) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isTablet ? 10 : 8,
-        vertical: isTablet ? 5 : 4,
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.white.withOpacity(0.3), Colors.white.withOpacity(0.1)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _goldAccent.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon, 
-            size: isTablet ? 11 : 10,
-            color: _goldAccent
-          ),
-          SizedBox(width: isTablet ? 5 : 4),
-          Text(
-            text,
-            style: GoogleFonts.poppins(
-              color: _textPrimary,
-              fontSize: isTablet ? 11 : 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDefaultProfileImage() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_primaryOrange, _redAccent],
-        ),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.person_rounded,
-          color: Colors.white,
-          size: 30,
-        ),
-      ),
-    );
-  }
-
-  // UPDATED: Now only passes promotion, not user
   void _showPromotionDetails(SmallBusinessPromotion promotion) async {
     HapticFeedback.mediumImpact();
-    
     final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
     await provider.incrementViewCount(EntrepreneurshipCategory.smallBusinessPromotion, promotion.id!);
-    
     await provider.loadBusinessPromotions();
-    
     if (!mounted) return;
-    
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => BusinessPromotionDetailsScreen(
-          promotion: promotion,
-          scrollController: ScrollController(),
-          onLaunchPhone: _launchPhone,
-          onLaunchEmail: _launchEmail,
-          onLaunchUrl: _launchUrl,
-          primaryOrange: _primaryOrange,
-          redAccent: _redAccent,
-          greenAccent: _greenAccent,
-          goldAccent: _goldAccent,
-        ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          var begin = Offset(1.0, 0.0);
-          var end = Offset.zero;
-          var curve = Curves.easeInOutCubic;
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-          var offsetAnimation = animation.drive(tween);
-          
-          return SlideTransition(
-            position: offsetAnimation,
-            child: child,
-          );
-        },
-        transitionDuration: Duration(milliseconds: 500),
-      ),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (context) => BusinessPromotionDetailsScreen(
+      promotion: promotion,
+      scrollController: ScrollController(),
+      onLaunchPhone: _launchPhone,
+      onLaunchEmail: _launchEmail,
+      onLaunchUrl: _launchUrl,
+      primaryOrange: _primaryOrange,
+      redAccent: _redAccent,
+      greenAccent: _greenAccent,
+      goldAccent: _goldAccent,
+    )));
   }
 
   void _showAddPromotionDialog(BuildContext context) {
@@ -2467,9 +1660,6 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.95,
         minChildSize: 0.5,
@@ -2477,14 +1667,7 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
         expand: false,
         builder: (context, scrollController) {
           return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.white, _creamWhite],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-            ),
+            decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.white, _creamWhite]), borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
             child: PremiumAddPromotionDialog(
               scrollController: scrollController,
               onPromotionAdded: _loadData,
@@ -2501,6 +1684,7 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
 }
 
 // ====================== PREMIUM ADD PROMOTION DIALOG ======================
+
 class PremiumAddPromotionDialog extends StatefulWidget {
   final ScrollController scrollController;
   final VoidCallback? onPromotionAdded;
@@ -2532,8 +1716,6 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   final TextEditingController _businessNameController = TextEditingController();
   final TextEditingController _ownerNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
-  final TextEditingController _cityController = TextEditingController();
   final TextEditingController _contactEmailController = TextEditingController();
   final TextEditingController _contactPhoneController = TextEditingController();
   final TextEditingController _websiteController = TextEditingController();
@@ -2543,21 +1725,21 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   final TextEditingController _offerValidityController = TextEditingController();
   final TextEditingController _paymentMethodController = TextEditingController();
 
-  // State variables
-  String? _selectedState;
-  List<String> _productsServices = [];
-  List<String> _paymentMethods = [];
-  
-  // ADDED: Location picking for business promotion
+  // Location variables (all from map picker)
   double? _businessLatitude;
   double? _businessLongitude;
   String? _businessFullAddress;
+  String? _businessCity;
+  String? _businessState;
   
-  // Image handling
+  // State variables
+  List<String> _productsServices = [];
+  List<String> _paymentMethods = [];
+  
+  // Image handling with compression
   List<File> _galleryImages = [];
   List<String> _galleryBase64 = [];
-  
-  final List<String> _states = CommunityStates.states;
+  bool _isImageProcessing = false;
   
   late TabController _tabController;
   late AnimationController _animationController;
@@ -2573,7 +1755,6 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     _tabController = TabController(length: 3, vsync: this);
@@ -2588,13 +1769,10 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
     _ownerNameController.addListener(_validateBasicInfo);
     _contactEmailController.addListener(_validateBasicInfo);
     _contactPhoneController.addListener(_validateBasicInfo);
-    _locationController.addListener(_validateBasicInfo);
-    _cityController.addListener(_validateBasicInfo);
     
     _descriptionController.addListener(_validateDetailsTab);
     _productController.addListener(_validateDetailsTab);
     
-    // Start animation if app is visible
     if (_appLifecycleState == AppLifecycleState.resumed) {
       _startAnimations();
     }
@@ -2630,11 +1808,10 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
           _ownerNameController.text.isNotEmpty &&
           _contactEmailController.text.isNotEmpty &&
           _contactPhoneController.text.isNotEmpty &&
-          _locationController.text.isNotEmpty &&
-          _cityController.text.isNotEmpty &&
-          _selectedState != null &&
-          _businessLatitude != null && // ADDED: Check location coordinates
-          _businessLongitude != null; // ADDED: Check location coordinates
+          _businessLatitude != null &&
+          _businessLongitude != null &&
+          _businessFullAddress != null &&
+          _businessFullAddress!.isNotEmpty;
     });
   }
 
@@ -2659,7 +1836,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   void _goToNextTab() {
     if (_tabController.index < 2) {
       if (_tabController.index == 0 && !_isBasicInfoValid) {
-        _showErrorSnackBar('Please complete all required fields');
+        _showErrorSnackBar('Please complete all required fields including location');
         return;
       }
       _tabController.animateTo(_tabController.index + 1);
@@ -2669,24 +1846,17 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   @override
   void dispose() {
     print('🗑️ PremiumAddPromotionDialog disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
     
     _businessNameController.removeListener(_validateBasicInfo);
     _ownerNameController.removeListener(_validateBasicInfo);
     _contactEmailController.removeListener(_validateBasicInfo);
     _contactPhoneController.removeListener(_validateBasicInfo);
-    _locationController.removeListener(_validateBasicInfo);
-    _cityController.removeListener(_validateBasicInfo);
-    
     _descriptionController.removeListener(_validateDetailsTab);
     
     _businessNameController.dispose();
     _ownerNameController.dispose();
     _descriptionController.dispose();
-    _locationController.dispose();
-    _cityController.dispose();
     _contactEmailController.dispose();
     _contactPhoneController.dispose();
     _websiteController.dispose();
@@ -2700,6 +1870,292 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
     _animationController.dispose();
     
     super.dispose();
+  }
+
+  // ==================== IMAGE COMPRESSION FUNCTION ====================
+  Future<String?> compressAndConvertImage(XFile imageFile) async {
+    try {
+      final file = File(imageFile.path);
+      final originalSize = await file.length();
+
+      print("Original size: ${(originalSize / 1024).toStringAsFixed(1)} KB");
+
+      final tempDir = await getTemporaryDirectory();
+
+      if (originalSize <= 1000000) {
+        final bytes = await file.readAsBytes();
+        return "data:image/jpeg;base64,${base64Encode(bytes)}";
+      }
+
+      int quality = 85;
+      File? result;
+
+      while (quality >= 30) {
+        final targetPath =
+            "${tempDir.path}/promo_${DateTime.now().microsecondsSinceEpoch}_$quality.jpg";
+
+        final xfile = await FlutterImageCompress.compressAndGetFile(
+          file.path,
+          targetPath,
+          quality: quality,
+          minWidth: 800,
+          minHeight: 600,
+          format: CompressFormat.jpeg,
+        );
+
+        if (xfile == null) {
+          quality -= 10;
+          continue;
+        }
+
+        result = File(xfile.path);
+        final size = await result.length();
+
+        print("Quality $quality → ${(size / 1024).toStringAsFixed(1)} KB");
+
+        if (size <= 1000000) {
+          final bytes = await result.readAsBytes();
+          return "data:image/jpeg;base64,${base64Encode(bytes)}";
+        }
+
+        quality -= 10;
+      }
+
+      if (result != null) {
+        final bytes = await result.readAsBytes();
+        return "data:image/jpeg;base64,${base64Encode(bytes)}";
+      }
+
+      return null;
+    } catch (e) {
+      print("Compression error: $e");
+      return null;
+    }
+  }
+
+  Future<void> _pickGalleryImage() async {
+    if (_galleryImages.length >= 5) {
+      _showErrorSnackBar('Maximum 5 images allowed');
+      return;
+    }
+
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+      );
+      
+      if (pickedFile != null) {
+        setState(() {
+          _isImageProcessing = true;
+        });
+        
+        final File originalFile = File(pickedFile.path);
+        final int originalSize = await originalFile.length();
+        
+        if (originalSize > 5 * 1024 * 1024) {
+          setState(() {
+            _isImageProcessing = false;
+          });
+          _showErrorSnackBar('Image is too large (max 5MB). Please select a smaller image.');
+          return;
+        }
+        
+        final String? base64Data = await compressAndConvertImage(pickedFile);
+        
+        setState(() {
+          _isImageProcessing = false;
+        });
+        
+        if (base64Data != null) {
+          final imageFile = File(pickedFile.path);
+          setState(() {
+            _galleryImages.add(imageFile);
+            _galleryBase64.add(base64Data);
+          });
+          _showSuccessSnackBar('Image added successfully!');
+        } else {
+          _showErrorSnackBar('Failed to compress image. Please try a different image.');
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isImageProcessing = false;
+      });
+      _showErrorSnackBar('Error picking image: $e');
+    }
+  }
+
+  // ==================== LOCATION PICKER FROM MAP ====================
+  Widget _buildLocationPickerField(bool isTablet) {
+    return GestureDetector(
+      onTap: () async {
+        final result = await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => OSMLocationPicker(
+            initialLatitude: _businessLatitude,
+            initialLongitude: _businessLongitude,
+            initialAddress: _businessFullAddress,
+            initialState: _businessState,
+            initialCity: _businessCity,
+            onLocationSelected: (lat, lng, address, state, city) {
+              setState(() {
+                _businessLatitude = lat;
+                _businessLongitude = lng;
+                _businessFullAddress = address;
+                _businessState = state;
+                _businessCity = city;
+              });
+              _validateBasicInfo();
+            },
+          ),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.all(isTablet ? 20 : 16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withOpacity(0.95),
+              Colors.white.withOpacity(0.9),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _businessLatitude != null ? widget.primaryOrange : Colors.grey.shade300.withOpacity(0.5),
+            width: _businessLatitude != null ? 2 : 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: widget.primaryOrange.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [widget.primaryOrange, widget.redAccent],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.map_rounded, color: Colors.white, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Business Location *',
+                        style: GoogleFonts.poppins(
+                          fontSize: isTablet ? 14 : 12,
+                          fontWeight: FontWeight.w600,
+                          color: widget.primaryOrange,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _businessFullAddress?.isEmpty ?? true
+                            ? 'Tap to select location on map'
+                            : _businessFullAddress!,
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 13 : 11,
+                          color: _businessFullAddress?.isEmpty ?? true
+                              ? Colors.grey[600]
+                              : Colors.black87,
+                          fontWeight: _businessFullAddress?.isEmpty ?? true
+                              ? FontWeight.w400
+                              : FontWeight.w500,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: widget.primaryOrange,
+                  size: isTablet ? 14 : 12,
+                ),
+              ],
+            ),
+            if (_businessLatitude != null && _businessLongitude != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: widget.primaryOrange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.my_location,
+                      color: widget.primaryOrange,
+                      size: isTablet ? 14 : 12,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${_businessLatitude!.toStringAsFixed(4)}, ${_businessLongitude!.toStringAsFixed(4)}',
+                      style: GoogleFonts.inter(
+                        fontSize: isTablet ? 11 : 10,
+                        color: widget.primaryOrange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (_businessCity != null && _businessCity!.isNotEmpty && _businessState != null && _businessState!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: widget.greenAccent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.location_city,
+                      color: widget.greenAccent,
+                      size: isTablet ? 14 : 12,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$_businessCity, $_businessState',
+                      style: GoogleFonts.inter(
+                        fontSize: isTablet ? 11 : 10,
+                        color: widget.greenAccent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -2862,97 +2318,6 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
     );
   }
 
-  // ADDED: Location Picker Field similar to other screens
-  Widget _buildLocationPickerField(StateSetter setState, bool isTablet) {
-    return GestureDetector(
-      onTap: () async {
-        final result = await showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => OSMLocationPicker(
-            initialLatitude: _businessLatitude,
-            initialLongitude: _businessLongitude,
-            initialAddress: _businessFullAddress,
-            initialState: _selectedState,
-            initialCity: _cityController.text,
-            onLocationSelected: (lat, lng, address, state, city) {
-              setState(() {
-                _businessLatitude = lat;
-                _businessLongitude = lng;
-                _businessFullAddress = address;
-                _selectedState = state;
-                _cityController.text = city ?? '';
-                _locationController.text = address;
-              });
-              _validateBasicInfo();
-            },
-          ),
-        );
-      },
-      child: Container(
-        padding: EdgeInsets.all(isTablet ? 16 : 12),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: _businessLatitude != null ? widget.primaryOrange : Colors.grey.shade300,
-            width: _businessLatitude != null ? 2 : 1,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          color: _businessLatitude != null ? widget.primaryOrange.withOpacity(0.05) : null,
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [widget.primaryOrange, widget.redAccent],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                _businessLatitude != null ? Icons.location_on : Icons.add_location,
-                color: Colors.white,
-                size: isTablet ? 20 : 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Location *',
-                    style: GoogleFonts.poppins(
-                      fontSize: isTablet ? 14 : 12,
-                      fontWeight: FontWeight.w600,
-                      color: widget.primaryOrange,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _businessFullAddress ?? 'Tap to select location on map',
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 14 : 12,
-                      color: _businessFullAddress != null ? Colors.black87 : Colors.grey[600],
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: widget.primaryOrange,
-              size: isTablet ? 16 : 14,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildBasicInfoTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
@@ -2999,18 +2364,13 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
             isRequired: true,
             isTablet: isTablet,
           ),
+          SizedBox(height: isTablet ? 24 : 20),
+          
+          _buildSectionHeader('Location (Pick from Map)', Icons.map_rounded, widget.redAccent, isTablet),
           SizedBox(height: isTablet ? 16 : 12),
           
-          _buildSectionHeader('Location Information', Icons.location_on_rounded, widget.redAccent, isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
-          
-          // REPLACED: Street address field with location picker
-          StatefulBuilder(
-            builder: (context, setState) {
-              return _buildLocationPickerField(setState, isTablet);
-            },
-          ),
-          SizedBox(height: isTablet ? 16 : 12),
+          // Location Picker from Map
+          _buildLocationPickerField(isTablet),
         ],
       ),
     );
@@ -3032,27 +2392,164 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
               color: Colors.grey[600],
             ),
           ),
+          SizedBox(height: isTablet ? 4 : 2),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: widget.greenAccent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.info_outline, size: 12, color: widget.greenAccent),
+                SizedBox(width: 4),
+                Text(
+                  'Auto-compressed to under 1MB per image',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: widget.greenAccent,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
           SizedBox(height: isTablet ? 20 : 16),
           
-          GridView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: isTablet ? 4 : 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 1,
+          if (_isImageProcessing)
+            Container(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(
+                      color: widget.primaryOrange,
+                      strokeWidth: 2,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Compressing image...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: widget.primaryOrange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            itemCount: _galleryImages.length + 1,
-            itemBuilder: (context, index) {
-              if (index == _galleryImages.length) {
-                return _buildAddImageButton(isTablet);
-              }
-              return _buildGalleryImageItem(index, isTablet);
-            },
-          ),
+          
+          if (!_isImageProcessing)
+            GridView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isTablet ? 4 : 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 1,
+              ),
+              itemCount: _galleryImages.length + 1,
+              itemBuilder: (context, index) {
+                if (index == _galleryImages.length) {
+                  return _buildAddImageButton(isTablet);
+                }
+                return _buildGalleryImageItem(index, isTablet);
+              },
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAddImageButton(bool isTablet) {
+    return GestureDetector(
+      onTap: _galleryImages.length < 5 ? _pickGalleryImage : null,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.grey[100]!, Colors.white],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _galleryImages.length < 5 ? Icons.add_photo_alternate_rounded : Icons.block_rounded,
+              color: _galleryImages.length < 5 ? widget.primaryOrange : Colors.grey[400],
+              size: isTablet ? 28 : 24,
+            ),
+            SizedBox(height: isTablet ? 6 : 4),
+            Text(
+              _galleryImages.length < 5 ? 'Add Image' : 'Max Reached',
+              style: GoogleFonts.poppins(
+                color: _galleryImages.length < 5 ? widget.primaryOrange : Colors.grey[500],
+                fontSize: isTablet ? 12 : 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Max 1MB',
+              style: GoogleFonts.inter(
+                color: Colors.grey[400],
+                fontSize: 8,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGalleryImageItem(int index, bool isTablet) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.file(
+            _galleryImages[index],
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+          ),
+        ),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _galleryImages.removeAt(index);
+                _galleryBase64.removeAt(index);
+              });
+            },
+            child: Container(
+              padding: EdgeInsets.all(isTablet ? 6 : 4),
+              decoration: BoxDecoration(
+                color: widget.redAccent,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.redAccent.withOpacity(0.3),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.close_rounded,
+                color: Colors.white,
+                size: isTablet ? 16 : 14,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -3409,119 +2906,6 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
     );
   }
 
-  Widget _buildAddImageButton(bool isTablet) {
-    return GestureDetector(
-      onTap: _galleryImages.length < 5 ? _pickGalleryImage : null,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.grey[100]!, Colors.white],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _galleryImages.length < 5 ? Icons.add_photo_alternate_rounded : Icons.block_rounded,
-              color: _galleryImages.length < 5 ? widget.primaryOrange : Colors.grey[400],
-              size: isTablet ? 28 : 24,
-            ),
-            SizedBox(height: isTablet ? 6 : 4),
-            Text(
-              _galleryImages.length < 5 ? 'Add Image' : 'Max Reached',
-              style: GoogleFonts.poppins(
-                color: _galleryImages.length < 5 ? widget.primaryOrange : Colors.grey[500],
-                fontSize: isTablet ? 12 : 10,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGalleryImageItem(int index, bool isTablet) {
-    return Stack(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            _galleryImages[index],
-            width: double.infinity,
-            height: double.infinity,
-            fit: BoxFit.cover,
-          ),
-        ),
-        Positioned(
-          top: 4,
-          right: 4,
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _galleryImages.removeAt(index);
-                _galleryBase64.removeAt(index);
-              });
-            },
-            child: Container(
-              padding: EdgeInsets.all(isTablet ? 6 : 4),
-              decoration: BoxDecoration(
-                color: widget.redAccent,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.redAccent.withOpacity(0.3),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.close_rounded,
-                color: Colors.white,
-                size: isTablet ? 16 : 14,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _pickGalleryImage() async {
-    if (_galleryImages.length >= 5) {
-      _showErrorSnackBar('Maximum 5 images allowed');
-      return;
-    }
-
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery, 
-      maxWidth: 800, 
-      maxHeight: 800, 
-      imageQuality: 70,
-    );
-    
-    if (pickedFile != null) {
-      final imageFile = File(pickedFile.path);
-      final bytes = await imageFile.readAsBytes();
-      final base64String = base64Encode(bytes);
-      
-      if (base64String.length > 200000) {
-        _showErrorSnackBar('Image is too large. Please choose a smaller image.');
-        return;
-      }
-      
-      setState(() {
-        _galleryImages.add(imageFile);
-        _galleryBase64.add(base64String);
-      });
-    }
-  }
-
   Widget _buildNavButton({
     required String label,
     required VoidCallback onPressed,
@@ -3618,14 +3002,13 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   void _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedState == null) {
-      _showErrorSnackBar('Please select a state');
+    if (_businessLatitude == null || _businessLongitude == null) {
+      _showErrorSnackBar('Please select a location on the map');
       return;
     }
 
-    // ADDED: Check location coordinates
-    if (_businessLatitude == null || _businessLongitude == null) {
-      _showErrorSnackBar('Please select a location on the map');
+    if (_businessFullAddress == null || _businessFullAddress!.isEmpty) {
+      _showErrorSnackBar('Please select a valid location address');
       return;
     }
 
@@ -3642,18 +3025,21 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
       return;
     }
 
+    // Check total base64 size
+    int totalSize = 0;
+    for (String img in _galleryBase64) {
+      totalSize += img.length;
+    }
+    
+    if (totalSize > 8 * 1024 * 1024) {
+      _showErrorSnackBar('Total image size too large. Please use fewer or smaller images.');
+      return;
+    }
+
     // Get user's profile image
     String? userProfileImage;
     if (currentUser.profileImageUrl != null && currentUser.profileImageUrl!.isNotEmpty) {
       userProfileImage = currentUser.profileImageUrl;
-    }
-
-    int totalSize = 0;
-    _galleryBase64.forEach((img) => totalSize += img.length);
-    
-    if (totalSize > 800000) {
-      _showErrorSnackBar('Total image size too large. Please use smaller images.');
-      return;
     }
 
     final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
@@ -3665,9 +3051,9 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
       uniqueSellingPoints: '',
       productsServices: _productsServices,
       targetAudience: '',
-      location: _locationController.text,
-      state: _selectedState!,
-      city: _cityController.text,
+      location: _businessFullAddress!,
+      state: _businessState ?? '',
+      city: _businessCity ?? '',
       contactEmail: _contactEmailController.text,
       contactPhone: _contactPhoneController.text,
       website: _websiteController.text.isNotEmpty ? _websiteController.text : null,
@@ -3678,7 +3064,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
       specialOfferDiscount: _offerDiscountController.text.isNotEmpty ? double.tryParse(_offerDiscountController.text) : null,
       offerValidity: _offerValidityController.text.isNotEmpty ? _offerValidityController.text : null,
       
-      // ADDED: Location coordinates
+      // Location coordinates from map
       latitude: _businessLatitude,
       longitude: _businessLongitude,
       
@@ -3729,12 +3115,12 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
     final success = await provider.addBusinessPromotion(newPromotion);
     
     if (mounted) {
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
     }
     
     if (success) {
       if (mounted) {
-        Navigator.pop(context); // Close dialog
+        Navigator.pop(context);
         _showSuccessSnackBar('Promotion added successfully! Pending admin approval. ✨');
       }
       

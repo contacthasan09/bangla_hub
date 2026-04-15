@@ -61,7 +61,6 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
   
   // Light backgrounds
   final Color _lightOrangeBg = Color(0x80FFF3E0);
-  //final Color _lightOrange = Color(0xFFFFF3E0);
   final Color _lightYellow = Color(0xFFFFF3E0);
   final Color _lightGreen = Color(0xFFE8F5E9);
   final Color _creamWhite = Color(0xFFFFF9E6);
@@ -87,7 +86,6 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     _animationController = AnimationController(
@@ -118,10 +116,8 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
     });
     
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _startAnimations();
     } else {
-      // App is not visible - stop animations to save resources
       _stopAnimations();
     }
   }
@@ -129,31 +125,28 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
   void _startAnimations() {
     if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
       _animationController.forward();
-      // Particle controllers already running via repeat
     }
   }
   
   void _stopAnimations() {
     _animationController.stop();
-    // Particle controllers will continue but we don't stop them as they're repetitive
   }
 
   @override
   void dispose() {
     print('🗑️ BusinessPromotionDetailsScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
-    
     _animationController.dispose();
     _pageController.dispose();
-    
-    // ✅ Dispose particle controllers
     for (var controller in _particleControllers) {
       controller.dispose();
     }
-    
     super.dispose();
+  }
+
+  // Helper function to check if string is a URL
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
   }
 
   String _cleanBase64String(String base64) {
@@ -203,35 +196,100 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
     );
   }
 
-  // NEW: Build poster image from promotion.postedByProfileImageBase64
+  // UPDATED: Build poster image from promotion.postedByProfileImageBase64 (handles both URL and Base64)
   Widget _buildPromotionPosterImage({bool isLarge = false}) {
-    if (widget.promotion.postedByProfileImageBase64 != null && widget.promotion.postedByProfileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = widget.promotion.postedByProfileImageBase64!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage(isLarge: isLarge);
-          },
+    final imageData = widget.promotion.postedByProfileImageBase64;
+    
+    if (imageData != null && imageData.isNotEmpty) {
+      // Check if it's a URL
+      if (_isUrlString(imageData)) {
+        return ClipOval(
+          child: Image.network(
+            imageData,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading promotion poster image: $error');
+              return _buildDefaultProfileImage(isLarge: isLarge);
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(widget.goldAccent),
+                ),
+              );
+            },
+          ),
         );
-      } catch (e) {
-        return _buildDefaultProfileImage(isLarge: isLarge);
+      } else {
+        // It's Base64 data
+        try {
+          String base64String = imageData;
+          
+          if (base64String.contains('base64,')) {
+            base64String = base64String.split('base64,').last;
+          }
+          
+          base64String = base64String.replaceAll(RegExp(r'\s'), '');
+          
+          while (base64String.length % 4 != 0) {
+            base64String += '=';
+          }
+          
+          final bytes = base64Decode(base64String);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                print('Error decoding promotion poster image: $error');
+                return _buildDefaultProfileImage(isLarge: isLarge);
+              },
+            ),
+          );
+        } catch (e) {
+          print('Error processing promotion poster image: $e');
+          return _buildDefaultProfileImage(isLarge: isLarge);
+        }
       }
     }
+    
     return _buildDefaultProfileImage(isLarge: isLarge);
+  }
+
+  // UPDATED: Build gallery image from Base64
+  Widget _buildGalleryImage(String base64Data) {
+    try {
+      String cleanedBase64 = _cleanBase64String(base64Data);
+      final bytes = base64Decode(cleanedBase64);
+      return Image.memory(
+        bytes,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: Center(
+              child: Icon(Icons.broken_image, size: 50, color: Colors.grey[600]),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      print('Error decoding gallery image: $e');
+      return Container(
+        color: Colors.grey[300],
+        child: Center(
+          child: Icon(Icons.broken_image, size: 50, color: Colors.grey[600]),
+        ),
+      );
+    }
   }
 
   bool get isOfferActive => widget.promotion.specialOfferDiscount != null && 
@@ -258,7 +316,7 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
           elevation: 0,
           leading: IconButton(
             icon: Icon(
-               Icons.arrow_back_rounded, 
+              Icons.arrow_back_rounded, 
               color: Colors.white, 
               fontWeight: FontWeight.bold,
               size: isTablet ? 28 : 24,
@@ -376,12 +434,15 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                                           children: [
                                             Icon(Icons.person_rounded, color: widget.primaryOrange, size: 14),
                                             SizedBox(width: 4),
-                                            Text(
-                                              promotion.postedByName!,
-                                              style: GoogleFonts.poppins(
-                                                color: widget.primaryOrange,
-                                                fontSize: isTablet ? 14 : 12,
-                                                fontWeight: FontWeight.w600,
+                                            Flexible(
+                                              child: Text(
+                                                promotion.postedByName!,
+                                                style: GoogleFonts.poppins(
+                                                  color: widget.primaryOrange,
+                                                  fontSize: isTablet ? 14 : 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                           ],
@@ -1192,17 +1253,7 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
               }
             },
             itemBuilder: (context, index) {
-              return Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: MemoryImage(
-                      base64Decode(_cleanBase64String(galleryImages[index])),
-                    ),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              );
+              return _buildGalleryImage(galleryImages[index]);
             },
           ),
         ),
@@ -1367,8 +1418,6 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
       ],
     );
   }
-
-  // REMOVED: _buildUserProfileImage method - now using _buildPromotionPosterImage
 
   Widget _buildDefaultProfileImage({bool isLarge = false}) {
     return Container(
@@ -1642,6 +1691,8 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
     required VoidCallback onPressed,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Container(
       decoration: BoxDecoration(
         gradient: gradient,
@@ -1664,7 +1715,12 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
+                shouldAnimate
+                    ? RotationTransition(
+                        turns: _animationController,
+                        child: Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
+                      )
+                    : Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
                 SizedBox(width: isTablet ? 10 : 8),
                 Text(
                   label,

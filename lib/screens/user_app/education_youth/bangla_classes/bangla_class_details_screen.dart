@@ -56,7 +56,6 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     _animationController = AnimationController(
@@ -85,10 +84,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
     });
     
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _startAnimations();
     } else {
-      // App is not visible - stop animations to save resources
       _stopAnimations();
     }
   }
@@ -97,7 +94,6 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
     if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
       _animationController.forward();
       
-      // Start section animations staggered
       for (var i = 0; i < _sectionControllers.length; i++) {
         Future.delayed(Duration(milliseconds: i * 50), () {
           if (mounted && _appLifecycleState == AppLifecycleState.resumed) {
@@ -110,8 +106,6 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
   
   void _stopAnimations() {
     _animationController.stop();
-    
-    // Stop section animations
     for (var controller in _sectionControllers) {
       controller.stop();
     }
@@ -120,21 +114,17 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
   @override
   void dispose() {
     print('🗑️ BanglaClassDetailsScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
-    
-    // ✅ Dispose animation controllers
     _animationController.dispose();
-    
-    // ✅ Dispose section controllers
     for (var controller in _sectionControllers) {
       controller.dispose();
     }
-    
-    // Note: widget.scrollController is passed from parent, don't dispose here
-    
     super.dispose();
+  }
+
+  // Helper function to check if string is a URL
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
   }
 
   Future<void> _launchEmail(String email) async {
@@ -229,34 +219,69 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
     );
   }
 
-  // NEW: Build instructor poster image from banglaClass.postedByProfileImageBase64
+  // UPDATED: Build instructor poster image with URL and Base64 support
   Widget _buildInstructorPosterImage({bool isLarge = false}) {
-    if (widget.banglaClass.postedByProfileImageBase64 != null && widget.banglaClass.postedByProfileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = widget.banglaClass.postedByProfileImageBase64!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage(isLarge: isLarge);
-          },
+    final imageData = widget.banglaClass.postedByProfileImageBase64;
+    
+    if (imageData != null && imageData.isNotEmpty) {
+      // Check if it's a URL
+      if (_isUrlString(imageData)) {
+        return ClipOval(
+          child: Image.network(
+            imageData,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading instructor poster image: $error');
+              return _buildDefaultProfileImage(isLarge: isLarge);
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(widget.goldAccent),
+                ),
+              );
+            },
+          ),
         );
-      } catch (e) {
-        return _buildDefaultProfileImage(isLarge: isLarge);
+      } else {
+        // It's Base64 data
+        try {
+          String base64String = imageData;
+          
+          if (base64String.contains('base64,')) {
+            base64String = base64String.split('base64,').last;
+          }
+          
+          base64String = base64String.replaceAll(RegExp(r'\s'), '');
+          
+          while (base64String.length % 4 != 0) {
+            base64String += '=';
+          }
+          
+          final bytes = base64Decode(base64String);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                print('Error decoding instructor poster image: $error');
+                return _buildDefaultProfileImage(isLarge: isLarge);
+              },
+            ),
+          );
+        } catch (e) {
+          print('Error processing instructor poster image: $e');
+          return _buildDefaultProfileImage(isLarge: isLarge);
+        }
       }
     }
+    
     return _buildDefaultProfileImage(isLarge: isLarge);
   }
 
@@ -318,200 +343,616 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
               end: Alignment.bottomRight,
             ),
           ),
-          child: Stack(
-            children: [
-              // Main Content
-              CustomScrollView(
-                controller: widget.scrollController,
-                slivers: [
-                  // Header Section
-                  SliverToBoxAdapter(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [widget.primaryOrange, widget.redAccent, _darkOrange],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+          child: CustomScrollView(
+            controller: widget.scrollController,
+            slivers: [
+              // Header Section
+              SliverToBoxAdapter(
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [widget.primaryOrange, widget.redAccent, _darkOrange],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: SafeArea(
+                    bottom: false,
+                    top: true,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isTablet ? 40 : 24,
+                        vertical: isTablet ? 16 : 12,
                       ),
-                      child: SafeArea(
-                        bottom: false,
-                        top: true,
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isTablet ? 40 : 24,
-                            vertical: isTablet ? 16 : 12,
-                          ),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              return Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Premium Pattern Line
-                                  Container(
-                                    height: 4,
-                                    width: 60,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [widget.goldAccent, widget.greenAccent, widget.goldAccent],
-                                        begin: Alignment.centerLeft,
-                                        end: Alignment.centerRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                height: 4,
+                                width: 60,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [widget.goldAccent, widget.greenAccent, widget.goldAccent],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
                                   ),
-                                  SizedBox(height: isTablet ? 12 : 8),
-                                  
-                                  // Instructor Name
-                                  ShaderMask(
-                                    shaderCallback: (bounds) => LinearGradient(
-                                      colors: [Colors.white, widget.goldAccent],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ).createShader(bounds),
-                                    child: Text(
-                                      banglaClass.instructorName,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 32 : 24,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              SizedBox(height: isTablet ? 12 : 8),
+                              
+                              ShaderMask(
+                                shaderCallback: (bounds) => LinearGradient(
+                                  colors: [Colors.white, widget.goldAccent],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ).createShader(bounds),
+                                child: Text(
+                                  banglaClass.instructorName,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: isTablet ? 32 : 24,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
                                   ),
-                                  SizedBox(height: isTablet ? 4 : 2),
-                                  
-                                  // Organization
-                                  Text(
-                                    banglaClass.organizationName ?? 'Independent Instructor',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: isTablet ? 18 : 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white.withOpacity(0.9),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              SizedBox(height: isTablet ? 4 : 2),
+                              
+                              Text(
+                                banglaClass.organizationName ?? 'Independent Instructor',
+                                style: GoogleFonts.poppins(
+                                  fontSize: isTablet ? 18 : 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              
+                              if (banglaClass.isVerified) ...[
+                                SizedBox(height: isTablet ? 10 : 8),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isTablet ? 14 : 12,
+                                    vertical: isTablet ? 6 : 4,
                                   ),
-                                  
-                                  // Verified Badge
-                                  if (banglaClass.isVerified) ...[
-                                    SizedBox(height: isTablet ? 10 : 8),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: isTablet ? 14 : 12,
-                                        vertical: isTablet ? 6 : 4,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.verified_rounded, 
+                                        color: widget.goldAccent, 
+                                        size: isTablet ? 16 : 14
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(30),
-                                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                      SizedBox(width: isTablet ? 6 : 4),
+                                      Text(
+                                        'VERIFIED CLASS',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isTablet ? 13 : 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
                                       ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.verified_rounded, 
-                                            color: widget.goldAccent, 
-                                            size: isTablet ? 16 : 14
-                                          ),
-                                          SizedBox(width: isTablet ? 6 : 4),
-                                          Text(
-                                            'VERIFIED CLASS',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: isTablet ? 13 : 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              );
-                            },
-                          ),
-                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),
-                  
-                  // All Information in Column Below
-                  SliverToBoxAdapter(
-                    child: Container(
-                      padding: EdgeInsets.all(isTablet ? 24 : 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                ),
+              ),
+              
+              // All Information in Column Below
+              SliverToBoxAdapter(
+                child: Container(
+                  padding: EdgeInsets.all(isTablet ? 24 : 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: isTablet ? 20 : 16),
+                      
+                      // User Profile and Instructor Info
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          SizedBox(height: isTablet ? 20 : 16),
+                          Container(
+                            width: isTablet ? 80 : 70,
+                            height: isTablet ? 80 : 70,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: widget.goldAccent, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: widget.goldAccent.withOpacity(0.3),
+                                  blurRadius: 12,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: _buildInstructorPosterImage(isLarge: true),
+                            ),
+                          ),
                           
-                          // User Profile and Instructor Info - Using class's stored user info
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // User Profile Image from banglaClass.postedByProfileImageBase64
-                              Container(
-                                width: isTablet ? 80 : 70,
-                                height: isTablet ? 80 : 70,
+                          SizedBox(width: isTablet ? 20 : 16),
+                          
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (banglaClass.postedByName != null && banglaClass.postedByName!.isNotEmpty)
+                                  Container(
+                                    margin: EdgeInsets.only(bottom: 8),
+                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: widget.lightOrange,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.person_rounded, color: widget.primaryOrange, size: 14),
+                                        SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            banglaClass.postedByName!,
+                                            style: GoogleFonts.poppins(
+                                              color: widget.primaryOrange,
+                                              fontSize: isTablet ? 14 : 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                
+                                Text(
+                                  'Class added on ${DateFormat('MMM d, yyyy').format(banglaClass.createdAt)}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: isTablet ? 13 : 12,
+                                    color: _textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      SizedBox(height: isTablet ? 32 : 24),
+                      
+                      // Quick Stats Grid
+                      Container(
+                        padding: EdgeInsets.all(isTablet ? 24 : 20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.grey[50]!, Colors.white],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: _borderLight),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _shadowColor,
+                              blurRadius: 15,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildPremiumStatItem(
+                              Icons.category_rounded,
+                              'Class Types',
+                              '${banglaClass.classTypes.length}',
+                              widget.primaryOrange,
+                              isTablet,
+                            ),
+                            _buildPremiumStatItem(
+                              Icons.schedule_rounded,
+                              'Duration',
+                              banglaClass.formattedDuration,
+                              widget.tealAccent,
+                              isTablet,
+                            ),
+                            _buildPremiumStatItem(
+                              Icons.attach_money_rounded,
+                              'Fee',
+                              banglaClass.formattedFee,
+                              widget.successGreen,
+                              isTablet,
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      SizedBox(height: isTablet ? 32 : 24),
+                      
+                      // About Section
+                      _buildPremiumSection(
+                        title: 'About the Class',
+                        icon: Icons.info_rounded,
+                        color: widget.primaryOrange,
+                        child: Container(
+                          padding: EdgeInsets.all(isTablet ? 20 : 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _borderLight),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _shadowColor,
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            banglaClass.description,
+                            style: GoogleFonts.inter(
+                              fontSize: isTablet ? 16 : 15,
+                              color: _textSecondary,
+                              height: 1.6,
+                            ),
+                          ),
+                        ),
+                        isTablet: isTablet,
+                        shouldAnimate: shouldAnimate,
+                        index: 0,
+                      ),
+                      
+                      SizedBox(height: isTablet ? 32 : 24),
+                      
+                      // Instructor Qualifications
+                      if (banglaClass.qualifications != null && banglaClass.qualifications!.isNotEmpty)
+                        _buildPremiumSection(
+                          title: 'Instructor Qualifications',
+                          icon: Icons.school_rounded,
+                          color: widget.purpleAccent,
+                          child: Container(
+                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: _borderLight),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _shadowColor,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              banglaClass.qualifications!,
+                              style: GoogleFonts.inter(
+                                fontSize: isTablet ? 16 : 15,
+                                color: _textSecondary,
+                                height: 1.6,
+                              ),
+                            ),
+                          ),
+                          isTablet: isTablet,
+                          shouldAnimate: shouldAnimate,
+                          index: 1,
+                        ),
+                      
+                      if (banglaClass.qualifications != null && banglaClass.qualifications!.isNotEmpty)
+                        SizedBox(height: isTablet ? 32 : 24),
+                      
+                      // Class Types Section
+                      _buildPremiumSection(
+                        title: 'Class Types',
+                        icon: Icons.category_rounded,
+                        color: widget.primaryOrange,
+                        child: Container(
+                          padding: EdgeInsets.all(isTablet ? 20 : 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _borderLight),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _shadowColor,
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: banglaClass.classTypes.map((type) {
+                              return Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isTablet ? 16 : 12,
+                                  vertical: isTablet ? 10 : 8,
+                                ),
                                 decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: widget.goldAccent, width: 3),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: widget.goldAccent.withOpacity(0.3),
-                                      blurRadius: 12,
-                                      spreadRadius: 2,
+                                  gradient: LinearGradient(
+                                    colors: [widget.primaryOrange.withOpacity(0.1), widget.lightOrange],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(25),
+                                  border: Border.all(color: widget.primaryOrange.withOpacity(0.3)),
+                                ),
+                                child: Text(
+                                  type,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: isTablet ? 15 : 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: widget.primaryOrange,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        isTablet: isTablet,
+                        shouldAnimate: shouldAnimate,
+                        index: 2,
+                      ),
+                      
+                      SizedBox(height: isTablet ? 32 : 24),
+                      
+                      // Teaching Methods Section
+                      _buildPremiumSection(
+                        title: 'Teaching Methods',
+                        icon: Icons.video_call_rounded,
+                        color: widget.tealAccent,
+                        child: Container(
+                          padding: EdgeInsets.all(isTablet ? 20 : 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _borderLight),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _shadowColor,
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: banglaClass.teachingMethods.map((method) {
+                              return Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isTablet ? 16 : 12,
+                                  vertical: isTablet ? 10 : 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [widget.tealAccent.withOpacity(0.1), widget.tealAccent.withOpacity(0.05)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(25),
+                                  border: Border.all(color: widget.tealAccent.withOpacity(0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      method == TeachingMethod.inPerson ? Icons.person : 
+                                      method == TeachingMethod.online ? Icons.videocam_rounded :
+                                      method == TeachingMethod.hybrid ? Icons.sync_rounded :
+                                      method == TeachingMethod.group ? Icons.group_rounded :
+                                      Icons.person_rounded,
+                                      color: widget.tealAccent,
+                                      size: isTablet ? 18 : 16,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      method.displayName,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: isTablet ? 15 : 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: widget.tealAccent,
+                                      ),
                                     ),
                                   ],
                                 ),
-                                child: ClipOval(
-                                  child: _buildInstructorPosterImage(isLarge: true),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        isTablet: isTablet,
+                        shouldAnimate: shouldAnimate,
+                        index: 3,
+                      ),
+                      
+                      SizedBox(height: isTablet ? 32 : 24),
+                      
+                      // Cultural Activities
+                      if (banglaClass.culturalActivities.isNotEmpty)
+                        _buildPremiumSection(
+                          title: 'Cultural Activities',
+                          icon: Icons.celebration_rounded,
+                          color: widget.purpleAccent,
+                          child: Container(
+                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: _borderLight),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _shadowColor,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: banglaClass.culturalActivities.map((activity) {
+                                return Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isTablet ? 16 : 12,
+                                    vertical: isTablet ? 10 : 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [widget.purpleAccent.withOpacity(0.1), widget.purpleAccent.withOpacity(0.05)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(25),
+                                    border: Border.all(color: widget.purpleAccent.withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.celebration_rounded,
+                                        color: widget.purpleAccent,
+                                        size: isTablet ? 18 : 16,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        activity,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isTablet ? 15 : 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: widget.purpleAccent,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          isTablet: isTablet,
+                          shouldAnimate: shouldAnimate,
+                          index: 4,
+                        ),
+                      
+                      if (banglaClass.culturalActivities.isNotEmpty)
+                        SizedBox(height: isTablet ? 32 : 24),
+                      
+                      // Schedule
+                      if (banglaClass.schedule != null && banglaClass.schedule!.isNotEmpty)
+                        _buildPremiumSection(
+                          title: 'Schedule',
+                          icon: Icons.calendar_today_rounded,
+                          color: widget.greenAccent,
+                          child: Container(
+                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: _borderLight),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _shadowColor,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.calendar_today_rounded, color: widget.greenAccent, size: isTablet ? 24 : 20),
+                                SizedBox(width: isTablet ? 16 : 12),
+                                Expanded(
+                                  child: Text(
+                                    banglaClass.schedule!,
+                                    style: GoogleFonts.inter(
+                                      fontSize: isTablet ? 16 : 15,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          isTablet: isTablet,
+                          shouldAnimate: shouldAnimate,
+                          index: 5,
+                        ),
+                      
+                      if (banglaClass.schedule != null && banglaClass.schedule!.isNotEmpty)
+                        SizedBox(height: isTablet ? 32 : 24),
+                      
+                      // Location
+                      _buildPremiumSection(
+                        title: 'Location',
+                        icon: Icons.location_on_rounded,
+                        color: widget.redAccent,
+                        child: Container(
+                          padding: EdgeInsets.all(isTablet ? 20 : 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _borderLight),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _shadowColor,
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(isTablet ? 12 : 10),
+                                decoration: BoxDecoration(
+                                  color: widget.redAccent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.location_on_rounded,
+                                  color: widget.redAccent,
+                                  size: isTablet ? 24 : 20,
                                 ),
                               ),
-                              
-                              SizedBox(width: isTablet ? 20 : 16),
-                              
-                              // Instructor Info
+                              SizedBox(width: isTablet ? 16 : 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // User Name from banglaClass.postedByName
-                                    if (banglaClass.postedByName != null && banglaClass.postedByName!.isNotEmpty)
-                                      Container(
-                                        margin: EdgeInsets.only(bottom: 8),
-                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: widget.lightOrange,
-                                          borderRadius: BorderRadius.circular(16),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.person_rounded, color: widget.primaryOrange, size: 14),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              banglaClass.postedByName!,
-                                              style: GoogleFonts.poppins(
-                                                color: widget.primaryOrange,
-                                                fontSize: isTablet ? 14 : 12,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    
-                                    // Member Since
                                     Text(
-                                      'Class added on ${DateFormat('MMM d, yyyy').format(banglaClass.createdAt)}',
+                                      'Class Location',
                                       style: GoogleFonts.inter(
-                                        fontSize: isTablet ? 13 : 12,
-                                        color: _textSecondary,
+                                        fontSize: isTablet ? 14 : 12,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      '${banglaClass.address}, ${banglaClass.city}, ${banglaClass.state}',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: isTablet ? 18 : 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey[800],
                                       ),
                                     ),
                                   ],
@@ -519,694 +960,232 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
                               ),
                             ],
                           ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Quick Stats Grid
-                          Container(
-                            padding: EdgeInsets.all(isTablet ? 24 : 20),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Colors.grey[50]!, Colors.white],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                        ),
+                        isTablet: isTablet,
+                        shouldAnimate: shouldAnimate,
+                        index: 6,
+                      ),
+                      
+                      SizedBox(height: isTablet ? 32 : 24),
+                      
+                      // Class Details
+                      _buildPremiumSection(
+                        title: 'Class Details',
+                        icon: Icons.info_outline_rounded,
+                        color: widget.primaryOrange,
+                        child: Container(
+                          padding: EdgeInsets.all(isTablet ? 20 : 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _borderLight),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _shadowColor,
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
                               ),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: _borderLight),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _shadowColor,
-                                  blurRadius: 15,
-                                  offset: Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _buildPremiumStatItem(
-                                  Icons.category_rounded,
-                                  'Class Types',
-                                  '${banglaClass.classTypes.length}',
-                                  widget.primaryOrange,
-                                  isTablet,
-                                ),
-                                _buildPremiumStatItem(
-                                  Icons.schedule_rounded,
-                                  'Duration',
-                                  banglaClass.formattedDuration,
-                                  widget.tealAccent,
-                                  isTablet,
-                                ),
-                                _buildPremiumStatItem(
-                                  Icons.attach_money_rounded,
-                                  'Fee',
-                                  banglaClass.formattedFee,
-                                  widget.successGreen,
-                                  isTablet,
-                                ),
-                              ],
-                            ),
+                            ],
                           ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // About Section
-                          _buildPremiumSection(
-                            title: 'About the Class',
-                            icon: Icons.info_rounded,
-                            color: widget.primaryOrange,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: _borderLight),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
+                          child: Column(
+                            children: [
+                              _buildPremiumDetailRow(
+                                icon: Icons.attach_money_rounded,
+                                label: 'Class Fee',
+                                value: banglaClass.formattedFee,
+                                color: widget.successGreen,
+                                isTablet: isTablet,
                               ),
-                              child: Text(
-                                banglaClass.description,
-                                style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 16 : 15,
-                                  color: _textSecondary,
-                                  height: 1.6,
-                                ),
+                              SizedBox(height: isTablet ? 12 : 8),
+                              _buildPremiumDetailRow(
+                                icon: Icons.schedule_rounded,
+                                label: 'Duration per Class',
+                                value: banglaClass.formattedDuration,
+                                color: widget.tealAccent,
+                                isTablet: isTablet,
                               ),
-                            ),
-                            isTablet: isTablet,
-                            shouldAnimate: shouldAnimate,
-                            index: 0,
+                              SizedBox(height: isTablet ? 12 : 8),
+                              _buildPremiumDetailRow(
+                                icon: Icons.people_rounded,
+                                label: 'Enrollment',
+                                value: '${banglaClass.enrolledStudents}/${banglaClass.maxStudents} students',
+                                color: isFull ? widget.redAccent : widget.greenAccent,
+                                isTablet: isTablet,
+                              ),
+                            ],
                           ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Instructor Qualifications
-                          if (banglaClass.qualifications != null && banglaClass.qualifications!.isNotEmpty)
-                            _buildPremiumSection(
-                              title: 'Instructor Qualifications',
-                              icon: Icons.school_rounded,
-                              color: widget.purpleAccent,
-                              child: Container(
-                                padding: EdgeInsets.all(isTablet ? 20 : 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: _borderLight),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _shadowColor,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
+                        ),
+                        isTablet: isTablet,
+                        shouldAnimate: shouldAnimate,
+                        index: 7,
+                      ),
+                      
+                      if (isFull) ...[
+                        SizedBox(height: isTablet ? 16 : 12),
+                        Container(
+                          padding: EdgeInsets.all(isTablet ? 16 : 12),
+                          decoration: BoxDecoration(
+                            color: widget.redAccent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: widget.redAccent),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.warning_rounded, color: widget.redAccent, size: isTablet ? 24 : 20),
+                              SizedBox(width: isTablet ? 12 : 8),
+                              Expanded(
                                 child: Text(
-                                  banglaClass.qualifications!,
-                                  style: GoogleFonts.inter(
-                                    fontSize: isTablet ? 16 : 15,
-                                    color: _textSecondary,
-                                    height: 1.6,
+                                  'This class is currently full',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: isTablet ? 16 : 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: widget.redAccent,
                                   ),
                                 ),
                               ),
-                              isTablet: isTablet,
-                              shouldAnimate: shouldAnimate,
-                              index: 1,
-                            ),
-                          
-                          if (banglaClass.qualifications != null && banglaClass.qualifications!.isNotEmpty)
-                            SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Class Types Section
-                          _buildPremiumSection(
-                            title: 'Class Types',
-                            icon: Icons.category_rounded,
-                            color: widget.primaryOrange,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: _borderLight),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: banglaClass.classTypes.map((type) {
-                                  return Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isTablet ? 16 : 12,
-                                      vertical: isTablet ? 10 : 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [widget.primaryOrange.withOpacity(0.1), widget.lightOrange],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(25),
-                                      border: Border.all(color: widget.primaryOrange.withOpacity(0.3)),
-                                    ),
-                                    child: Text(
-                                      type,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 15 : 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: widget.primaryOrange,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                            isTablet: isTablet,
-                            shouldAnimate: shouldAnimate,
-                            index: 2,
+                            ],
                           ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Teaching Methods Section
-                          _buildPremiumSection(
-                            title: 'Teaching Methods',
-                            icon: Icons.video_call_rounded,
-                            color: widget.tealAccent,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: _borderLight),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
+                        ),
+                      ],
+                      
+                      SizedBox(height: isTablet ? 32 : 24),
+                      
+                      // Contact Information
+                      _buildPremiumSection(
+                        title: 'Contact Information',
+                        icon: Icons.contact_phone_rounded,
+                        color: widget.primaryOrange,
+                        child: Container(
+                          padding: EdgeInsets.all(isTablet ? 20 : 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _borderLight),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _shadowColor,
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
                               ),
-                              child: Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: banglaClass.teachingMethods.map((method) {
-                                  return Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isTablet ? 16 : 12,
-                                      vertical: isTablet ? 10 : 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [widget.tealAccent.withOpacity(0.1), widget.tealAccent.withOpacity(0.05)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(25),
-                                      border: Border.all(color: widget.tealAccent.withOpacity(0.3)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          method == TeachingMethod.inPerson ? Icons.person : 
-                                          method == TeachingMethod.online ? Icons.videocam_rounded :
-                                          method == TeachingMethod.hybrid ? Icons.sync_rounded :
-                                          method == TeachingMethod.group ? Icons.group_rounded :
-                                          Icons.person_rounded,
-                                          color: widget.tealAccent,
-                                          size: isTablet ? 18 : 16,
-                                        ),
-                                        SizedBox(width: 6),
-                                        Text(
-                                          method.displayName,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 15 : 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: widget.tealAccent,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                            isTablet: isTablet,
-                            shouldAnimate: shouldAnimate,
-                            index: 3,
+                            ],
                           ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Cultural Activities
-                          if (banglaClass.culturalActivities.isNotEmpty)
-                            _buildPremiumSection(
-                              title: 'Cultural Activities',
-                              icon: Icons.celebration_rounded,
-                              color: widget.purpleAccent,
-                              child: Container(
-                                padding: EdgeInsets.all(isTablet ? 20 : 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: _borderLight),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _shadowColor,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: banglaClass.culturalActivities.map((activity) {
-                                    return Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: isTablet ? 16 : 12,
-                                        vertical: isTablet ? 10 : 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [widget.purpleAccent.withOpacity(0.1), widget.purpleAccent.withOpacity(0.05)],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                        borderRadius: BorderRadius.circular(25),
-                                        border: Border.all(color: widget.purpleAccent.withOpacity(0.3)),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.celebration_rounded,
-                                            color: widget.purpleAccent,
-                                            size: isTablet ? 18 : 16,
-                                          ),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            activity,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: isTablet ? 15 : 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: widget.purpleAccent,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
+                          child: Column(
+                            children: [
+                              _buildPremiumContactItem(
+                                icon: Icons.email_rounded,
+                                label: 'Email',
+                                value: banglaClass.email,
+                                color: widget.primaryOrange,
+                                onTap: () => _launchEmail(banglaClass.email),
+                                isTablet: isTablet,
                               ),
-                              isTablet: isTablet,
-                              shouldAnimate: shouldAnimate,
-                              index: 4,
-                            ),
-                          
-                          if (banglaClass.culturalActivities.isNotEmpty)
-                            SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Schedule
-                          if (banglaClass.schedule != null && banglaClass.schedule!.isNotEmpty)
-                            _buildPremiumSection(
-                              title: 'Schedule',
-                              icon: Icons.calendar_today_rounded,
-                              color: widget.greenAccent,
-                              child: Container(
-                                padding: EdgeInsets.all(isTablet ? 20 : 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: _borderLight),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _shadowColor,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.calendar_today_rounded, color: widget.greenAccent, size: isTablet ? 24 : 20),
-                                    SizedBox(width: isTablet ? 16 : 12),
-                                    Expanded(
-                                      child: Text(
-                                        banglaClass.schedule!,
-                                        style: GoogleFonts.inter(
-                                          fontSize: isTablet ? 16 : 15,
-                                          color: Colors.grey[800],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              SizedBox(height: isTablet ? 16 : 12),
+                              _buildPremiumContactItem(
+                                icon: Icons.phone_rounded,
+                                label: 'Phone',
+                                value: banglaClass.phone,
+                                color: widget.successGreen,
+                                onTap: () => _launchPhone(banglaClass.phone),
+                                isTablet: isTablet,
                               ),
-                              isTablet: isTablet,
-                              shouldAnimate: shouldAnimate,
-                              index: 5,
-                            ),
-                          
-                          if (banglaClass.schedule != null && banglaClass.schedule!.isNotEmpty)
-                            SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Location
-                          _buildPremiumSection(
-                            title: 'Location',
-                            icon: Icons.location_on_rounded,
-                            color: widget.redAccent,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: _borderLight),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(isTablet ? 12 : 10),
-                                    decoration: BoxDecoration(
-                                      color: widget.redAccent.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      Icons.location_on_rounded,
-                                      color: widget.redAccent,
-                                      size: isTablet ? 24 : 20,
-                                    ),
-                                  ),
-                                  SizedBox(width: isTablet ? 16 : 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Class Location',
-                                          style: GoogleFonts.inter(
-                                            fontSize: isTablet ? 14 : 12,
-                                            color: Colors.grey[600],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          '${banglaClass.address}, ${banglaClass.city}, ${banglaClass.state}',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 18 : 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.grey[800],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            isTablet: isTablet,
-                            shouldAnimate: shouldAnimate,
-                            index: 6,
+                            ],
                           ),
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Class Details
-                          _buildPremiumSection(
-                            title: 'Class Details',
-                            icon: Icons.info_outline_rounded,
-                            color: widget.primaryOrange,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: _borderLight),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  _buildPremiumDetailRow(
-                                    icon: Icons.attach_money_rounded,
-                                    label: 'Class Fee',
-                                    value: banglaClass.formattedFee,
-                                    color: widget.successGreen,
-                                    isTablet: isTablet,
-                                  ),
-                                  SizedBox(height: isTablet ? 12 : 8),
-                                  _buildPremiumDetailRow(
-                                    icon: Icons.schedule_rounded,
-                                    label: 'Duration per Class',
-                                    value: banglaClass.formattedDuration,
-                                    color: widget.tealAccent,
-                                    isTablet: isTablet,
-                                  ),
-                                  SizedBox(height: isTablet ? 12 : 8),
-                                  _buildPremiumDetailRow(
-                                    icon: Icons.people_rounded,
-                                    label: 'Enrollment',
-                                    value: '${banglaClass.enrolledStudents}/${banglaClass.maxStudents} students',
-                                    color: isFull ? widget.redAccent : widget.greenAccent,
-                                    isTablet: isTablet,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            isTablet: isTablet,
-                            shouldAnimate: shouldAnimate,
-                            index: 7,
+                        ),
+                        isTablet: isTablet,
+                        shouldAnimate: shouldAnimate,
+                        index: 8,
+                      ),
+                      
+                      SizedBox(height: isTablet ? 40 : 32),
+                      
+                      // Premium Footer
+                      Container(
+                        padding: EdgeInsets.all(isTablet ? 24 : 20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [widget.lightOrange.withOpacity(0.5), widget.lightOrange],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          
-                          if (isFull) ...[
-                            SizedBox(height: isTablet ? 16 : 12),
+                          borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
+                          border: Border.all(color: widget.primaryOrange.withOpacity(0.2), width: 1.5),
+                        ),
+                        child: Row(
+                          children: [
                             Container(
-                              padding: EdgeInsets.all(isTablet ? 16 : 12),
+                              width: isTablet ? 60 : 50,
+                              height: isTablet ? 60 : 50,
                               decoration: BoxDecoration(
-                                color: widget.redAccent.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: widget.redAccent),
+                                gradient: LinearGradient(
+                                  colors: [widget.primaryOrange, widget.redAccent, widget.greenAccent],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: widget.primaryOrange.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.warning_rounded, color: widget.redAccent, size: isTablet ? 24 : 20),
-                                  SizedBox(width: isTablet ? 12 : 8),
-                                  Expanded(
-                                    child: Text(
-                                      'This class is currently full',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isTablet ? 16 : 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: widget.redAccent,
+                              child: Center(
+                                child: shouldAnimate
+                                    ? RotationTransition(
+                                        turns: _animationController,
+                                        child: Icon(
+                                          Icons.language_rounded,
+                                          color: Colors.white,
+                                          size: isTablet ? 28 : 24,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.language_rounded,
+                                        color: Colors.white,
+                                        size: isTablet ? 28 : 24,
                                       ),
+                              ),
+                            ),
+                            SizedBox(width: isTablet ? 20 : 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ShaderMask(
+                                    shaderCallback: (bounds) => LinearGradient(
+                                      colors: [widget.primaryOrange, widget.redAccent],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ).createShader(bounds),
+                                    child: Text(
+                                      'Premium Language Class',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: isTablet ? 18 : 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: isTablet ? 4 : 2),
+                                  Text(
+                                    'Learn Bengali with verified instructors',
+                                    style: GoogleFonts.inter(
+                                      fontSize: isTablet ? 14 : 12,
+                                      color: _textSecondary,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                           ],
-                          
-                          SizedBox(height: isTablet ? 32 : 24),
-                          
-                          // Contact Information
-                          _buildPremiumSection(
-                            title: 'Contact Information',
-                            icon: Icons.contact_phone_rounded,
-                            color: widget.primaryOrange,
-                            child: Container(
-                              padding: EdgeInsets.all(isTablet ? 20 : 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: _borderLight),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _shadowColor,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  _buildPremiumContactItem(
-                                    icon: Icons.email_rounded,
-                                    label: 'Email',
-                                    value: banglaClass.email,
-                                    color: widget.primaryOrange,
-                                    onTap: () => _launchEmail(banglaClass.email),
-                                    isTablet: isTablet,
-                                  ),
-                                  SizedBox(height: isTablet ? 16 : 12),
-                                  _buildPremiumContactItem(
-                                    icon: Icons.phone_rounded,
-                                    label: 'Phone',
-                                    value: banglaClass.phone,
-                                    color: widget.successGreen,
-                                    onTap: () => _launchPhone(banglaClass.phone),
-                                    isTablet: isTablet,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            isTablet: isTablet,
-                            shouldAnimate: shouldAnimate,
-                            index: 8,
-                          ),
-                          
-                          SizedBox(height: isTablet ? 40 : 32),
-                          
-                          // Action Buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildPremiumActionButton(
-                                  icon: Icons.person_add_rounded,
-                                  label: isFull ? 'Class Full' : 'Enroll Now',
-                                  onPressed: isFull ? null : () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Row(
-                                          children: [
-                                            Icon(Icons.check_circle_rounded, color: Colors.white),
-                                            SizedBox(width: 10),
-                                            Text('Enrollment feature coming soon!'),
-                                          ],
-                                        ),
-                                        backgroundColor: widget.primaryOrange,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        margin: EdgeInsets.all(12),
-                                      ),
-                                    );
-                                  },
-                                  gradientColors: [widget.primaryOrange, widget.redAccent],
-                                  isTablet: isTablet,
-                                  isEnabled: !isFull,
-                                ),
-                              ),
-                              SizedBox(width: isTablet ? 16 : 12),
-                              Expanded(
-                                child: _buildPremiumActionButton(
-                                  icon: Icons.close_rounded,
-                                  label: 'Close',
-                                  onPressed: () => Navigator.pop(context),
-                                  gradientColors: [widget.successGreen, widget.tealAccent],
-                                  isTablet: isTablet,
-                                  isEnabled: true,
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 16 : 12),
-                          
-                          // Premium Footer
-                          Container(
-                            padding: EdgeInsets.all(isTablet ? 24 : 20),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [widget.lightOrange.withOpacity(0.5), widget.lightOrange],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
-                              border: Border.all(color: widget.primaryOrange.withOpacity(0.2), width: 1.5),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: isTablet ? 60 : 50,
-                                  height: isTablet ? 60 : 50,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [widget.primaryOrange, widget.redAccent, widget.greenAccent],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: widget.primaryOrange.withOpacity(0.3),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.language_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 28 : 24,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: isTablet ? 20 : 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      ShaderMask(
-                                        shaderCallback: (bounds) => LinearGradient(
-                                          colors: [widget.primaryOrange, widget.redAccent],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ).createShader(bounds),
-                                        child: Text(
-                                          'Premium Language Class',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 18 : 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(height: isTablet ? 4 : 2),
-                                      Text(
-                                        'Learn Bengali with verified instructors',
-                                        style: GoogleFonts.inter(
-                                          fontSize: isTablet ? 14 : 12,
-                                          color: _textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 24 : 20),
-                        ],
+                        ),
                       ),
-                    ),
+                      
+                      SizedBox(height: isTablet ? 24 : 20),
+                    ],
                   ),
-                ],
+                ),
               ),
             ],
           ),
@@ -1216,6 +1195,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
   }
 
   Widget _buildPremiumStatItem(IconData icon, String label, String value, Color color, bool isTablet) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Column(
       children: [
         Container(
@@ -1228,7 +1209,12 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
             ),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: color, size: isTablet ? 28 : 24),
+          child: shouldAnimate
+              ? RotationTransition(
+                  turns: _animationController,
+                  child: Icon(icon, color: color, size: isTablet ? 28 : 24),
+                )
+              : Icon(icon, color: color, size: isTablet ? 28 : 24),
         ),
         SizedBox(height: isTablet ? 8 : 6),
         Text(
@@ -1271,7 +1257,12 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: isTablet ? 20 : 18),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: _animationController,
+                      child: Icon(icon, color: color, size: isTablet ? 20 : 18),
+                    )
+                  : Icon(icon, color: color, size: isTablet ? 20 : 18),
             ),
             SizedBox(width: isTablet ? 12 : 10),
             Text(
@@ -1315,6 +1306,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
     required Color color,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Row(
       children: [
         Container(
@@ -1323,7 +1316,12 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
             color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: color, size: isTablet ? 18 : 16),
+          child: shouldAnimate
+              ? RotationTransition(
+                  turns: _animationController,
+                  child: Icon(icon, color: color, size: isTablet ? 18 : 16),
+                )
+              : Icon(icon, color: color, size: isTablet ? 18 : 16),
         ),
         SizedBox(width: isTablet ? 12 : 8),
         Expanded(
@@ -1363,6 +1361,8 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
     required VoidCallback onTap,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -1381,7 +1381,12 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: isTablet ? 22 : 18),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: _animationController,
+                      child: Icon(icon, color: color, size: isTablet ? 22 : 18),
+                    )
+                  : Icon(icon, color: color, size: isTablet ? 22 : 18),
             ),
             SizedBox(width: isTablet ? 16 : 12),
             Expanded(
@@ -1416,65 +1421,6 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
               size: isTablet ? 20 : 18,
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPremiumActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback? onPressed,
-    required List<Color> gradientColors,
-    required bool isTablet,
-    required bool isEnabled,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: isEnabled
-            ? LinearGradient(
-                colors: gradientColors,
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              )
-            : null,
-        color: isEnabled ? null : Colors.grey[300],
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: isEnabled
-            ? [
-                BoxShadow(
-                  color: gradientColors.first.withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: Offset(0, 8),
-                ),
-              ]
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              vertical: isTablet ? 16 : 14,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: isEnabled ? Colors.white : Colors.grey[600], size: isTablet ? 22 : 20),
-                SizedBox(width: isTablet ? 10 : 8),
-                Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 18 : 16,
-                    fontWeight: FontWeight.w700,
-                    color: isEnabled ? Colors.white : Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );

@@ -31,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen>
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   int _selectedIndex = 0;
+  bool _isIndexLoaded = false; // Track if index has been loaded from SharedPreferences
   
   // Track app lifecycle
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
@@ -52,10 +53,8 @@ class _HomeScreenState extends State<HomeScreen>
   late Animation<Offset> _slideAnimation;
   
   // Cache expensive widgets
-  Widget? _cachedBottomNavBar;
   Widget? _cachedDrawer;
   UserModel? _lastUserForDrawer;
-  bool _didInitDependencies = false;
   
   // Navigation items data - made const
   static const List<NavItem> _navItems = [
@@ -144,50 +143,42 @@ class _HomeScreenState extends State<HomeScreen>
     _slideController.stop();
   }
   
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    
-    if (!_didInitDependencies) {
-      _didInitDependencies = true;
-      _cachedBottomNavBar = _buildPremiumBottomNavBar();
-    }
-  }
-  
+  // ✅ FIXED: Always start with Events screen (index 0) when app opens
   Future<void> _loadSavedIndex() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final bool hasSavedIndex = prefs.containsKey('selected_tab_index');
+      // Always start with Events screen (index 0) when app opens
+      // This ensures users always see the Events tab first regardless of what they were doing before closing the app
       
-      if (hasSavedIndex) {
-        final savedIndex = prefs.getInt('selected_tab_index') ?? 0;
-        if (mounted && savedIndex >= 0 && savedIndex < _navItems.length) {
-          setState(() {
-            _selectedIndex = savedIndex;
-          });
-          print('📊 Loaded saved tab index: $savedIndex');
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _selectedIndex = 0;
-          });
-          print('📊 Fresh login - starting at Events tab');
-        }
+      if (mounted) {
+        print('📊 HomeScreen loaded - starting at Events tab (index 0)');
+        setState(() {
+          _selectedIndex = 0;
+          _isIndexLoaded = true;
+        });
       }
+      
+      // Clear any previously saved index to prevent issues
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('selected_tab_index');
+      
     } catch (e) {
-      print('Error loading saved tab index: $e');
+      print('Error in _loadSavedIndex: $e');
+      if (mounted) {
+        setState(() {
+          _selectedIndex = 0;
+          _isIndexLoaded = true;
+        });
+      }
     }
   }
   
   Future<void> _saveSelectedIndex(int index) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('selected_tab_index', index);
-      print('📊 Saved tab index: $index');
-    } catch (e) {
-      print('Error saving tab index: $e');
-    }
+    // We're no longer saving the index to always start with Events screen
+    // This method is kept but does nothing to prevent saving
+    print('📊 Navigation persistence disabled - not saving index: $index');
+    // Uncomment the line below if you want to save navigation state again
+    // final prefs = await SharedPreferences.getInstance();
+    // await prefs.setInt('selected_tab_index', index);
   }
   
   Future<void> _clearSavedIndex() async {
@@ -312,16 +303,15 @@ class _HomeScreenState extends State<HomeScreen>
     _scaffoldKey.currentState?.openDrawer();
   }
 
-  // ✅ NEW: Centralized method for handling navigation taps
+  // ✅ FIXED: Centralized method for handling navigation taps - no longer saves index
   void _onNavItemTapped(int index) {
     if (_selectedIndex != index) {
       print('📱 Nav item tapped: ${_navItems[index].label} (index: $index)');
       setState(() {
         _selectedIndex = index;
       });
-      _saveSelectedIndex(index);
-      // Invalidate cached bottom nav bar to force rebuild with new selected state
-      _cachedBottomNavBar = null;
+      // Navigation persistence disabled - always start with Events screen on next app launch
+      // _saveSelectedIndex(index);
     }
   }
 
@@ -329,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     super.build(context);
     
-    print('🏗️ Building HomeScreen, screen size: ${MediaQuery.of(context).size}');
+    print('🏗️ Building HomeScreen, selectedIndex: $_selectedIndex, isIndexLoaded: $_isIndexLoaded');
     
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
@@ -361,7 +351,8 @@ class _HomeScreenState extends State<HomeScreen>
                   index: _selectedIndex,
                   children: _screens,
                 ),
-          bottomNavigationBar: _cachedBottomNavBar ?? _buildPremiumBottomNavBar(),
+          // Only show bottom navigation bar after index is loaded
+          bottomNavigationBar: _isIndexLoaded ? _buildPremiumBottomNavBar() : null,
         );
       },
     );
@@ -405,10 +396,10 @@ class _HomeScreenState extends State<HomeScreen>
                             icon: Icons.logout_rounded,
                             title: 'Logout',
                             color: _primaryRed,
-                            index: index, // Pass index but it won't be used for logout
+                            index: index,
                             onTap: () {
-                              Navigator.pop(context); // Close drawer first
-                              _handleLogout(); // Then logout
+                              Navigator.pop(context);
+                              _handleLogout();
                             },
                           ),
                         ],
@@ -422,7 +413,7 @@ class _HomeScreenState extends State<HomeScreen>
                       index: index,
                       onTap: () {
                         Navigator.pop(context);
-                        _onNavItemTapped(index); // Use centralized method
+                        _onNavItemTapped(index);
                       },
                     );
                   },
@@ -673,6 +664,8 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildPremiumBottomNavBar() {
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenHeight < 700;
+    
+    print('🏗️ Building bottom nav bar with selectedIndex: $_selectedIndex');
     
     return Container(
       decoration: BoxDecoration(

@@ -1,4 +1,6 @@
 // models/entrepreneurship_models.dart
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
@@ -177,6 +179,109 @@ extension PartnerTypeExtension on PartnerType {
   }
 }
 
+// ====================== HELPER FUNCTIONS ======================
+
+/// Helper function to clean Base64 strings
+String cleanBase64String(String base64) {
+  String cleaned = base64.trim();
+  if (cleaned.contains('base64,')) {
+    cleaned = cleaned.split('base64,').last;
+  }
+  cleaned = cleaned.replaceAll(RegExp(r'\s'), '');
+  if (cleaned.length % 4 != 0) {
+    cleaned = cleaned.padRight(cleaned.length + (4 - cleaned.length % 4), '=');
+  }
+  return cleaned;
+}
+
+/// Helper function to check if a string is a URL
+bool isUrlString(String str) {
+  return str.startsWith('http://') || str.startsWith('https://');
+}
+
+/// Helper widget to display profile image (handles both URL and Base64)
+Widget buildProfileImageWidget({
+  required String? imageData,
+  required double size,
+  required VoidCallback? onError,
+  Color? backgroundColor,
+  IconData? fallbackIcon,
+}) {
+  if (imageData == null || imageData.isEmpty) {
+    return _buildDefaultProfileImage(size: size, backgroundColor: backgroundColor, fallbackIcon: fallbackIcon);
+  }
+
+  // Check if it's a URL
+  if (isUrlString(imageData)) {
+    return _buildNetworkImage(imageData, size);
+  } else {
+    // Try to decode as Base64
+    try {
+      final cleanedBase64 = cleanBase64String(imageData);
+      final bytes = base64Decode(cleanedBase64);
+      return _buildMemoryImage(bytes, size);
+    } catch (e) {
+      print('Error decoding Base64 image: $e');
+      return _buildDefaultProfileImage(size: size, backgroundColor: backgroundColor, fallbackIcon: fallbackIcon);
+    }
+  }
+}
+
+Widget _buildNetworkImage(String url, double size) {
+  // Note: You'll need to import cached_network_image in your UI file
+  // This is just a placeholder - the actual implementation should use CachedNetworkImage
+  return Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      image: DecorationImage(
+        image: NetworkImage(url),
+        fit: BoxFit.cover,
+        onError: (exception, stackTrace) {
+          print('Error loading network image: $exception');
+        },
+      ),
+    ),
+  );
+}
+
+Widget _buildMemoryImage(Uint8List bytes, double size) {
+  return Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      image: DecorationImage(
+        image: MemoryImage(bytes),
+        fit: BoxFit.cover,
+      ),
+    ),
+  );
+}
+
+Widget _buildDefaultProfileImage({
+  required double size,
+  Color? backgroundColor,
+  IconData? fallbackIcon,
+}) {
+  return Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: backgroundColor ?? Colors.grey.shade200,
+    ),
+    child: Center(
+      child: Icon(
+        fallbackIcon ?? Icons.person_rounded,
+        size: size * 0.5,
+        color: Colors.grey.shade600,
+      ),
+    ),
+  );
+}
+
 // ====================== NETWORKING BUSINESS PARTNER MODEL ======================
 class NetworkingBusinessPartner {
   String? id;
@@ -201,14 +306,14 @@ class NetworkingBusinessPartner {
   List<String> businessHours;
   List<String> languagesSpoken;
 
-      // Add these fields to store user information directly
+  // Add these fields to store user information directly
   String? postedByUserId; // Keep the user ID for reference
   String? postedByName; // Store user's full name
   String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image
+  String? postedByProfileImageBase64; // Store user's profile image (can be URL or Base64)
 
   double? latitude;
-double? longitude;
+  double? longitude;
   
   // Status fields
   bool isVerified;
@@ -227,7 +332,6 @@ double? longitude;
   // Additional information
   Map<String, dynamic>? additionalInfo;
   List<String>? certifications;
-//  String? socialMediaLinks;
   List<String>? socialMediaLinks;
 
   NetworkingBusinessPartner({
@@ -252,16 +356,12 @@ double? longitude;
     this.galleryImagesBase64,
     required this.businessHours,
     this.languagesSpoken = const ['English', 'Bengali'],
-
-            this.postedByUserId,
+    this.postedByUserId,
     this.postedByName,
     this.postedByEmail,
     this.postedByProfileImageBase64,
-
-        this.latitude,
+    this.latitude,
     this.longitude,
-
-
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -300,15 +400,12 @@ double? longitude;
       'galleryImagesBase64': galleryImagesBase64 ?? [],
       'businessHours': businessHours,
       'languagesSpoken': languagesSpoken,
-
-                  'postedByUserId': postedByUserId ?? '',
+      'postedByUserId': postedByUserId ?? '',
       'postedByName': postedByName ?? '',
       'postedByEmail': postedByEmail ?? '',
       'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
-
-            'latitude': latitude,
+      'latitude': latitude,
       'longitude': longitude,
-
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -341,33 +438,29 @@ double? longitude;
       type = BusinessType.soleProprietorship;
     }
 
-      // Handle socialMediaLinks - it might be String or List
-  List<String>? socialMediaList;
-  final socialMediaData = data['socialMediaLinks'];
-  
-  if (socialMediaData is List) {
-    // If it's already a List, use it
-    socialMediaList = List<String>.from(socialMediaData);
-  } else if (socialMediaData is String) {
-    // If it's a String, check if it's empty or contains multiple links
-    if (socialMediaData.isNotEmpty) {
-      // If it contains commas, split it
-      if (socialMediaData.contains(',')) {
-        socialMediaList = socialMediaData
-            .split(',')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
+    // Handle socialMediaLinks - it might be String or List
+    List<String>? socialMediaList;
+    final socialMediaData = data['socialMediaLinks'];
+    
+    if (socialMediaData is List) {
+      socialMediaList = List<String>.from(socialMediaData);
+    } else if (socialMediaData is String) {
+      if (socialMediaData.isNotEmpty) {
+        if (socialMediaData.contains(',')) {
+          socialMediaList = socialMediaData
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+        } else {
+          socialMediaList = [socialMediaData];
+        }
       } else {
-        // Single link as a list with one item
-        socialMediaList = [socialMediaData];
+        socialMediaList = [];
       }
     } else {
       socialMediaList = [];
     }
-  } else {
-    socialMediaList = [];
-  }
 
     return NetworkingBusinessPartner(
       id: doc.id,
@@ -391,15 +484,12 @@ double? longitude;
       galleryImagesBase64: List<String>.from(data['galleryImagesBase64'] ?? []),
       businessHours: List<String>.from(data['businessHours'] ?? []),
       languagesSpoken: List<String>.from(data['languagesSpoken'] ?? []),
-
-        postedByUserId: data['postedByUserId'] ?? '',
+      postedByUserId: data['postedByUserId'] ?? '',
       postedByName: data['postedByName'] ?? '',
       postedByEmail: data['postedByEmail'] ?? '',
       postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
-
-            latitude: data['latitude']?.toDouble(),
+      latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
-
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
@@ -412,7 +502,7 @@ double? longitude;
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
       additionalInfo: Map<String, dynamic>.from(data['additionalInfo'] ?? {}),
       certifications: List<String>.from(data['certifications'] ?? []),
-    socialMediaLinks: socialMediaList,  // Now always a List<String>?
+      socialMediaLinks: socialMediaList,
     );
   }
 
@@ -441,6 +531,18 @@ double? longitude;
         .where((keyword) => keyword.isNotEmpty && keyword.length > 2)
         .toSet()
         .toList();
+  }
+
+  /// Get the poster's profile image widget (handles both URL and Base64)
+  Widget getPosterProfileImageWidget({
+    double size = 40,
+    VoidCallback? onError,
+  }) {
+    return buildProfileImageWidget(
+      imageData: postedByProfileImageBase64,
+      size: size,
+      onError: onError,
+    );
   }
 
   Widget getLogoImageWidget({
@@ -490,18 +592,6 @@ double? longitude;
       ),
     );
   }
-
-  String cleanBase64String(String base64) {
-    String cleaned = base64.trim();
-    if (cleaned.contains('base64,')) {
-      cleaned = cleaned.split('base64,').last;
-    }
-    cleaned = cleaned.replaceAll(RegExp(r'\s'), '');
-    if (cleaned.length % 4 != 0) {
-      cleaned = cleaned.padRight(cleaned.length + (4 - cleaned.length % 4), '=');
-    }
-    return cleaned;
-  }
 }
 
 // ====================== JOB POSTING MODEL ======================
@@ -529,16 +619,14 @@ class JobPosting {
   DateTime applicationDeadline;
   int numberOfVacancies;
 
-
-
-    // Add these fields to store user information directly
+  // Add these fields to store user information directly
   String? postedByUserId; // Keep the user ID for reference
   String? postedByName; // Store user's full name
   String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image
+  String? postedByProfileImageBase64; // Store user's profile image (can be URL or Base64)
 
   double? latitude;
-double? longitude;
+  double? longitude;
   
   // Status fields
   bool isVerified;
@@ -580,21 +668,16 @@ double? longitude;
     this.applicationLink,
     required this.applicationDeadline,
     this.numberOfVacancies = 1,
-
-        this.postedByUserId,
+    this.postedByUserId,
     this.postedByName,
     this.postedByEmail,
     this.postedByProfileImageBase64,
-
-        this.latitude,
+    this.latitude,
     this.longitude,
-
-
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
     this.isUrgent = false,
-
     required this.postedBy,
     required this.createdAt,
     required this.updatedAt,
@@ -630,21 +713,17 @@ double? longitude;
       'applicationLink': applicationLink ?? '',
       'applicationDeadline': Timestamp.fromDate(applicationDeadline),
       'numberOfVacancies': numberOfVacancies,
-
-            'postedByUserId': postedByUserId ?? '',
+      'postedByUserId': postedByUserId ?? '',
       'postedByName': postedByName ?? '',
       'postedByEmail': postedByEmail ?? '',
       'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
-
-            'latitude': latitude,
+      'latitude': latitude,
       'longitude': longitude,
-
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
       'isUrgent': isUrgent,
       'postedBy': postedBy,
-      
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'companyLogoBase64': companyLogoBase64 ?? '',
@@ -713,21 +792,17 @@ double? longitude;
       applicationLink: data['applicationLink'],
       applicationDeadline: (data['applicationDeadline'] as Timestamp).toDate(),
       numberOfVacancies: data['numberOfVacancies'] ?? 1,
-
-            postedByUserId: data['postedByUserId'] ?? '',
+      postedByUserId: data['postedByUserId'] ?? '',
       postedByName: data['postedByName'] ?? '',
       postedByEmail: data['postedByEmail'] ?? '',
       postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
-
-                  latitude: data['latitude']?.toDouble(),
+      latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
-
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
       isUrgent: data['isUrgent'] ?? false,
       postedBy: data['postedBy'] ?? '',
-      
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
       companyLogoBase64: data['companyLogoBase64'],
@@ -760,6 +835,18 @@ double? longitude;
         .where((keyword) => keyword.isNotEmpty && keyword.length > 2)
         .toSet()
         .toList();
+  }
+
+  /// Get the poster's profile image widget (handles both URL and Base64)
+  Widget getPosterProfileImageWidget({
+    double size = 40,
+    VoidCallback? onError,
+  }) {
+    return buildProfileImageWidget(
+      imageData: postedByProfileImageBase64,
+      size: size,
+      onError: onError,
+    );
   }
 
   String get formattedSalary {
@@ -825,14 +912,14 @@ class SmallBusinessPromotion {
   String? offerValidity;
   List<String> paymentMethods;
 
-      // Add these fields to store user information directly
+  // Add these fields to store user information directly
   String? postedByUserId; // Keep the user ID for reference
   String? postedByName; // Store user's full name
   String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image
+  String? postedByProfileImageBase64; // Store user's profile image (can be URL or Base64)
 
   double? latitude;
-double? longitude;
+  double? longitude;
   
   // Status fields
   bool isVerified;
@@ -873,15 +960,12 @@ double? longitude;
     this.specialOfferDiscount,
     this.offerValidity,
     this.paymentMethods = const [],
-
-            this.postedByUserId,
+    this.postedByUserId,
     this.postedByName,
     this.postedByEmail,
     this.postedByProfileImageBase64,
-
-        this.latitude,
+    this.latitude,
     this.longitude,
-
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -917,15 +1001,12 @@ double? longitude;
       'specialOfferDiscount': specialOfferDiscount ?? 0,
       'offerValidity': offerValidity ?? '',
       'paymentMethods': paymentMethods,
-
-                  'postedByUserId': postedByUserId ?? '',
+      'postedByUserId': postedByUserId ?? '',
       'postedByName': postedByName ?? '',
       'postedByEmail': postedByEmail ?? '',
       'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
-
-            'latitude': latitude,
+      'latitude': latitude,
       'longitude': longitude,
-
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -977,15 +1058,12 @@ double? longitude;
       specialOfferDiscount: (data['specialOfferDiscount'] ?? 0).toDouble(),
       offerValidity: data['offerValidity'],
       paymentMethods: List<String>.from(data['paymentMethods'] ?? []),
-
-                  postedByUserId: data['postedByUserId'] ?? '',
+      postedByUserId: data['postedByUserId'] ?? '',
       postedByName: data['postedByName'] ?? '',
       postedByEmail: data['postedByEmail'] ?? '',
       postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
-
-                  latitude: data['latitude']?.toDouble(),
+      latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
-
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
@@ -1024,7 +1102,19 @@ double? longitude;
         .toList();
   }
 
-    // Add the cleanBase64String method
+  /// Get the poster's profile image widget (handles both URL and Base64)
+  Widget getPosterProfileImageWidget({
+    double size = 40,
+    VoidCallback? onError,
+  }) {
+    return buildProfileImageWidget(
+      imageData: postedByProfileImageBase64,
+      size: size,
+      onError: onError,
+    );
+  }
+
+  // Add the cleanBase64String method
   static String cleanBase64String(String base64) {
     String cleaned = base64.trim();
     if (cleaned.contains('base64,')) {
@@ -1114,14 +1204,14 @@ class BusinessPartnerRequest {
   String? preferredMeetingMethod;
   List<String>? additionalDocumentsBase64;
 
-        // Add these fields to store user information directly
+  // Add these fields to store user information directly
   String? postedByUserId; // Keep the user ID for reference
   String? postedByName; // Store user's full name
   String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image
+  String? postedByProfileImageBase64; // Store user's profile image (can be URL or Base64)
 
   double? latitude;
-double? longitude;
+  double? longitude;
   
   // Status fields
   bool isVerified;
@@ -1161,15 +1251,12 @@ double? longitude;
     required this.contactPhone,
     this.preferredMeetingMethod,
     this.additionalDocumentsBase64,
-
-                this.postedByUserId,
+    this.postedByUserId,
     this.postedByName,
     this.postedByEmail,
     this.postedByProfileImageBase64,
-
-        this.latitude,
+    this.latitude,
     this.longitude,
-
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -1206,15 +1293,12 @@ double? longitude;
       'contactPhone': contactPhone,
       'preferredMeetingMethod': preferredMeetingMethod ?? '',
       'additionalDocumentsBase64': additionalDocumentsBase64 ?? [],
-
-                        'postedByUserId': postedByUserId ?? '',
+      'postedByUserId': postedByUserId ?? '',
       'postedByName': postedByName ?? '',
       'postedByEmail': postedByEmail ?? '',
       'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
-
-            'latitude': latitude,
+      'latitude': latitude,
       'longitude': longitude,
-
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -1286,15 +1370,12 @@ double? longitude;
       preferredMeetingMethod: data['preferredMeetingMethod'],
       additionalDocumentsBase64: List<String>.from(data['additionalDocumentsBase64'] ?? []),
       isVerified: data['isVerified'] ?? false,
-
-                        postedByUserId: data['postedByUserId'] ?? '',
+      postedByUserId: data['postedByUserId'] ?? '',
       postedByName: data['postedByName'] ?? '',
       postedByEmail: data['postedByEmail'] ?? '',
       postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
-
-                  latitude: data['latitude']?.toDouble(),
+      latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
-
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
       isUrgent: data['isUrgent'] ?? false,
@@ -1332,6 +1413,18 @@ double? longitude;
         .where((keyword) => keyword.isNotEmpty && keyword.length > 2)
         .toSet()
         .toList();
+  }
+
+  /// Get the poster's profile image widget (handles both URL and Base64)
+  Widget getPosterProfileImageWidget({
+    double size = 40,
+    VoidCallback? onError,
+  }) {
+    return buildProfileImageWidget(
+      imageData: postedByProfileImageBase64,
+      size: size,
+      onError: onError,
+    );
   }
 
   String get formattedBudget {

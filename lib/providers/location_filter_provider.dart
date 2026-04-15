@@ -23,6 +23,25 @@ class LocationFilterProvider extends ChangeNotifier {
   bool get isLoadingLocation => _isLoadingLocation;
   String? get locationErrorMessage => _locationErrorMessage;
   
+  // ✅ New: Check if state is selected
+  bool get isStateSelected => _selectedState != null && _selectedState!.isNotEmpty;
+  
+  // ✅ New: Get selected state display name
+  String get selectedStateDisplay => _selectedState ?? 'Not Selected';
+  
+  // ✅ New: Get formatted location for display
+  String get formattedLocation {
+    if (!isStateSelected) return 'No location selected';
+    return _selectedState!;
+  }
+  
+  // ✅ New: Require state selection (triggers guard screen)
+  void requireStateSelection() {
+    if (!isStateSelected) {
+      notifyListeners();
+    }
+  }
+  
   // Set location filter from Events screen
   void setLocationFilter(String state, {bool fromEvents = true}) {
     if (_selectedState != state) {
@@ -30,6 +49,7 @@ class LocationFilterProvider extends ChangeNotifier {
       _isFilterActive = true;
       _isFilterAppliedFromEvents = fromEvents;
       notifyListeners();
+      print('📍 LocationFilterProvider: State set to $state (fromEvents: $fromEvents)');
     }
   }
   
@@ -39,6 +59,7 @@ class LocationFilterProvider extends ChangeNotifier {
     _isFilterActive = false;
     _isFilterAppliedFromEvents = false;
     notifyListeners();
+    print('📍 LocationFilterProvider: Filter cleared');
   }
   
   // Get user location on login or when requested
@@ -154,5 +175,73 @@ class LocationFilterProvider extends ChangeNotifier {
     _locationErrorMessage = null;
     // Don't clear location as it's independent
     notifyListeners();
+  }
+  
+  // ✅ New: Get all US states (useful for location selection)
+  List<String> get usStates {
+    return const [
+      'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
+      'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho',
+      'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana',
+      'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
+      'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada',
+      'New Hampshire', 'New Jersey', 'New Mexico', 'New York',
+      'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon',
+      'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
+      'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington',
+      'West Virginia', 'Wisconsin', 'Wyoming'
+    ];
+  }
+  
+  // ✅ New: Get state abbreviation (optional)
+  String getStateAbbreviation(String state) {
+    const abbreviations = {
+      'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
+      'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE',
+      'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID',
+      'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS',
+      'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+      'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
+      'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV',
+      'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+      'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK',
+      'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+      'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT',
+      'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV',
+      'Wisconsin': 'WI', 'Wyoming': 'WY'
+    };
+    return abbreviations[state] ?? state.substring(0, 2).toUpperCase();
+  }
+  
+  // ✅ New: Validate if a state is valid
+  bool isValidState(String state) {
+    return usStates.contains(state);
+  }
+  
+  // ✅ New: Auto-detect state from user location (optional feature)
+  Future<String?> detectStateFromLocation() async {
+    final hasLocation = await getUserLocation(showLoading: false);
+    if (!hasLocation || _currentUserLocation == null) {
+      return null;
+    }
+    
+    try {
+      // This would typically use a geocoding service
+      // For now, return null as this requires additional implementation
+      // You can integrate with Google Maps Geocoding API here
+      return null;
+    } catch (e) {
+      print('Error detecting state from location: $e');
+      return null;
+    }
+  }
+  
+  // ✅ New: Suggest states based on user's location (optional)
+  Future<List<String>> getSuggestedStates() async {
+    final detectedState = await detectStateFromLocation();
+    if (detectedState != null) {
+      return [detectedState, ...usStates.where((s) => s != detectedState).take(5).toList()];
+    }
+    return usStates.take(10).toList();
   }
 }

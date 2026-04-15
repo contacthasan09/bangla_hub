@@ -77,7 +77,6 @@ class _JobDetailsScreenState extends State<JobDetailsScreen>
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     _animationController = AnimationController(
@@ -103,10 +102,8 @@ class _JobDetailsScreenState extends State<JobDetailsScreen>
     });
     
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _startAnimations();
     } else {
-      // App is not visible - stop animations to save resources
       _stopAnimations();
     }
   }
@@ -114,31 +111,27 @@ class _JobDetailsScreenState extends State<JobDetailsScreen>
   void _startAnimations() {
     if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
       _animationController.forward();
-      // Particle controllers already running via repeat
     }
   }
   
   void _stopAnimations() {
     _animationController.stop();
-    // Particle controllers will continue but we don't stop them as they're repetitive
   }
 
   @override
   void dispose() {
     print('🗑️ JobDetailsScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
-    
-    // ✅ Dispose animation controllers
     _animationController.dispose();
-    
-    // ✅ Dispose particle controllers
     for (var controller in _particleControllers) {
       controller.dispose();
     }
-    
     super.dispose();
+  }
+
+  // Helper function to check if string is a URL
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
   }
 
   Widget _buildAnimatedParticle(int index, double width, double height) {
@@ -226,6 +219,85 @@ class _JobDetailsScreenState extends State<JobDetailsScreen>
         behavior: SnackBarBehavior.floating,
         margin: EdgeInsets.all(16),
         duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // UPDATED: Build job poster image with URL and Base64 support
+  Widget _buildJobPosterImage({bool isLarge = false}) {
+    final imageData = widget.job.postedByProfileImageBase64;
+    
+    if (imageData != null && imageData.isNotEmpty) {
+      // Check if it's a URL
+      if (_isUrlString(imageData)) {
+        return ClipOval(
+          child: Image.network(
+            imageData,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading job poster image: $error');
+              return _buildDefaultProfileImage(isLarge: isLarge);
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(widget.goldAccent),
+                ),
+              );
+            },
+          ),
+        );
+      } else {
+        // It's Base64 data
+        try {
+          String base64String = imageData;
+          
+          if (base64String.contains('base64,')) {
+            base64String = base64String.split('base64,').last;
+          }
+          
+          base64String = base64String.replaceAll(RegExp(r'\s'), '');
+          
+          while (base64String.length % 4 != 0) {
+            base64String += '=';
+          }
+          
+          final bytes = base64Decode(base64String);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                print('Error decoding job poster image: $error');
+                return _buildDefaultProfileImage(isLarge: isLarge);
+              },
+            ),
+          );
+        } catch (e) {
+          print('Error processing job poster image: $e');
+          return _buildDefaultProfileImage(isLarge: isLarge);
+        }
+      }
+    }
+    
+    return _buildDefaultProfileImage(isLarge: isLarge);
+  }
+
+  Widget _buildDefaultProfileImage({bool isLarge = false}) {
+    return Container(
+      color: _lightRed,
+      child: Center(
+        child: Icon(
+          Icons.person_rounded,
+          color: widget.primaryRed,
+          size: isLarge ? 40 : 24,
+        ),
       ),
     );
   }
@@ -1020,50 +1092,6 @@ class _JobDetailsScreenState extends State<JobDetailsScreen>
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  // NEW METHOD: Build poster image from job.postedByProfileImageBase64
-  Widget _buildJobPosterImage({bool isLarge = false}) {
-    if (widget.job.postedByProfileImageBase64 != null && widget.job.postedByProfileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = widget.job.postedByProfileImageBase64!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage(isLarge: isLarge);
-          },
-        );
-      } catch (e) {
-        return _buildDefaultProfileImage(isLarge: isLarge);
-      }
-    }
-    return _buildDefaultProfileImage(isLarge: isLarge);
-  }
-
-  Widget _buildDefaultProfileImage({bool isLarge = false}) {
-    return Container(
-      color: _lightRed,
-      child: Center(
-        child: Icon(
-          Icons.person_rounded,
-          color: widget.primaryRed,
-          size: isLarge ? 40 : 24,
         ),
       ),
     );

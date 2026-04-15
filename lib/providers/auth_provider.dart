@@ -441,7 +441,7 @@ Future<UserModel?> getUserById(String userId) async {
   }   */
 
  // In your AuthProvider class
-  Future<void> signUp({
+/*  Future<void> signUp({
     required String email,
     required String password,
     required String firstName,
@@ -556,6 +556,211 @@ Future<UserModel?> getUserById(String userId) async {
     }
   } 
 
+*/
+
+
+// In your AuthProvider class
+/*Future<void> signUp({
+  required String email,
+  required String password,
+  required String firstName,
+  required String lastName,
+  required String phoneNumber,
+  required String location,
+  String? profileImageUrl, // Changed from File? to String?
+  String? country,
+  String? countryCode,
+  double? latitude,
+  double? longitude,
+  required BuildContext context,
+}) async {
+  try {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    // Get user location first if not provided
+    if (latitude == null || longitude == null) {
+      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+      await locationProvider.getUserLocation();
+      
+      if (locationProvider.currentUserLocation != null) {
+        latitude = locationProvider.currentUserLocation!.latitude;
+        longitude = locationProvider.currentUserLocation!.longitude;
+      }
+    }
+
+    // Create user data with Cloudinary URL
+    final userData = UserModel(
+      id: _uuid.v4(),
+      email: email,
+      firstName: firstName,
+      lastName: lastName,
+      phoneNumber: phoneNumber,
+      location: location,
+      profileImageUrl: profileImageUrl, // Store Cloudinary URL directly
+      role: 'user',
+      isEmailVerified: true,
+      isActive: true,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      country: country,
+      countryCode: countryCode,
+      latitude: latitude,
+      longitude: longitude,
+    );
+
+    // Sign up with Firebase Auth
+    final firebaseUser = await _authService.signUpWithEmail(
+      email: email,
+      password: password,
+      userData: userData,
+    );
+
+    if (firebaseUser != null) {
+      _user = userData.copyWith(id: firebaseUser.uid);
+      
+      // Store user session
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userId', firebaseUser.uid);
+      await prefs.setString('userEmail', email);
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setBool('isAdmin', false);
+      await prefs.setBool('isGuestMode', false);
+      
+      _isAdminMode = false;
+      _isGuestMode = false;
+      notifyListeners();
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: _bangladeshGreen,
+          content: Text('✅ Account created successfully!'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Navigate to Welcome Screen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => WelcomeScreen(
+            onComplete: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => HomeScreen()),
+              );
+            },
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    _error = e.toString();
+    rethrow;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
+
+*/
+
+
+// In your AuthProvider class - REMOVE navigation from here
+Future<void> signUp({
+  required String email,
+  required String password,
+  required String firstName,
+  required String lastName,
+  required String phoneNumber,
+  required String location,
+  String? profileImageUrl,
+  String? country,
+  String? countryCode,
+  double? latitude,
+  double? longitude,
+  required BuildContext context,
+}) async {
+  try {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    // Get user location first if not provided
+    if (latitude == null || longitude == null) {
+      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+      await locationProvider.getUserLocation();
+      
+      if (locationProvider.currentUserLocation != null) {
+        latitude = locationProvider.currentUserLocation!.latitude;
+        longitude = locationProvider.currentUserLocation!.longitude;
+      }
+    }
+
+    // Create user data with Cloudinary URL
+    final userData = UserModel(
+      id: _uuid.v4(),
+      email: email,
+      firstName: firstName,
+      lastName: lastName,
+      phoneNumber: phoneNumber,
+      location: location,
+      profileImageUrl: profileImageUrl,
+      role: 'user',
+      isEmailVerified: true,
+      isActive: true,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      country: country,
+      countryCode: countryCode,
+      latitude: latitude,
+      longitude: longitude,
+    );
+
+    // Sign up with Firebase Auth
+    final firebaseUser = await _authService.signUpWithEmail(
+      email: email,
+      password: password,
+      userData: userData,
+    );
+
+    if (firebaseUser != null) {
+      _user = userData.copyWith(id: firebaseUser.uid);
+      
+      // Store user session
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userId', firebaseUser.uid);
+      await prefs.setString('userEmail', email);
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setBool('isAdmin', false);
+      await prefs.setBool('isGuestMode', false);
+      
+      _isAdminMode = false;
+      _isGuestMode = false;
+      notifyListeners();
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: _bangladeshGreen,
+          content: Text('✅ Account created successfully!'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+      // ✅ DO NOT NAVIGATE HERE - Let RegisterScreen handle it
+    }
+  } catch (e) {
+    _error = e.toString();
+    rethrow;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
+
 Future<void> updatePassword({
   required String currentPassword,
   required String newPassword,
@@ -662,6 +867,61 @@ Future<void> updatePassword({
       notifyListeners();
     }
   }
+
+  // Add this method to AuthProvider class
+// Add this method to AuthProvider class
+Future<void> deleteAccount() async {
+  try {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    
+    print('🗑️ AuthProvider: Starting account deletion...');
+    
+    // Get current user before deletion
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw 'No user logged in';
+    }
+    
+    final userId = user.uid;
+    print('📧 Deleting account for user: $userId');
+    
+    // Show loading dialog (will be handled by UI)
+    
+    // Call AuthService to delete all data
+    await _authService.deleteAccount();
+    
+    // Clear local state
+    _user = null;
+    _isAdminMode = false;
+    _isGuestMode = false;
+    
+    // Clear all stored session data from SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userId');
+    await prefs.remove('userEmail');
+    await prefs.setBool('isLoggedIn', false);
+    await prefs.setBool('isAdmin', false);
+    await prefs.setBool('isGuestMode', false);
+    await prefs.remove('selected_tab_index');
+    await prefs.remove('user_location');
+    await prefs.remove('user_latitude');
+    await prefs.remove('user_longitude');
+    
+    notifyListeners();
+    
+    print('✅ AuthProvider: Account deleted successfully');
+    
+  } catch (e) {
+    _error = e.toString();
+    print('❌ AuthProvider error deleting account: $e');
+    rethrow;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
   
   Future<void> resetPassword(String email) async {
     try {
@@ -702,23 +962,47 @@ Future<void> updatePassword({
     }
   }
   
-  Future<void> updateUserProfile(UserModel updatedUser) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-      
-      await _firestoreService.updateUser(updatedUser);
-      _user = updatedUser;
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+// In your AuthProvider class
+Future<void> updateUserProfile(UserModel updatedUser) async {
+  try {
+    _isLoading = true;
+    notifyListeners();
+    
+    print('🔄 Updating user profile in Firestore...');
+    await _firestoreService.updateUser(updatedUser);
+    
+    // Update local user
+    _user = updatedUser;
+    notifyListeners();
+    
+    print('✅ User profile updated successfully');
+  } catch (e) {
+    _error = e.toString();
+    print('❌ Error updating user profile: $e');
+    rethrow;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
   }
+}
+
+Future<void> refreshUserData() async {
+  if (_user == null) return;
   
+  try {
+    print('🔄 Refreshing user data...');
+    final userData = await _firestoreService.getUser(_user!.id);
+    if (userData != null) {
+      _user = userData;
+      notifyListeners();
+      print('✅ User data refreshed. Profile image exists: ${_user!.profileImageUrl != null}');
+    }
+  } catch (e) {
+    print('❌ Error refreshing user data: $e');
+  }
+}
+ 
+ 
   // Add method to check current authentication status
   Future<bool> checkCurrentAuthStatus() async {
     try {

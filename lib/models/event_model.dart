@@ -1,7 +1,9 @@
+// models/event_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
+import 'package:bangla_hub/services/cloudinary_service.dart';
 
 // Event Status Enum
 enum EventStatus {
@@ -29,6 +31,9 @@ class EventModel {
   final String contactEmail;
   final String contactPhone;
   final DateTime eventDate;
+  final DateTime? endDate;
+  final TimeOfDay? startTime;
+  final TimeOfDay? endTime;
   final String location;
   final String description;
   final String? bannerImageUrl;
@@ -44,10 +49,9 @@ class EventModel {
   final String? state;
   final String? city;
   
-  // New fields
   final String category;
-  final String status; // 'pending', 'approved', 'suspended', 'deleted'
-  final int totalInterested; // Count of interested users
+  final String status;
+  final int totalInterested;
   
   EventModel({
     required this.id,
@@ -57,6 +61,9 @@ class EventModel {
     required this.contactEmail,
     required this.contactPhone,
     required this.eventDate,
+    this.endDate,
+    this.startTime,
+    this.endTime,
     required this.location,
     required this.description,
     this.bannerImageUrl,
@@ -69,46 +76,272 @@ class EventModel {
     required this.category,
     this.status = 'pending',
     this.totalInterested = 0,
-
     this.latitude,
     this.longitude,
     this.state,
     this.city,
   });
 
-  // Helper method to check if image is base64
+  // Helper properties
+  bool get isMultiDay => endDate != null && endDate != eventDate;
+  bool get hasTime => startTime != null;
+  bool get isPast => eventDate.isBefore(DateTime.now());
+  bool get isUpcoming => !isPast;
+  bool get isPending => status == 'pending';
+  bool get isApproved => status == 'approved';
+  bool get isSuspended => status == 'suspended';
+  bool get isDeleted => status == 'deleted';
+  
+  String get interestedCountText {
+    if (totalInterested == 0) return 'No one interested yet';
+    if (totalInterested == 1) return '1 person interested';
+    return '$totalInterested people interested';
+  }
+  
+  Color get statusColor {
+    switch (status) {
+      case 'pending':
+        return Colors.orange;
+      case 'approved':
+        return Colors.green;
+      case 'suspended':
+        return Colors.red;
+      case 'deleted':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
+  }
+  
+  String get statusText {
+    switch (status) {
+      case 'pending':
+        return 'Pending';
+      case 'approved':
+        return 'Approved';
+      case 'suspended':
+        return 'Suspended';
+      case 'deleted':
+        return 'Deleted';
+      default:
+        return 'Unknown';
+    }
+  }
+  
+  String get categoryText {
+    switch (category) {
+      case 'all':
+        return 'All';
+      case 'sports':
+        return 'Sports';
+      case 'religious':
+        return 'Religious';
+      case 'business':
+        return 'Business';
+      case 'educational':
+        return 'Educational';
+      case 'social':
+        return 'Social';
+      default:
+        return category;
+    }
+  }
+  
+  IconData get categoryIcon {
+    switch (category) {
+      case 'all':
+        return Icons.apps_rounded;
+      case 'sports':
+        return Icons.sports_soccer_rounded;
+      case 'religious':
+        return Icons.mosque_rounded;
+      case 'business':
+        return Icons.business_rounded;
+      case 'educational':
+        return Icons.school_rounded;
+      case 'social':
+        return Icons.groups_rounded;
+      default:
+        return Icons.event_rounded;
+    }
+  }
+
+  // Cloudinary URL helpers
+  bool get isCloudinaryUrl {
+    return bannerImageUrl != null && bannerImageUrl!.contains('cloudinary.com');
+  }
+  
+  // Get optimized URL for different sizes
+  String getOptimizedBannerUrl({int width = 800, int height = 400, String crop = 'fill'}) {
+    if (bannerImageUrl == null || bannerImageUrl!.isEmpty) return '';
+    
+    if (isCloudinaryUrl) {
+      return CloudinaryService.getOptimizedUrl(
+        bannerImageUrl!,
+        width: width,
+        height: height,
+        crop: crop,
+      );
+    }
+    
+    return bannerImageUrl!;
+  }
+  
+  // Thumbnail for list items (200x150)
+  String get thumbnailUrl {
+    if (bannerImageUrl == null || bannerImageUrl!.isEmpty) return '';
+    if (isCloudinaryUrl) {
+      return CloudinaryService.getThumbnailUrl(bannerImageUrl!);
+    }
+    return bannerImageUrl!;
+  }
+  
+  // Card image for carousel (400x250)
+  String get cardUrl {
+    if (bannerImageUrl == null || bannerImageUrl!.isEmpty) return '';
+    if (isCloudinaryUrl) {
+      return CloudinaryService.getCardUrl(bannerImageUrl!);
+    }
+    return bannerImageUrl!;
+  }
+  
+  // Full quality for details screen (1200x600)
+  String get fullQualityUrl {
+    if (bannerImageUrl == null || bannerImageUrl!.isEmpty) return '';
+    if (isCloudinaryUrl) {
+      return CloudinaryService.getFullQualityUrl(bannerImageUrl!);
+    }
+    return bannerImageUrl!;
+  }
+  
+  // Small thumbnail for chat/notifications (100x75)
+  String get smallThumbnailUrl {
+    if (bannerImageUrl == null || bannerImageUrl!.isEmpty) return '';
+    if (isCloudinaryUrl) {
+      return CloudinaryService.getOptimizedUrl(bannerImageUrl!, width: 100, height: 75, crop: 'thumb');
+    }
+    return bannerImageUrl!;
+  }
+
+  // Formatted date strings
+  String get formattedDateRange {
+    if (isMultiDay && endDate != null) {
+      return '${DateFormat('MMM d').format(eventDate)} - ${DateFormat('MMM d, y').format(endDate!)}';
+    }
+    return DateFormat('MMM d, y').format(eventDate);
+  }
+
+  String get formattedDateRangeLong {
+    if (isMultiDay && endDate != null) {
+      return '${DateFormat('EEEE, MMMM d').format(eventDate)} - ${DateFormat('EEEE, MMMM d, y').format(endDate!)}';
+    }
+    return DateFormat('EEEE, MMMM d, y').format(eventDate);
+  }
+
+  String _formatTimeOfDay(TimeOfDay time) {
+    final hour = time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
+  }
+
+  String get formattedTimeRange {
+    if (startTime != null && endTime != null) {
+      return '${_formatTimeOfDay(startTime!)} - ${_formatTimeOfDay(endTime!)}';
+    } else if (startTime != null) {
+      return '${_formatTimeOfDay(startTime!)}';
+    }
+    return 'Time TBA';
+  }
+
+  String get fullFormattedDateTime {
+    String result = '';
+    
+    if (isMultiDay && endDate != null) {
+      result = formattedDateRangeLong;
+      if (startTime != null) {
+        result += ' • ${_formatTimeOfDay(startTime!)}';
+        if (endTime != null) {
+          result += ' - ${_formatTimeOfDay(endTime!)}';
+        }
+      }
+    } else {
+      result = DateFormat('EEEE, MMMM d, y').format(eventDate);
+      if (startTime != null) {
+        result += ' at ${_formatTimeOfDay(startTime!)}';
+        if (endTime != null) {
+          result += ' - ${_formatTimeOfDay(endTime!)}';
+        }
+      }
+    }
+    
+    return result;
+  }
+
+  String get compactFormattedDateTime {
+    String result = '';
+    
+    if (isMultiDay && endDate != null) {
+      result = formattedDateRange;
+      if (startTime != null) {
+        result += ' • ${_formatTimeOfDay(startTime!)}';
+        if (endTime != null) {
+          result += ' - ${_formatTimeOfDay(endTime!)}';
+        }
+      }
+    } else {
+      result = DateFormat('MMM d, y').format(eventDate);
+      if (startTime != null) {
+        result += ' • ${_formatTimeOfDay(startTime!)}';
+        if (endTime != null) {
+          result += ' - ${_formatTimeOfDay(endTime!)}';
+        }
+      }
+    }
+    
+    return result;
+  }
+
+  String get formattedDate {
+    final now = DateTime.now();
+    final difference = eventDate.difference(now);
+    
+    if (difference.inDays == 0) {
+      return 'Today at ${DateFormat('h:mm a').format(eventDate)}';
+    } else if (difference.inDays == 1) {
+      return 'Tomorrow at ${DateFormat('h:mm a').format(eventDate)}';
+    } else if (difference.inDays < 7) {
+      return DateFormat('EEEE, MMM d').format(eventDate);
+    } else {
+      return DateFormat('MMM d, y').format(eventDate);
+    }
+  }
+
+  // Base64 image detection
   bool get isBase64Image {
     if (bannerImageUrl == null || bannerImageUrl!.isEmpty) return false;
     
     final String image = bannerImageUrl!;
-    
-    // Clean the string - remove any whitespace
     final cleanedImage = image.trim();
     
-    // Check for data URL format
     if (cleanedImage.startsWith('data:image/')) {
       return true;
     }
     
-    // Check for common base64 image signatures
-    if (cleanedImage.startsWith('/9j/') || // JPEG
-        cleanedImage.startsWith('iVBORw0KGgo') || // PNG
-        cleanedImage.startsWith('R0lGODlh') || // GIF
-        cleanedImage.startsWith('UklGR') || // WebP
-        cleanedImage.startsWith('PHN2Zy') || // SVG in base64
-        cleanedImage.startsWith('PD94bW')) { // PDF in base64 (just in case)
+    if (cleanedImage.startsWith('/9j/') ||
+        cleanedImage.startsWith('iVBORw0KGgo') ||
+        cleanedImage.startsWith('R0lGODlh') ||
+        cleanedImage.startsWith('UklGR') ||
+        cleanedImage.startsWith('PHN2Zy') ||
+        cleanedImage.startsWith('PD94bW')) {
       return true;
     }
     
-    // Try to validate as base64
     try {
-      // Remove any data URL prefix
       String potentialBase64 = cleanedImage;
       if (potentialBase64.contains('base64,')) {
         potentialBase64 = potentialBase64.split('base64,').last;
       }
-      
-      // Decode to check if it's valid base64
       base64Decode(potentialBase64);
       return true;
     } catch (e) {
@@ -116,20 +349,17 @@ class EventModel {
     }
   }
 
-  // Helper method to check if image is a URL
   bool get isNetworkImage {
     if (bannerImageUrl == null || bannerImageUrl!.isEmpty) return false;
     
     final cleanedUrl = bannerImageUrl!.trim();
     
-    // Check for common URL patterns
     if (cleanedUrl.startsWith('http://') || 
         cleanedUrl.startsWith('https://') ||
         cleanedUrl.startsWith('www.')) {
       return true;
     }
     
-    // Try to parse as URI
     try {
       final uri = Uri.tryParse(cleanedUrl);
       return uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
@@ -138,7 +368,7 @@ class EventModel {
     }
   }
 
-  // Method to safely get Image widget
+  // Image widget builder
   Widget get bannerImageWidget {
     try {
       if (bannerImageUrl == null || bannerImageUrl!.isEmpty) {
@@ -148,25 +378,17 @@ class EventModel {
       final String imageUrl = bannerImageUrl!.trim();
       
       if (isBase64Image) {
-        // Handle base64 image
         String base64String = imageUrl;
-        
-        // Remove data URL prefix if present
         if (base64String.contains('base64,')) {
           base64String = base64String.split('base64,').last;
         }
-        
-        // Clean the base64 string - remove any whitespace
         base64String = base64String.replaceAll(RegExp(r'\s'), '');
         
         try {
-          // Decode base64 with padding if needed
           if (base64String.length % 4 != 0) {
             base64String = base64String.padRight(base64String.length + (4 - base64String.length % 4), '=');
           }
-          
           final bytes = base64Decode(base64String);
-          
           return Image.memory(
             bytes,
             width: double.infinity,
@@ -182,9 +404,10 @@ class EventModel {
           return _buildDefaultImage();
         }
       } else if (isNetworkImage) {
-        // Handle network image
+        // Use optimized Cloudinary URL if applicable
+        final displayUrl = isCloudinaryUrl ? cardUrl : imageUrl;
         return Image.network(
-          imageUrl,
+          displayUrl,
           width: double.infinity,
           height: double.infinity,
           fit: BoxFit.cover,
@@ -211,7 +434,6 @@ class EventModel {
     }
   }
 
-  // Safe method to get ImageProvider
   ImageProvider? get bannerImageProvider {
     try {
       if (bannerImageUrl == null || bannerImageUrl!.isEmpty) {
@@ -225,15 +447,10 @@ class EventModel {
         if (base64String.contains('base64,')) {
           base64String = base64String.split('base64,').last;
         }
-        
-        // Clean the base64 string
         base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        // Add padding if needed
         if (base64String.length % 4 != 0) {
           base64String = base64String.padRight(base64String.length + (4 - base64String.length % 4), '=');
         }
-        
         try {
           final bytes = base64Decode(base64String);
           return MemoryImage(bytes);
@@ -242,7 +459,8 @@ class EventModel {
           return null;
         }
       } else if (isNetworkImage) {
-        return NetworkImage(imageUrl);
+        final displayUrl = isCloudinaryUrl ? thumbnailUrl : imageUrl;
+        return NetworkImage(displayUrl);
       }
       return null;
     } catch (e) {
@@ -250,9 +468,6 @@ class EventModel {
       return null;
     }
   }
-
-  // Helper method for min
-  int min(int a, int b) => a < b ? a : b;
 
   Widget _buildDefaultImage() {
     return Container(
@@ -280,114 +495,7 @@ class EventModel {
     );
   }
 
-  // Formatted date for display
-  String get formattedDate {
-    final now = DateTime.now();
-    final difference = eventDate.difference(now);
-    
-    if (difference.inDays == 0) {
-      return 'Today at ${DateFormat('h:mm a').format(eventDate)}';
-    } else if (difference.inDays == 1) {
-      return 'Tomorrow at ${DateFormat('h:mm a').format(eventDate)}';
-    } else if (difference.inDays < 7) {
-      return DateFormat('EEEE, MMM d').format(eventDate);
-    } else {
-      return DateFormat('MMM d, y').format(eventDate);
-    }
-  }
-
-  String get fullFormattedDate {
-    return DateFormat('EEEE, MMMM d, y - h:mm a').format(eventDate);
-  }
-
-  bool get isPast => eventDate.isBefore(DateTime.now());
-  bool get isUpcoming => !isPast;
-  
-  // Helper getters for status
-  bool get isPending => status == 'pending';
-  bool get isApproved => status == 'approved';
-  bool get isSuspended => status == 'suspended';
-  bool get isDeleted => status == 'deleted';
-  
-  // Helper for displaying interested count
-  String get interestedCountText {
-    if (totalInterested == 0) return 'No one interested yet';
-    if (totalInterested == 1) return '1 person interested';
-    return '$totalInterested people interested';
-  }
-  
-  // Status color helper
-  Color get statusColor {
-    switch (status) {
-      case 'pending':
-        return Colors.orange;
-      case 'approved':
-        return Colors.green;
-      case 'suspended':
-        return Colors.red;
-      case 'deleted':
-        return Colors.grey;
-      default:
-        return Colors.grey;
-    }
-  }
-  
-  // Status text helper
-  String get statusText {
-    switch (status) {
-      case 'pending':
-        return 'Pending';
-      case 'approved':
-        return 'Approved';
-      case 'suspended':
-        return 'Suspended';
-      case 'deleted':
-        return 'Deleted';
-      default:
-        return 'Unknown';
-    }
-  }
-  
-  // Category text helper
-  String get categoryText {
-    switch (category) {
-      case 'all':
-        return 'All';
-      case 'sports':
-        return 'Sports';
-      case 'religious':
-        return 'Religious';
-      case 'business':
-        return 'Business';
-      case 'educational':
-        return 'Educational';
-      case 'social':
-        return 'Social';
-      default:
-        return category;
-    }
-  }
-  
-  // Icon for category
-  IconData get categoryIcon {
-    switch (category) {
-      case 'all':
-        return Icons.apps_rounded;
-      case 'sports':
-        return Icons.sports_soccer_rounded;
-      case 'religious':
-        return Icons.mosque_rounded;
-      case 'business':
-        return Icons.business_rounded;
-      case 'educational':
-        return Icons.school_rounded;
-      case 'social':
-        return Icons.groups_rounded;
-      default:
-        return Icons.event_rounded;
-    }
-  }
-
+  // Convert to Firestore map
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -397,6 +505,11 @@ class EventModel {
       'contactEmail': contactEmail,
       'contactPhone': contactPhone,
       'eventDate': Timestamp.fromDate(eventDate),
+      'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
+      'startTimeHour': startTime?.hour,
+      'startTimeMinute': startTime?.minute,
+      'endTimeHour': endTime?.hour,
+      'endTimeMinute': endTime?.minute,
       'location': location,
       'description': description,
       'bannerImageUrl': bannerImageUrl,
@@ -409,7 +522,6 @@ class EventModel {
       'category': category,
       'status': status,
       'totalInterested': totalInterested,
-
       'latitude': latitude,
       'longitude': longitude,
       'state': state,
@@ -417,7 +529,24 @@ class EventModel {
     };
   }
 
+  // Create from Firestore map
   static EventModel fromMap(Map<String, dynamic> map, String id) {
+    TimeOfDay? startTime;
+    if (map['startTimeHour'] != null && map['startTimeMinute'] != null) {
+      startTime = TimeOfDay(
+        hour: map['startTimeHour'],
+        minute: map['startTimeMinute'],
+      );
+    }
+    
+    TimeOfDay? endTime;
+    if (map['endTimeHour'] != null && map['endTimeMinute'] != null) {
+      endTime = TimeOfDay(
+        hour: map['endTimeHour'],
+        minute: map['endTimeMinute'],
+      );
+    }
+    
     return EventModel(
       id: id,
       title: map['title'] ?? '',
@@ -426,6 +555,9 @@ class EventModel {
       contactEmail: map['contactEmail'] ?? '',
       contactPhone: map['contactPhone'] ?? '',
       eventDate: (map['eventDate'] as Timestamp).toDate(),
+      endDate: map['endDate'] != null ? (map['endDate'] as Timestamp).toDate() : null,
+      startTime: startTime,
+      endTime: endTime,
       location: map['location'] ?? '',
       description: map['description'] ?? '',
       bannerImageUrl: map['bannerImageUrl'],
@@ -442,7 +574,6 @@ class EventModel {
       category: map['category'] ?? 'social',
       status: map['status'] ?? 'pending',
       totalInterested: (map['totalInterested'] as int?) ?? 0,
-
       latitude: map['latitude']?.toDouble(),
       longitude: map['longitude']?.toDouble(),
       state: map['state'],
@@ -450,6 +581,7 @@ class EventModel {
     );
   }
 
+  // Copy with method
   EventModel copyWith({
     String? id,
     String? title,
@@ -458,6 +590,9 @@ class EventModel {
     String? contactEmail,
     String? contactPhone,
     DateTime? eventDate,
+    DateTime? endDate,
+    TimeOfDay? startTime,
+    TimeOfDay? endTime,
     String? location,
     String? description,
     String? bannerImageUrl,
@@ -483,6 +618,9 @@ class EventModel {
       contactEmail: contactEmail ?? this.contactEmail,
       contactPhone: contactPhone ?? this.contactPhone,
       eventDate: eventDate ?? this.eventDate,
+      endDate: endDate ?? this.endDate,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
       location: location ?? this.location,
       description: description ?? this.description,
       bannerImageUrl: bannerImageUrl ?? this.bannerImageUrl,
@@ -503,7 +641,7 @@ class EventModel {
   }
 }
 
-// Helper extension for EventStatus
+// Extension methods for enums
 extension EventStatusExtension on EventStatus {
   String get displayName {
     switch (this) {
@@ -518,7 +656,6 @@ extension EventStatusExtension on EventStatus {
     }
   }
   
-  // Get string value from enum
   String get stringValue {
     switch (this) {
       case EventStatus.pending:
@@ -532,7 +669,6 @@ extension EventStatusExtension on EventStatus {
     }
   }
   
-  // Convert string to EventStatus
   static EventStatus fromString(String status) {
     switch (status) {
       case 'pending':
@@ -549,7 +685,6 @@ extension EventStatusExtension on EventStatus {
   }
 }
 
-// Helper extension for EventCategory
 extension EventCategoryExtension on EventCategory {
   String get displayName {
     switch (this) {
@@ -585,7 +720,6 @@ extension EventCategoryExtension on EventCategory {
     }
   }
   
-  // Get string value from enum
   String get stringValue {
     switch (this) {
       case EventCategory.all:
@@ -603,7 +737,6 @@ extension EventCategoryExtension on EventCategory {
     }
   }
   
-  // Convert string to EventCategory
   static EventCategory fromString(String category) {
     switch (category) {
       case 'all':
@@ -623,7 +756,6 @@ extension EventCategoryExtension on EventCategory {
     }
   }
   
-  // Get all categories except 'all'
   static List<EventCategory> get filterCategories {
     return [
       EventCategory.sports,

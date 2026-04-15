@@ -108,7 +108,7 @@ class ServiceProviderService {
     }
   }
 
-  // Get all service providers with filters
+  // Get all service providers with filters - UPDATED to filter verified & available
   Stream<List<ServiceProviderModel>> getServiceProviders({
     String? state,
     String? city,
@@ -118,15 +118,27 @@ class ServiceProviderService {
     String? searchQuery,
     bool includeDeleted = false,
     bool adminView = false,
+    bool onlyVerified = true, // ✅ NEW: Filter only verified services
+    bool onlyAvailable = true, // ✅ NEW: Filter only available services
   }) {
     try {
       print('🔍 Starting getServiceProviders query...');
       
       Query query = _firestore.collection(_collectionName);
 
-      // Apply isDeleted filter for non-admin views
-      if (!adminView || !includeDeleted) {
+      // Apply isDeleted filter
+      if (!includeDeleted) {
         query = query.where('isDeleted', isEqualTo: false);
+      }
+
+      // ✅ For non-admin views, only show verified and available services
+      if (!adminView) {
+        if (onlyVerified) {
+          query = query.where('isVerified', isEqualTo: true);
+        }
+        if (onlyAvailable) {
+          query = query.where('isAvailable', isEqualTo: true);
+        }
       }
 
       // Apply state filter
@@ -170,7 +182,7 @@ class ServiceProviderService {
             .map((doc) => ServiceProviderModel.fromFirestore(doc))
             .toList();
       }).handleError((error, stackTrace) {
-             print('❌ Firestore query error: $error');
+        print('❌ Firestore query error: $error');
         print('❌ Stack trace: $stackTrace');
         throw error;
       });
@@ -181,13 +193,15 @@ class ServiceProviderService {
     }
   }
 
-  // Get unique cities for a state
+  // Get unique cities for a state - UPDATED to only count verified & available
   Future<List<String>> getCitiesByState(String state) async {
     try {
       final snapshot = await _firestore
           .collection(_collectionName)
           .where('state', isEqualTo: state)
           .where('isDeleted', isEqualTo: false)
+          .where('isVerified', isEqualTo: true) // ✅ Only verified
+          .where('isAvailable', isEqualTo: true) // ✅ Only available
           .get();
 
       final cities = snapshot.docs
@@ -220,7 +234,7 @@ class ServiceProviderService {
     }
   }
 
-  // Get popular service providers (most liked)
+  // Get popular service providers - UPDATED
   Stream<List<ServiceProviderModel>> getPopularServiceProviders({
     int limit = 10,
     String? state,
@@ -229,7 +243,8 @@ class ServiceProviderService {
     Query query = _firestore
         .collection(_collectionName)
         .where('isDeleted', isEqualTo: false)
-        .where('isAvailable', isEqualTo: true);
+        .where('isVerified', isEqualTo: true) // ✅ Only verified
+        .where('isAvailable', isEqualTo: true); // ✅ Only available
 
     if (state != null && state.isNotEmpty) {
       query = query.where('state', isEqualTo: state);
@@ -248,7 +263,7 @@ class ServiceProviderService {
     });
   }
 
-  // Get recent service providers
+  // Get recent service providers - UPDATED
   Stream<List<ServiceProviderModel>> getRecentServiceProviders({
     int limit = 10,
     String? state,
@@ -257,7 +272,8 @@ class ServiceProviderService {
     Query query = _firestore
         .collection(_collectionName)
         .where('isDeleted', isEqualTo: false)
-        .where('isAvailable', isEqualTo: true);
+        .where('isVerified', isEqualTo: true) // ✅ Only verified
+        .where('isAvailable', isEqualTo: true); // ✅ Only available
 
     if (state != null && state.isNotEmpty) {
       query = query.where('state', isEqualTo: state);
@@ -276,7 +292,7 @@ class ServiceProviderService {
     });
   }
 
-  // Get service providers by category
+  // Get service providers by category - UPDATED
   Stream<List<ServiceProviderModel>> getServiceProvidersByCategory(
     ServiceCategory category, {
     String? state,
@@ -287,7 +303,8 @@ class ServiceProviderService {
         .collection(_collectionName)
         .where('serviceCategory', isEqualTo: category.stringValue)
         .where('isDeleted', isEqualTo: false)
-        .where('isAvailable', isEqualTo: true);
+        .where('isVerified', isEqualTo: true) // ✅ Only verified
+        .where('isAvailable', isEqualTo: true); // ✅ Only available
 
     if (state != null && state.isNotEmpty) {
       query = query.where('state', isEqualTo: state);
@@ -325,6 +342,12 @@ class ServiceProviderService {
           .where('isDeleted', isEqualTo: false)
           .get();
 
+      final verifiedQuery = await _firestore
+          .collection(_collectionName)
+          .where('isVerified', isEqualTo: true)
+          .where('isDeleted', isEqualTo: false)
+          .get();
+
       final deletedQuery = await _firestore
           .collection(_collectionName)
           .where('isDeleted', isEqualTo: true)
@@ -333,6 +356,7 @@ class ServiceProviderService {
       return {
         'total': totalQuery.size,
         'pending': pendingQuery.size,
+        'verified': verifiedQuery.size,
         'available': availableQuery.size,
         'deleted': deletedQuery.size,
       };

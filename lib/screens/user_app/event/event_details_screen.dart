@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
@@ -24,7 +23,9 @@ class EventDetailsScreen extends StatefulWidget {
   _EventDetailsScreenState createState() => _EventDetailsScreenState();
 }
 
-class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
+class _EventDetailsScreenState extends State<EventDetailsScreen> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   bool _isInterested = false;
   bool _isLoading = false;
   bool _isGeneratingPDF = false;
@@ -41,60 +42,43 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
   // Track app lifecycle
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
-  // Premium Color Palette - Matching ServiceProviderDetailScreen with Light Green Background
-  final Color _primaryRed = Color(0xFFD32F2F); // Darker red for buttons
-  final Color _primaryGreen = Color(0xFF2E7D32); // Darker green for buttons
-  final Color _darkGreen = Color(0xFF1B5E20); // Very dark green
-  final Color _goldAccent = Color(0xFFFFB300); // Darker gold
-  
-  // Dark button colors
-  final Color _coralRed = Color(0xFFC62828); // Dark red
-  final Color _mintGreen = Color(0xFF2E7D32); // Dark green
-  final Color _softGold = Color(0xFFFF8F00); // Dark gold
-  final Color _emeraldGreen = Color(0xFF1B5E20); // Dark emerald
-  final Color _sapphireBlue = Color(0xFF1565C0); // Dark blue
-  final Color _amethystPurple = Color(0xFF6A1B9A); // Dark purple
-  final Color _deepRed = Color(0xFFB71C1C); // Deep red
-  
-  // Light Green Background (50% opacity)
-  final Color _lightGreenBg = Color(0x80E8F5E9); // Light green with 50% opacity
+  // Premium Color Palette
+  final Color _primaryRed = Color(0xFFD32F2F);
+  final Color _primaryGreen = Color(0xFF2E7D32);
+  final Color _darkGreen = Color(0xFF1B5E20);
+  final Color _goldAccent = Color(0xFFFFB300);
+  final Color _coralRed = Color(0xFFC62828);
+  final Color _mintGreen = Color(0xFF2E7D32);
+  final Color _softGold = Color(0xFFFF8F00);
+  final Color _emeraldGreen = Color(0xFF1B5E20);
+  final Color _sapphireBlue = Color(0xFF1565C0);
+  final Color _amethystPurple = Color(0xFF6A1B9A);
+  final Color _deepRed = Color(0xFFB71C1C);
+  final Color _lightGreenBg = Color(0x80E8F5E9);
   final Color _lightGreen = Color(0xFFE8F5E9);
   final Color _lightRed = Color(0xFFFFEBEE);
   final Color _lightYellow = Color(0xFFFFF3E0);
   final Color _lightBlue = Color(0xFFE3F2FD);
   final Color _creamWhite = Color(0xFFFFF9E6);
-  
-  // 50% opacity colors for backgrounds
-  final Color _creamWhite50 = Color(0x80FFF9E6);
-  final Color _lightGreen50 = Color(0x80E8F5E9);
-  final Color _lightRed50 = Color(0x80FFEBEE);
-  final Color _lightYellow50 = Color(0x80FFF3E0);
-  final Color _lightBlue50 = Color(0x80E3F2FD);
-  
-  // Border and shadow colors
   final Color _borderLight = Color(0xFFE0E7E9);
   final Color _shadowColor = Color(0x1A000000);
-  
-  // Text Colors
   final Color _textPrimary = Color(0xFF1A2B3C);
   final Color _textSecondary = Color(0xFF5D6D7E);
   final Color _textLight = Color(0xFF6C757D);
-  
-  // Additional colors
   final Color _successGreen = Color(0xFF2E7D32);
   final Color _infoBlue = Color(0xFF1565C0);
   final Color _badgeGold = Color(0xFFFF8F00);
-  
+
+  final Color _lightGreen50 = Color(0x80E8F5E9);   // Light green with 50% opacity
+
+
   @override
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
-    
     _checkIfInterested();
     
-    // Initialize animations
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -116,7 +100,6 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
       curve: Curves.easeOutCubic,
     ));
     
-    // Initialize particle controllers (20 particles)
     _particleControllers = List.generate(20, (index) {
       return AnimationController(
         vsync: this,
@@ -124,12 +107,9 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
       )..repeat(reverse: true);
     });
     
-    // Start animations only if app is visible
     if (_appLifecycleState == AppLifecycleState.resumed) {
       _startAnimations();
     }
-    
-    print('📸 EventDetailsScreen init - Banner URL: ${widget.event.bannerImageUrl}');
   }
   
   @override
@@ -139,10 +119,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
     });
     
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _startAnimations();
     } else {
-      // App is not visible - stop animations to save resources
       _stopAnimations();
     }
   }
@@ -151,33 +129,22 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
     if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
       _fadeController.forward();
       _slideController.forward();
-      // Particle controllers already running via repeat
     }
   }
   
   void _stopAnimations() {
     _fadeController.stop();
     _slideController.stop();
-    // Particle controllers will continue but we don't stop them as they're repetitive
-    // and stopping them would require restart logic
   }
   
   @override
   void dispose() {
-    print('🗑️ EventDetailsScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
-    
-    // ✅ Dispose all animation controllers
     _fadeController.dispose();
     _slideController.dispose();
-    
-    // ✅ Dispose particle controllers
     for (var controller in _particleControllers) {
       controller.dispose();
     }
-    
     super.dispose();
   }
   
@@ -238,13 +205,11 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
   int _getUpdatedInterestedCount() {
     final eventProvider = context.read<EventProvider>();
     
-    // Check in upcoming events
     final upcomingEvent = eventProvider.upcomingEvents.firstWhere(
       (e) => e.id == widget.event.id,
-      orElse: () => widget.event, // Fallback to original event
+      orElse: () => widget.event,
     );
     
-    // Check in past events if not found in upcoming
     if (upcomingEvent.id == widget.event.id && upcomingEvent != widget.event) {
       return upcomingEvent.totalInterested;
     }
@@ -266,9 +231,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
           padding: EdgeInsets.all(12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: isError 
-                  ? [_primaryRed, _deepRed] 
-                  : [_primaryGreen, _darkGreen],
+              colors: isError ? [_primaryRed, _deepRed] : [_primaryGreen, _darkGreen],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
@@ -310,38 +273,81 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
       ),
     );
   }
-  
-  String _cleanBase64String(String base64) {
-    String cleaned = base64.trim();
-    if (cleaned.contains(',')) {
-      cleaned = cleaned.split(',').last;
+
+  // Helper method to format TimeOfDay
+  String _formatTimeOfDay(TimeOfDay time) {
+    final hour = time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
+  }
+
+  // Get formatted date time string for display
+  String _getFormattedDateTime() {
+    if (widget.event.isMultiDay && widget.event.endDate != null) {
+      String result = DateFormat('EEEE, MMMM d').format(widget.event.eventDate);
+      if (widget.event.startTime != null) {
+        result += ' at ${_formatTimeOfDay(widget.event.startTime!)}';
+      }
+      result += ' - ${DateFormat('EEEE, MMMM d, y').format(widget.event.endDate!)}';
+      if (widget.event.endTime != null) {
+        result += ' at ${_formatTimeOfDay(widget.event.endTime!)}';
+      }
+      return result;
+    } else {
+      String result = DateFormat('EEEE, MMMM d, y').format(widget.event.eventDate);
+      if (widget.event.startTime != null) {
+        result += ' at ${_formatTimeOfDay(widget.event.startTime!)}';
+        if (widget.event.endTime != null) {
+          result += ' - ${_formatTimeOfDay(widget.event.endTime!)}';
+        }
+      }
+      return result;
     }
-    cleaned = cleaned.replaceAll(RegExp(r'\s'), '');
-    while (cleaned.length % 4 != 0) {
-      cleaned += '=';
+  }
+
+  // Get short formatted date time for cards
+  String _getCompactFormattedDateTime() {
+    if (widget.event.isMultiDay && widget.event.endDate != null) {
+      String result = DateFormat('MMM d').format(widget.event.eventDate);
+      result += ' - ${DateFormat('MMM d, y').format(widget.event.endDate!)}';
+      if (widget.event.startTime != null) {
+        result += ' • ${_formatTimeOfDay(widget.event.startTime!)}';
+        if (widget.event.endTime != null) {
+          result += ' - ${_formatTimeOfDay(widget.event.endTime!)}';
+        }
+      }
+      return result;
+    } else {
+      String result = DateFormat('MMM d, y').format(widget.event.eventDate);
+      if (widget.event.startTime != null) {
+        result += ' • ${_formatTimeOfDay(widget.event.startTime!)}';
+        if (widget.event.endTime != null) {
+          result += ' - ${_formatTimeOfDay(widget.event.endTime!)}';
+        }
+      }
+      return result;
     }
-    return cleaned;
   }
 
   Widget _buildBannerImage(EventModel event, bool isTablet) {
-    // Use the built-in bannerImageWidget from EventModel with proper positioning
     return Container(
       width: double.infinity,
-      height: isTablet ? 350 : 280, // Adjusted height for better visibility
+      height: isTablet ? 350 : 280,
       child: Stack(
         children: [
-          // Background Image - covers full container without cropping
+          // Background Image
           Positioned.fill(
             child: ClipRRect(
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(isTablet ? 40 : 30),
                 bottomRight: Radius.circular(isTablet ? 40 : 30),
               ),
-              child: event.bannerImageWidget, // This handles base64/network images
+              child: event.bannerImageWidget,
             ),
           ),
           
-          // Gradient overlay for better text visibility
+          // Gradient overlay
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -363,7 +369,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
             ),
           ),
           
-          // Back button - positioned absolutely to ensure it's on top
+          // Back button
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             left: isTablet ? 20 : 16,
@@ -373,10 +379,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.9),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white,
-                  width: 1.5,
-                ),
+                border: Border.all(color: Colors.white, width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.15),
@@ -398,7 +401,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
             ),
           ),
           
-          // Interest button - positioned absolutely on top right
+          // Interest button
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             right: isTablet ? 20 : 16,
@@ -434,7 +437,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
             ),
           ),
           
-          // Event title overlay at bottom of banner
+          // Event title overlay
           Positioned(
             bottom: 20,
             left: isTablet ? 24 : 20,
@@ -484,6 +487,44 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
                   ),
                 ),
                 SizedBox(height: 12),
+                
+                // Multi-Day Badge on Banner
+                if (widget.event.isMultiDay)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isTablet ? 12 : 10,
+                        vertical: isTablet ? 6 : 5,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.date_range_rounded,
+                            color: Colors.white,
+                            size: isTablet ? 16 : 14,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Multi-Day Event',
+                            style: GoogleFonts.inter(
+                              fontSize: isTablet ? 12 : 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                
                 // Event title
                 Text(
                   widget.event.title,
@@ -638,7 +679,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
                 
                 SizedBox(height: isTablet ? 32 : 24),
                 
-                // Share Options Grid - DARK BUTTONS
+                // Share Options Grid
                 GridView.count(
                   shrinkWrap: true,
                   crossAxisCount: 4,
@@ -686,7 +727,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> with TickerProv
                         final text = '''
 🎉 ${widget.event.title} 🎉
 
-📅 ${widget.event.fullFormattedDate}
+📅 ${_getFormattedDateTime()}
 📍 ${widget.event.location}
 👤 ${widget.event.organizer}
 
@@ -707,7 +748,7 @@ Shared via Bangla Hub App.
                 
                 SizedBox(height: isTablet ? 24 : 20),
                 
-                // PDF Share Option - DARK BUTTON
+                // PDF Share Option
                 Container(
                   width: double.infinity,
                   child: Material(
@@ -938,7 +979,7 @@ Shared via Bangla Hub App.
                     ),
                     pw.SizedBox(height: 8),
                     pw.Text(
-                      widget.event.fullFormattedDate,
+                      _getFormattedDateTime(),
                       style: pw.TextStyle(font: font, fontSize: 12),
                     ),
                     pw.SizedBox(height: 12),
@@ -1164,7 +1205,7 @@ Shared via Bangla Hub App.
     final text = '''
 🎉 ${event.title} 🎉
 
-📅 Date: ${event.fullFormattedDate}
+📅 ${_getFormattedDateTime()}
 📍 Location: ${event.location}
 👤 Organizer: ${event.organizer}
 
@@ -1189,7 +1230,7 @@ Shared via Bangla Hub App.
 *Check out this event on Bangla Hub!* 🎉
 
 🎯 *${widget.event.title}*
-📅 *Date:* ${widget.event.fullFormattedDate}
+📅 *Date:* ${_getFormattedDateTime()}
 📍 *Location:* ${widget.event.location}
 👤 *Organizer:* ${widget.event.organizer}
 👥 *Interested:* ${_formatCount(widget.event.totalInterested)} people
@@ -1212,7 +1253,7 @@ _Download Bangla Hub App for more details!_ 📱
 Check out this amazing event on Bangla Hub!
 
 🎉 ${widget.event.title}
-📅 ${widget.event.fullFormattedDate}
+📅 ${_getFormattedDateTime()}
 📍 ${widget.event.location}
 👥 ${_formatCount(widget.event.totalInterested)} people interested
 
@@ -1226,7 +1267,6 @@ Shared via Bangla Hub App. Download now! 📲
   }
 
   Widget _buildAnimatedParticle(int index, double width, double height) {
-    // Use the pre-initialized controller
     final controller = _particleControllers[index % _particleControllers.length];
     
     return Positioned(
@@ -1568,7 +1608,7 @@ Shared via Bangla Hub App. Download now! 📲
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // Approved Badge - DARK GREEN
+                                  // Approved Badge
                                   if (widget.event.isApproved)
                                     Container(
                                       padding: EdgeInsets.symmetric(
@@ -1665,10 +1705,9 @@ Shared via Bangla Hub App. Download now! 📲
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // Interested Count - Now updates dynamically
+                                  // Interested Count
                                   Consumer<EventProvider>(
                                     builder: (context, eventProvider, _) {
-                                      // Get updated event from provider
                                       final updatedEvent = eventProvider.upcomingEvents.firstWhere(
                                         (e) => e.id == widget.event.id,
                                         orElse: () => eventProvider.pastEvents.firstWhere(
@@ -1772,7 +1811,7 @@ Shared via Bangla Hub App. Download now! 📲
                                     _buildPremiumDetailCard(
                                       icon: Icons.calendar_today_rounded,
                                       title: 'Date & Time',
-                                      value: widget.event.fullFormattedDate,
+                                      value: _getFormattedDateTime(),
                                       gradientColors: [_primaryRed, _deepRed],
                                       isTablet: isTablet,
                                     ),

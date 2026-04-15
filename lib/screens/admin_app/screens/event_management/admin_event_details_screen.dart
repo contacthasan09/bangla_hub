@@ -294,7 +294,7 @@ class _AdminEventDetailsScreenState extends State<AdminEventDetailsScreen> {
     }
   }
 
-  void _shareEvent() {
+/*  void _shareEvent() {
     final event = widget.event;
     final text = '''
 🎉 ${event.title} 🎉
@@ -315,7 +315,7 @@ Shared via Bangla Hub Admin Panel.
       text,
       subject: 'Event Details: ${event.title}',
     );
-  }
+  }  */
 
   String _getStatusText(String status) {
     switch (status) {
@@ -424,7 +424,8 @@ Shared via Bangla Hub Admin Panel.
                       color: Colors.black.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(12),
                       child: InkWell(
-                        onTap: _shareEvent,
+                     //   onTap: _shareEvent,
+                     onTap: (){},
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
                           width: 48,
@@ -921,7 +922,8 @@ Shared via Bangla Hub Admin Panel.
                               _buildPremiumDetailCard(
                                 icon: Icons.calendar_today_rounded,
                                 title: 'Date & Time',
-                                value: widget.event.fullFormattedDate,
+                            //    value: widget.event.fullFormattedDate,
+                                value : " " ,
                                 gradientColors: [_primaryRed, _primaryGreen],
                                 isTablet: isTablet,
                               ),

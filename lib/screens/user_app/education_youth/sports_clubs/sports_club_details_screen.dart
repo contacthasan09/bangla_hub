@@ -56,7 +56,6 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     _animationController = AnimationController(
@@ -64,7 +63,6 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
       duration: Duration(milliseconds: 500),
     );
     
-    // Start animation if app is visible
     if (_appLifecycleState == AppLifecycleState.resumed) {
       _animationController.forward();
     }
@@ -77,12 +75,10 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
     });
     
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animation
       if (_animationController.status != AnimationStatus.forward) {
         _animationController.forward();
       }
     } else {
-      // App is not visible - stop animation to save resources
       _animationController.stop();
     }
   }
@@ -90,14 +86,14 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
   @override
   void dispose() {
     print('🗑️ SportsClubDetailsScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
-    
-    // ✅ Dispose animation controller
     _animationController.dispose();
-    
     super.dispose();
+  }
+
+  // Helper function to check if string is a URL
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
   }
 
   Future<void> _launchEmail(String email) async {
@@ -192,34 +188,69 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
     );
   }
 
-  // NEW: Build poster image from club.postedByProfileImageBase64
+  // UPDATED: Build poster image from club.postedByProfileImageBase64 (handles both URL and Base64)
   Widget _buildClubPosterImage({bool isLarge = false}) {
-    if (widget.club.postedByProfileImageBase64 != null && widget.club.postedByProfileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = widget.club.postedByProfileImageBase64!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage(isLarge: isLarge);
-          },
+    final imageData = widget.club.postedByProfileImageBase64;
+    
+    if (imageData != null && imageData.isNotEmpty) {
+      // Check if it's a URL
+      if (_isUrlString(imageData)) {
+        return ClipOval(
+          child: Image.network(
+            imageData,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading club poster image: $error');
+              return _buildDefaultProfileImage(isLarge: isLarge);
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(widget.goldAccent),
+                ),
+              );
+            },
+          ),
         );
-      } catch (e) {
-        return _buildDefaultProfileImage(isLarge: isLarge);
+      } else {
+        // It's Base64 data
+        try {
+          String base64String = imageData;
+          
+          if (base64String.contains('base64,')) {
+            base64String = base64String.split('base64,').last;
+          }
+          
+          base64String = base64String.replaceAll(RegExp(r'\s'), '');
+          
+          while (base64String.length % 4 != 0) {
+            base64String += '=';
+          }
+          
+          final bytes = base64Decode(base64String);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                print('Error decoding club poster image: $error');
+                return _buildDefaultProfileImage(isLarge: isLarge);
+              },
+            ),
+          );
+        } catch (e) {
+          print('Error processing club poster image: $e');
+          return _buildDefaultProfileImage(isLarge: isLarge);
+        }
       }
     }
+    
     return _buildDefaultProfileImage(isLarge: isLarge);
   }
 
@@ -308,7 +339,6 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
           ),
           child: Stack(
             children: [
-              // Main Content
               CustomScrollView(
                 controller: widget.scrollController,
                 slivers: [
@@ -338,7 +368,6 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // Premium Pattern Line
                                   Container(
                                     height: 4,
                                     width: 60,
@@ -353,7 +382,6 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                                   ),
                                   SizedBox(height: isTablet ? 12 : 8),
                                   
-                                  // Club Name
                                   ShaderMask(
                                     shaderCallback: (bounds) => LinearGradient(
                                       colors: [Colors.white, widget.goldAccent],
@@ -373,7 +401,6 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                                   ),
                                   SizedBox(height: isTablet ? 4 : 2),
                                   
-                                  // Sport Type
                                   Row(
                                     children: [
                                       Icon(
@@ -395,7 +422,6 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                                     ],
                                   ),
                                   
-                                  // Verified Badge
                                   if (club.isVerified) ...[
                                     SizedBox(height: isTablet ? 10 : 8),
                                     Container(
@@ -447,11 +473,9 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                         children: [
                           SizedBox(height: isTablet ? 20 : 16),
                           
-                          // User Profile and Club Info - Using club's stored user info
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // User Profile Image from club.postedByProfileImageBase64
                               Container(
                                 width: isTablet ? 80 : 70,
                                 height: isTablet ? 80 : 70,
@@ -473,12 +497,10 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                               
                               SizedBox(width: isTablet ? 20 : 16),
                               
-                              // User Info
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // User Name from club.postedByName
                                     if (club.postedByName != null && club.postedByName!.isNotEmpty)
                                       Container(
                                         margin: EdgeInsets.only(bottom: 8),
@@ -492,19 +514,21 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                                           children: [
                                             Icon(Icons.person_rounded, color: widget.primaryRed, size: 14),
                                             SizedBox(width: 4),
-                                            Text(
-                                              club.postedByName!,
-                                              style: GoogleFonts.poppins(
-                                                color: widget.primaryRed,
-                                                fontSize: isTablet ? 14 : 12,
-                                                fontWeight: FontWeight.w600,
+                                            Flexible(
+                                              child: Text(
+                                                club.postedByName!,
+                                                style: GoogleFonts.poppins(
+                                                  color: widget.primaryRed,
+                                                  fontSize: isTablet ? 14 : 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
                                     
-                                    // Member Since
                                     Text(
                                       'Club established ${DateFormat('MMMM yyyy').format(club.createdAt)}',
                                       style: GoogleFonts.inter(
@@ -1119,44 +1143,6 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                           
                           SizedBox(height: isTablet ? 40 : 32),
                           
-                          // Action Buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildPremiumActionButton(
-                                  icon: Icons.person_add_rounded,
-                                  label: isFull ? 'Full' : 'Join Club',
-                                  onPressed: isFull ? null : () {
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Join feature coming soon!'),
-                                          backgroundColor: widget.primaryRed,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  gradientColors: [widget.primaryRed, widget.purpleAccent],
-                                  isTablet: isTablet,
-                                  isEnabled: !isFull,
-                                ),
-                              ),
-                              SizedBox(width: isTablet ? 16 : 12),
-                              Expanded(
-                                child: _buildPremiumActionButton(
-                                  icon: Icons.close_rounded,
-                                  label: 'Close',
-                                  onPressed: () => Navigator.pop(context),
-                                  gradientColors: [Colors.grey, Colors.grey[600]!],
-                                  isTablet: isTablet,
-                                  isEnabled: true,
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: isTablet ? 16 : 12),
-                          
                           // Premium Footer
                           Container(
                             padding: EdgeInsets.all(isTablet ? 24 : 20),
@@ -1190,11 +1176,20 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                                     ],
                                   ),
                                   child: Center(
-                                    child: Icon(
-                                      Icons.sports_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 28 : 24,
-                                    ),
+                                    child: shouldAnimate
+                                        ? RotationTransition(
+                                            turns: _animationController,
+                                            child: Icon(
+                                              Icons.sports_rounded,
+                                              color: Colors.white,
+                                              size: isTablet ? 28 : 24,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.sports_rounded,
+                                            color: Colors.white,
+                                            size: isTablet ? 28 : 24,
+                                          ),
                                   ),
                                 ),
                                 SizedBox(width: isTablet ? 20 : 16),
@@ -1234,7 +1229,6 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                           
                           SizedBox(height: isTablet ? 24 : 20),
                           
-                          // Member count and established date
                           Center(
                             child: Text(
                               '${club.currentMembers} active members',
@@ -1258,6 +1252,8 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
   }
 
   Widget _buildPremiumStatItem(IconData icon, String label, String value, Color color, bool isTablet) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Column(
       children: [
         Container(
@@ -1270,7 +1266,12 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
             ),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: color, size: isTablet ? 28 : 24),
+          child: shouldAnimate
+              ? RotationTransition(
+                  turns: _animationController,
+                  child: Icon(icon, color: color, size: isTablet ? 28 : 24),
+                )
+              : Icon(icon, color: color, size: isTablet ? 28 : 24),
         ),
         SizedBox(height: isTablet ? 8 : 6),
         Text(
@@ -1300,6 +1301,8 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
     required Widget child,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1311,7 +1314,12 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: isTablet ? 20 : 18),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: _animationController,
+                      child: Icon(icon, color: color, size: isTablet ? 20 : 18),
+                    )
+                  : Icon(icon, color: color, size: isTablet ? 20 : 18),
             ),
             SizedBox(width: isTablet ? 12 : 10),
             Text(
@@ -1338,6 +1346,8 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
     required VoidCallback onTap,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -1356,7 +1366,12 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: isTablet ? 22 : 18),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: _animationController,
+                      child: Icon(icon, color: color, size: isTablet ? 22 : 18),
+                    )
+                  : Icon(icon, color: color, size: isTablet ? 22 : 18),
             ),
             SizedBox(width: isTablet ? 16 : 12),
             Expanded(
@@ -1391,65 +1406,6 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
               size: isTablet ? 20 : 18,
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPremiumActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback? onPressed,
-    required List<Color> gradientColors,
-    required bool isTablet,
-    required bool isEnabled,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: isEnabled
-            ? LinearGradient(
-                colors: gradientColors,
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              )
-            : null,
-        color: isEnabled ? null : Colors.grey[300],
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: isEnabled
-            ? [
-                BoxShadow(
-                  color: gradientColors.first.withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: Offset(0, 8),
-                ),
-              ]
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: isEnabled ? onPressed : null,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              vertical: isTablet ? 16 : 14,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: isEnabled ? Colors.white : Colors.grey[600], size: isTablet ? 22 : 20),
-                SizedBox(width: isTablet ? 10 : 8),
-                Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 18 : 16,
-                    fontWeight: FontWeight.w700,
-                    color: isEnabled ? Colors.white : Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );

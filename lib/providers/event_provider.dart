@@ -1,4 +1,3 @@
-// providers/event_provider.dart
 import 'dart:async';
 import 'package:bangla_hub/models/event_model.dart';
 import 'package:bangla_hub/providers/location_filter_provider.dart';
@@ -12,7 +11,6 @@ class EventProvider with ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
   final Uuid _uuid = const Uuid();
   
-  // Data lists
   List<EventModel> _upcomingEvents = [];
   List<EventModel> _pastEvents = [];
   List<EventModel> _myEvents = [];
@@ -21,7 +19,6 @@ class EventProvider with ChangeNotifier {
   List<EventModel> _interestedEvents = [];
   Set<String> _userInterestedEventIds = {};
   
-  // State variables
   bool _isLoading = false;
   bool _isInitialized = false;
   bool _isDisposed = false;
@@ -30,13 +27,10 @@ class EventProvider with ChangeNotifier {
   String _searchQuery = '';
   String? _currentStateFilter;
   
-  // Per-event loading states for interest buttons
   final Map<String, bool> _interestButtonLoadingStates = {};
   
-  // Track if initial data has been loaded
   bool get isInitialized => _isInitialized;
   
-  // Stream subscriptions
   StreamSubscription? _upcomingSubscription;
   StreamSubscription? _pastSubscription;
   StreamSubscription? _pendingSubscription;
@@ -44,10 +38,9 @@ class EventProvider with ChangeNotifier {
   StreamSubscription? _userEventsSubscription;
   StreamSubscription? _searchSubscription;
   
-  // Debounce timer for search
   Timer? _debounceTimer;
+  bool _isReloading = false;
   
-  // Getters
   List<EventModel> get upcomingEvents => _upcomingEvents;
   List<EventModel> get pastEvents => _pastEvents;
   List<EventModel> get myEvents => _myEvents;
@@ -61,7 +54,6 @@ class EventProvider with ChangeNotifier {
   String get searchQuery => _searchQuery;
   String? get currentStateFilter => _currentStateFilter;
   
-  // Getter for per-event loading state
   bool isInterestButtonLoading(String eventId) {
     return _interestButtonLoadingStates[eventId] ?? false;
   }
@@ -74,7 +66,6 @@ class EventProvider with ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     
-    // Cancel all subscriptions
     _upcomingSubscription?.cancel();
     _pastSubscription?.cancel();
     _pendingSubscription?.cancel();
@@ -86,10 +77,8 @@ class EventProvider with ChangeNotifier {
     super.dispose();
   }
   
-  // Safe methods to prevent build-phase updates
   void _safeUpdate(VoidCallback fn) {
     if (_isDisposed) return;
-    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_isDisposed) {
         fn();
@@ -99,7 +88,6 @@ class EventProvider with ChangeNotifier {
   
   void _safeSetLoading(bool value) {
     if (_isDisposed) return;
-    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_isDisposed) {
         _isLoading = value;
@@ -110,7 +98,6 @@ class EventProvider with ChangeNotifier {
   
   void _safeSetError(String value) {
     if (_isDisposed) return;
-    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_isDisposed) {
         _error = value;
@@ -119,7 +106,6 @@ class EventProvider with ChangeNotifier {
     });
   }
   
-  // Sync with global location filter
   void syncWithLocationFilter(LocationFilterProvider locationProvider) {
     String? newFilter = locationProvider.isFilterActive ? locationProvider.selectedState : null;
     
@@ -131,7 +117,6 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Method to update state filter
   void updateStateFilter(String? state) {
     if (_isDisposed) return;
     
@@ -139,27 +124,26 @@ class EventProvider with ChangeNotifier {
     if (_currentStateFilter != state) {
       _currentStateFilter = state;
       print('📍 State filter changed to: $_currentStateFilter - reloading events');
-      _loadEvents(); // Reload events with new filter
+      _loadEvents();
     } else {
       print('📍 State filter unchanged, no reload needed');
     }
   }
   
-  // Initial load of events
   Future<void> _loadEvents() async {
-    if (_isDisposed) return;
+    if (_isDisposed || _isReloading) return;
+    
+    _isReloading = true;
     
     try {
       _safeSetLoading(true);
       print('📍 _loadEvents called with state filter: $_currentStateFilter');
       print('📍 Selected category: $_selectedCategory');
       
-      // Cancel existing subscriptions
       _upcomingSubscription?.cancel();
       _pastSubscription?.cancel();
       _pendingSubscription?.cancel();
       
-      // Listen to upcoming events with state filter
       _upcomingSubscription = _firestoreService
           .getUpcomingEvents(
             category: _selectedCategory,
@@ -171,13 +155,13 @@ class EventProvider with ChangeNotifier {
           _upcomingEvents = events;
           _updateInterestedEvents();
           _checkInitialized();
+          notifyListeners();
         });
       }, onError: (error) {
         print('❌ Error loading upcoming events: $error');
         _safeSetError(error.toString());
       });
       
-      // Listen to past events with state filter
       _pastSubscription = _firestoreService
           .getPastEvents(
             category: _selectedCategory,
@@ -189,16 +173,17 @@ class EventProvider with ChangeNotifier {
           _pastEvents = events;
           _updateInterestedEvents();
           _checkInitialized();
+          notifyListeners();
         });
       }, onError: (error) {
         print('❌ Error loading past events: $error');
         _safeSetError(error.toString());
       });
       
-      // Listen to pending events (for admin)
       _pendingSubscription = _firestoreService.getPendingEvents().listen((events) {
         _safeUpdate(() {
           _pendingEvents = events;
+          notifyListeners();
         });
       }, onError: (error) {
         print('❌ Error loading pending events: $error');
@@ -210,10 +195,10 @@ class EventProvider with ChangeNotifier {
       _safeSetError(e.toString());
     } finally {
       _safeSetLoading(false);
+      _isReloading = false;
     }
   }
   
-  // Load events with specific state filter
   Future<void> loadEventsWithFilter({String? state}) async {
     print('📍 loadEventsWithFilter called with state: $state');
     _currentStateFilter = state;
@@ -229,7 +214,6 @@ class EventProvider with ChangeNotifier {
     }
   }
 
-  // Get approved events with state filter
   Stream<List<EventModel>> getApprovedEventsWithFilter({String? stateFilter}) {
     Query query = FirebaseFirestore.instance
         .collection('events_approved')
@@ -247,19 +231,17 @@ class EventProvider with ChangeNotifier {
     });
   }
   
-  // Load user's interested events
   Future<void> loadUserInterestedEvents(String userId) async {
     if (_isDisposed) return;
     
     try {
-      // Cancel existing subscription
       _interestedSubscription?.cancel();
       
-      // Get list of event IDs user is interested in
       _interestedSubscription = _firestoreService.getUserInterestedEvents(userId).listen((eventIds) {
         _safeUpdate(() {
           _userInterestedEventIds = eventIds.toSet();
           _updateInterestedEvents();
+          notifyListeners();
         });
       }, onError: (error) {
         _safeSetError(error.toString());
@@ -270,7 +252,6 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Check if user is interested in an event
   Future<bool> isUserInterested(String eventId, String userId) async {
     try {
       return await _firestoreService.isUserInterested(eventId, userId);
@@ -282,25 +263,21 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Update interested count in all lists
   void _updateEventInterestedCount(String eventId, int change) {
     if (_isDisposed) return;
     
     bool updated = false;
     
-    // Helper function to update a single list with validation
     void updateList(List<EventModel> list) {
       final index = list.indexWhere((e) => e.id == eventId);
       if (index != -1) {
         final event = list[index];
-        // Ensure count never goes below 0
         final newCount = (event.totalInterested + change).clamp(0, double.infinity).toInt();
         list[index] = event.copyWith(totalInterested: newCount);
         updated = true;
       }
     }
     
-    // Update all lists
     updateList(_upcomingEvents);
     updateList(_pastEvents);
     updateList(_myEvents);
@@ -308,7 +285,6 @@ class EventProvider with ChangeNotifier {
     updateList(_searchedEvents);
     updateList(_interestedEvents);
     
-    // Trigger UI update if any list was updated
     if (updated && !_isDisposed) {
       _safeUpdate(() {
         notifyListeners();
@@ -316,7 +292,6 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Update interested events list
   void _updateInterestedEvents() {
     if (_isDisposed) return;
     
@@ -325,7 +300,6 @@ class EventProvider with ChangeNotifier {
       ..._pastEvents.where((event) => _userInterestedEventIds.contains(event.id)),
     ];
     
-    // Sort by date (upcoming first, then past)
     _interestedEvents.sort((a, b) {
       if (a.isUpcoming && !b.isUpcoming) return -1;
       if (!a.isUpcoming && b.isUpcoming) return 1;
@@ -333,14 +307,11 @@ class EventProvider with ChangeNotifier {
     });
   }
   
-  // Toggle user interest in an event
   Future<void> toggleUserInterest(String eventId, String userId) async {
     if (_isDisposed) return;
     
-    // Prevent double taps
     if (_interestButtonLoadingStates[eventId] == true) return;
     
-    // Set loading state for this specific event
     _interestButtonLoadingStates[eventId] = true;
     _safeUpdate(() {
       notifyListeners();
@@ -349,7 +320,6 @@ class EventProvider with ChangeNotifier {
     try {
       final isCurrentlyInterested = await _firestoreService.isUserInterested(eventId, userId);
       
-      // Optimistic update - update UI immediately
       _safeUpdate(() {
         if (isCurrentlyInterested) {
           _userInterestedEventIds.remove(eventId);
@@ -359,9 +329,9 @@ class EventProvider with ChangeNotifier {
           _updateEventInterestedCount(eventId, 1);
         }
         _updateInterestedEvents();
+        notifyListeners();
       });
       
-      // Perform actual Firestore operation
       if (isCurrentlyInterested) {
         await _firestoreService.removeInterestedUser(eventId, userId);
       } else {
@@ -369,7 +339,6 @@ class EventProvider with ChangeNotifier {
       }
       
     } catch (e) {
-      // Revert optimistic update on error
       _safeUpdate(() {
         if (_userInterestedEventIds.contains(eventId)) {
           _userInterestedEventIds.remove(eventId);
@@ -379,12 +348,12 @@ class EventProvider with ChangeNotifier {
           _updateEventInterestedCount(eventId, 1);
         }
         _updateInterestedEvents();
+        notifyListeners();
       });
       
       _safeSetError(e.toString());
       rethrow;
     } finally {
-      // Clear loading state for this specific event
       _interestButtonLoadingStates[eventId] = false;
       _safeUpdate(() {
         notifyListeners();
@@ -392,7 +361,6 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Add user interest in an event
   Future<void> addUserInterest(String eventId, String userId) async {
     if (_isDisposed) return;
     
@@ -404,21 +372,21 @@ class EventProvider with ChangeNotifier {
     });
     
     try {
-      // Optimistic update
       _safeUpdate(() {
         _userInterestedEventIds.add(eventId);
         _updateEventInterestedCount(eventId, 1);
         _updateInterestedEvents();
+        notifyListeners();
       });
       
       await _firestoreService.addInterestedUser(eventId, userId);
       
     } catch (e) {
-      // Revert on error
       _safeUpdate(() {
         _userInterestedEventIds.remove(eventId);
         _updateEventInterestedCount(eventId, -1);
         _updateInterestedEvents();
+        notifyListeners();
       });
       
       _safeSetError(e.toString());
@@ -431,7 +399,6 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Remove user interest from an event
   Future<void> removeUserInterest(String eventId, String userId) async {
     if (_isDisposed) return;
     
@@ -443,21 +410,21 @@ class EventProvider with ChangeNotifier {
     });
     
     try {
-      // Optimistic update
       _safeUpdate(() {
         _userInterestedEventIds.remove(eventId);
         _updateEventInterestedCount(eventId, -1);
         _updateInterestedEvents();
+        notifyListeners();
       });
       
       await _firestoreService.removeInterestedUser(eventId, userId);
       
     } catch (e) {
-      // Revert on error
       _safeUpdate(() {
         _userInterestedEventIds.add(eventId);
         _updateEventInterestedCount(eventId, 1);
         _updateInterestedEvents();
+        notifyListeners();
       });
       
       _safeSetError(e.toString());
@@ -470,12 +437,10 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Get all users interested in an event
   Stream<List<String>> getInterestedUsers(String eventId) {
     return _firestoreService.getInterestedUsers(eventId);
   }
   
-  // Get event by ID
   Future<EventModel?> getEventById(String eventId, String userId) async {
     try {
       final event = await _firestoreService.getEventById(eventId);
@@ -486,7 +451,6 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Load user's created events
   Future<void> loadUserEvents(String userId) async {
     if (_isDisposed) return;
     
@@ -498,6 +462,7 @@ class EventProvider with ChangeNotifier {
       _userEventsSubscription = _firestoreService.getUserEvents(userId).listen((events) {
         _safeUpdate(() {
           _myEvents = events;
+          notifyListeners();
         });
       }, onError: (error) {
         _safeSetError(error.toString());
@@ -510,14 +475,16 @@ class EventProvider with ChangeNotifier {
     }
   }
 
-  // Create new event
   Future<void> createEvent({
     required String title,
     required String organizer,
     required String contactPerson,
     required String contactEmail,
     required String contactPhone,
-    required DateTime eventDate,
+    required DateTime startDate,
+    DateTime? endDate,
+    TimeOfDay? startTime,
+    TimeOfDay? endTime,
     required String location,
     required String description,
     required String category,
@@ -536,8 +503,10 @@ class EventProvider with ChangeNotifier {
     try {
       _safeSetLoading(true);
       
-      print('📝 Creating event with image: ${bannerImageUrl != null ? "Yes" : "No"}');
-      print('📍 Location coordinates: lat=$latitude, lng=$longitude, state=$state, city=$city');
+      print('📝 Creating event with title: $title');
+      print('📝 Start date: $startDate, End date: $endDate');
+      print('📍 Location: $location, State: $state, City: $city');
+      print('🖼️ Banner image URL: ${bannerImageUrl != null ? "Yes" : "No"}');
       
       final event = EventModel(
         id: _uuid.v4(),
@@ -546,7 +515,10 @@ class EventProvider with ChangeNotifier {
         contactPerson: contactPerson,
         contactEmail: contactEmail,
         contactPhone: contactPhone,
-        eventDate: eventDate,
+        eventDate: startDate,
+        endDate: endDate,
+        startTime: startTime,
+        endTime: endTime,
         location: location,
         description: description,
         category: category,
@@ -581,9 +553,8 @@ class EventProvider with ChangeNotifier {
     } finally {
       _safeSetLoading(false);
     }
-  } 
+  }
 
-  // Update event
   Future<void> updateEvent(EventModel event) async {
     if (_isDisposed) return;
     
@@ -611,7 +582,6 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Update event status
   Future<void> updateEventStatus(String eventId, String status) async {
     if (_isDisposed) return;
     
@@ -647,7 +617,6 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Delete event
   Future<void> deleteEvent(String eventId) async {
     if (_isDisposed) return;
     
@@ -675,11 +644,9 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Search events with debounce
   Future<void> searchEvents(String query, {String? category}) async {
     if (_isDisposed) return;
     
-    // Debounce search to prevent too many requests
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
       if (_isDisposed) return;
@@ -718,7 +685,6 @@ class EventProvider with ChangeNotifier {
     });
   }
   
-  // Filter events by category
   Future<void> filterEventsByCategory(String? category) async {
     if (_isDisposed) return;
     
@@ -767,19 +733,16 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Get events by category
   List<EventModel> getEventsByCategory(String category) {
     return _upcomingEvents.where((event) => event.category == category).toList();
   }
   
-  // Get event categories
   List<String> getEventCategories() {
     final categories = _upcomingEvents.map((e) => e.category).toSet().toList();
     categories.sort();
     return categories;
   }
   
-  // Clear search
   void clearSearch() {
     if (_isDisposed) return;
     
@@ -792,7 +755,6 @@ class EventProvider with ChangeNotifier {
     });
   }
   
-  // Clear category filter
   void clearCategoryFilter() {
     if (_isDisposed) return;
     
@@ -800,7 +762,6 @@ class EventProvider with ChangeNotifier {
     _loadEvents();
   }
   
-  // Clear error
   void clearError() {
     if (_isDisposed) return;
     
@@ -810,7 +771,6 @@ class EventProvider with ChangeNotifier {
     });
   }
   
-  // Helper method to update event in a list
   void _updateEventInList(List<EventModel> list, EventModel updatedEvent) {
     final index = list.indexWhere((e) => e.id == updatedEvent.id);
     if (index != -1) {
@@ -818,7 +778,6 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  // Reset provider
   void reset() {
     _upcomingEvents.clear();
     _pastEvents.clear();

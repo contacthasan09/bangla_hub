@@ -35,6 +35,9 @@ class ServiceProviderProvider with ChangeNotifier {
 
   // Stream subscription
   StreamSubscription<List<ServiceProviderModel>>? _streamSubscription;
+  
+  // Flag to prevent multiple simultaneous reloads
+  bool _isReloading = false;
 
   // Getters
   List<ServiceProviderModel> get serviceProviders => _filteredProviders; // Return filtered list
@@ -69,11 +72,8 @@ class ServiceProviderProvider with ChangeNotifier {
     _selectedState = locationProvider.selectedState;
     print('📍 ServiceProvider state filter changed to: $_selectedState');
     
-    // Apply filters with the new state
-    _applyFilters();
-    
-    // Notify listeners after the update is complete
-    notifyListeners();
+    // Reload data with new filter
+    loadServiceProviders();
   }
 
   // Setters with automatic filtering
@@ -83,16 +83,14 @@ class ServiceProviderProvider with ChangeNotifier {
       if (state == null) {
         _selectedCity = null;
       }
-      _applyFilters();
-      notifyListeners();
+      loadServiceProviders(); // Reload with new filter
     }
   }
 
   void setSelectedCity(String? city) {
     if (_selectedCity != city) {
       _selectedCity = city;
-      _applyFilters();
-      notifyListeners();
+      loadServiceProviders(); // Reload with new filter
     }
   }
 
@@ -103,8 +101,7 @@ class ServiceProviderProvider with ChangeNotifier {
         _selectedServiceProvider = null;
         _selectedSubServiceProvider = null;
       }
-      _applyFilters();
-      notifyListeners();
+      loadServiceProviders(); // Reload with new filter
     }
   }
 
@@ -114,29 +111,59 @@ class ServiceProviderProvider with ChangeNotifier {
       if (serviceProvider == null) {
         _selectedSubServiceProvider = null;
       }
-      _applyFilters();
-      notifyListeners();
+      loadServiceProviders(); // Reload with new filter
     }
   }
 
   void setSelectedSubServiceProvider(String? subServiceProvider) {
     if (_selectedSubServiceProvider != subServiceProvider) {
       _selectedSubServiceProvider = subServiceProvider;
-      _applyFilters();
-      notifyListeners();
+      loadServiceProviders(); // Reload with new filter
     }
   }
 
   void setSearchQuery(String query) {
     if (_searchQuery != query) {
       _searchQuery = query;
-      _applyFilters();
-      notifyListeners();
+      _applySearchFilter(); // Only apply search filter locally
     }
+  }
+
+  // Apply search filter locally (doesn't require database reload)
+  void _applySearchFilter() {
+    if (_allProviders.isEmpty) {
+      _filteredProviders = [];
+      return;
+    }
+
+    List<ServiceProviderModel> filtered = List.from(_allProviders);
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase().trim();
+      filtered = filtered.where((p) {
+        return p.fullName.toLowerCase().contains(query) ||
+               p.companyName.toLowerCase().contains(query) ||
+               p.serviceProvider.toLowerCase().contains(query) ||
+               (p.subServiceProvider?.toLowerCase().contains(query) ?? false) ||
+               p.city.toLowerCase().contains(query) ||
+               p.state.toLowerCase().contains(query);
+      }).toList();
+      print('🔍 After search filter (${_searchQuery}): ${filtered.length} providers');
+    }
+
+    _filteredProviders = filtered;
+    
+    // Log active filters
+    print('🎯 Active filters: State: ${_selectedState ?? "Any"}, City: ${_selectedCity ?? "Any"}, Category: ${_selectedCategory?.displayName ?? "Any"}, Service: ${_selectedServiceProvider ?? "Any"}');
+    notifyListeners();
   }
 
   // Load service providers
   Future<void> loadServiceProviders({bool adminView = false}) async {
+    if (_isReloading) return;
+    
+    _isReloading = true;
     _isLoading = true;
     _error = '';
     notifyListeners();
@@ -158,12 +185,15 @@ class ServiceProviderProvider with ChangeNotifier {
         searchQuery: _searchQuery,
         adminView: adminView,
         includeDeleted: adminView,
+        onlyVerified: !adminView, // For non-admin, only show verified
+        onlyAvailable: !adminView, // For non-admin, only show available
       ).listen(
         (providers) => _handleStreamUpdate(providers, adminView),
         onError: (error) {
           print('❌ Stream error: $error');
           _error = 'Failed to load service providers: ${error.toString()}';
           _isLoading = false;
+          _isReloading = false;
           notifyListeners();
         },
       );
@@ -171,6 +201,7 @@ class ServiceProviderProvider with ChangeNotifier {
       print('❌ Catch error: $e');
       _error = 'Failed to load service providers: ${e.toString()}';
       _isLoading = false;
+      _isReloading = false;
       notifyListeners();
     }
   }
@@ -190,72 +221,14 @@ class ServiceProviderProvider with ChangeNotifier {
       return provider;
     }).toList();
 
-    // Apply current filters to the new data
-    _applyFilters();
+    // Apply search filter to the new data
+    _applySearchFilter();
     _isLoading = false;
+    _isReloading = false;
     
     print('✅ Stream received ${providers.length} providers');
     print('📊 After filtering: ${_filteredProviders.length} providers');
     notifyListeners();
-  }
-
-  // Apply filters to all providers
-  void _applyFilters() {
-    if (_allProviders.isEmpty) {
-      _filteredProviders = [];
-      return;
-    }
-
-    List<ServiceProviderModel> filtered = List.from(_allProviders);
-
-    // Apply state filter
-    if (_selectedState != null && _selectedState!.isNotEmpty) {
-      filtered = filtered.where((p) => p.state == _selectedState).toList();
-      print('📍 After state filter (${_selectedState}): ${filtered.length} providers');
-    }
-
-    // Apply city filter
-    if (_selectedCity != null && _selectedCity!.isNotEmpty) {
-      filtered = filtered.where((p) => p.city == _selectedCity).toList();
-      print('🏙️ After city filter (${_selectedCity}): ${filtered.length} providers');
-    }
-
-    // Apply category filter
-    if (_selectedCategory != null) {
-      filtered = filtered.where((p) => p.serviceCategory == _selectedCategory).toList();
-      print('📁 After category filter (${_selectedCategory!.displayName}): ${filtered.length} providers');
-    }
-
-    // Apply service provider filter
-    if (_selectedServiceProvider != null && _selectedServiceProvider!.isNotEmpty) {
-      filtered = filtered.where((p) => p.serviceProvider == _selectedServiceProvider).toList();
-      print('🔧 After service provider filter (${_selectedServiceProvider}): ${filtered.length} providers');
-    }
-
-    // Apply sub-service provider filter
-    if (_selectedSubServiceProvider != null && _selectedSubServiceProvider!.isNotEmpty) {
-      filtered = filtered.where((p) => p.subServiceProvider == _selectedSubServiceProvider).toList();
-      print('🔨 After sub-service provider filter (${_selectedSubServiceProvider}): ${filtered.length} providers');
-    }
-
-    // Apply search filter
-    if (_searchQuery.isNotEmpty) {
-      final query = _searchQuery.toLowerCase().trim();
-      filtered = filtered.where((p) {
-        return p.fullName.toLowerCase().contains(query) ||
-               p.companyName.toLowerCase().contains(query) ||
-               p.serviceProvider.toLowerCase().contains(query) ||
-               (p.subServiceProvider?.toLowerCase().contains(query) ?? false) ||
-               p.city.toLowerCase().contains(query) ||
-               p.state.toLowerCase().contains(query);
-      }).toList();
-      print('🔍 After search filter (${_searchQuery}): ${filtered.length} providers');
-    }
-
-    _filteredProviders = filtered;
-    
-    // Log active filters
-    print('🎯 Active filters: State: ${_selectedState ?? "Any"}, City: ${_selectedCity ?? "Any"}, Category: ${_selectedCategory?.displayName ?? "Any"}, Service: ${_selectedServiceProvider ?? "Any"}');
   }
 
   // Clear all filters
@@ -266,9 +239,8 @@ class ServiceProviderProvider with ChangeNotifier {
     _selectedServiceProvider = null;
     _selectedSubServiceProvider = null;
     _searchQuery = '';
-    _applyFilters();
+    loadServiceProviders(); // Reload with cleared filters
     print('🧹 All filters cleared');
-    notifyListeners();
   }
 
   // Clear specific filters
@@ -276,20 +248,20 @@ class ServiceProviderProvider with ChangeNotifier {
     _selectedCategory = null;
     _selectedServiceProvider = null;
     _selectedSubServiceProvider = null;
-    _applyFilters();
+    loadServiceProviders();
     notifyListeners();
   }
 
   void clearServiceProviderFilter() {
     _selectedServiceProvider = null;
     _selectedSubServiceProvider = null;
-    _applyFilters();
+    loadServiceProviders();
     notifyListeners();
   }
 
   void clearSubServiceProviderFilter() {
     _selectedSubServiceProvider = null;
-    _applyFilters();
+    loadServiceProviders();
     notifyListeners();
   }
 
@@ -489,7 +461,7 @@ class ServiceProviderProvider with ChangeNotifier {
       final index = _allProviders.indexWhere((p) => p.id == id);
       if (index != -1) {
         _allProviders[index] = provider.copyWith(id: id);
-        _applyFilters();
+        _applySearchFilter();
       }
       
       _isLoading = false;
@@ -512,7 +484,7 @@ class ServiceProviderProvider with ChangeNotifier {
       await _service.deleteServiceProvider(id);
       
       _allProviders.removeWhere((p) => p.id == id);
-      _applyFilters();
+      _applySearchFilter();
       
       _isLoading = false;
       notifyListeners();
@@ -536,7 +508,7 @@ class ServiceProviderProvider with ChangeNotifier {
           isAvailable: isAvailable,
           updatedAt: DateTime.now(),
         );
-        _applyFilters();
+        _applySearchFilter();
       }
       
       notifyListeners();
@@ -559,7 +531,7 @@ class ServiceProviderProvider with ChangeNotifier {
           isVerified: isVerified,
           updatedAt: DateTime.now(),
         );
-        _applyFilters();
+        _applySearchFilter();
       }
       
       notifyListeners();
@@ -577,9 +549,15 @@ class ServiceProviderProvider with ChangeNotifier {
     _filteredProviders.clear();
     _selectedProvider = null;
     _isLoading = false;
+    _isReloading = false;
     _error = '';
     _pendingLikes.clear();
-    clearFilters();
+    _selectedState = null;
+    _selectedCity = null;
+    _selectedCategory = null;
+    _selectedServiceProvider = null;
+    _selectedSubServiceProvider = null;
+    _searchQuery = '';
     notifyListeners();
   }
 
@@ -611,7 +589,14 @@ class ServiceProviderProvider with ChangeNotifier {
       subServiceProvider: _selectedSubServiceProvider,
       searchQuery: _searchQuery,
       adminView: false,
+      onlyVerified: true, // ✅ Only show verified services
+      onlyAvailable: true, // ✅ Only show available services
     );
+  }
+
+  // Refresh data
+  Future<void> refresh() async {
+    await loadServiceProviders();
   }
 
   // Dispose method

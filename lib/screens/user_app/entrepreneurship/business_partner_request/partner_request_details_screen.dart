@@ -80,7 +80,6 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     _animationController = AnimationController(
@@ -109,10 +108,8 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
     });
     
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _animationController.forward();
     } else {
-      // App is not visible - stop animations to save resources
       _animationController.stop();
     }
   }
@@ -120,18 +117,17 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
   @override
   void dispose() {
     print('🗑️ PartnerRequestDetailsScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
-    
     _animationController.dispose();
-    
-    // ✅ Dispose particle controllers
     for (var controller in _particleControllers) {
       controller.dispose();
     }
-    
     super.dispose();
+  }
+
+  // Helper function to check if string is a URL
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
   }
 
   Widget _buildAnimatedParticle(int index, double width, double height) {
@@ -179,34 +175,69 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
     }
   }
 
-  // NEW: Build requester image from request.postedByProfileImageBase64
+  // UPDATED: Build requester image from request.postedByProfileImageBase64 (handles both URL and Base64)
   Widget _buildRequesterPosterImage({bool isLarge = false}) {
-    if (widget.request.postedByProfileImageBase64 != null && widget.request.postedByProfileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = widget.request.postedByProfileImageBase64!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage(isLarge: isLarge);
-          },
+    final imageData = widget.request.postedByProfileImageBase64;
+    
+    if (imageData != null && imageData.isNotEmpty) {
+      // Check if it's a URL
+      if (_isUrlString(imageData)) {
+        return ClipOval(
+          child: Image.network(
+            imageData,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading requester image: $error');
+              return _buildDefaultProfileImage(isLarge: isLarge);
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(widget.secondaryGold),
+                ),
+              );
+            },
+          ),
         );
-      } catch (e) {
-        return _buildDefaultProfileImage(isLarge: isLarge);
+      } else {
+        // It's Base64 data
+        try {
+          String base64String = imageData;
+          
+          if (base64String.contains('base64,')) {
+            base64String = base64String.split('base64,').last;
+          }
+          
+          base64String = base64String.replaceAll(RegExp(r'\s'), '');
+          
+          while (base64String.length % 4 != 0) {
+            base64String += '=';
+          }
+          
+          final bytes = base64Decode(base64String);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                print('Error decoding requester image: $error');
+                return _buildDefaultProfileImage(isLarge: isLarge);
+              },
+            ),
+          );
+        } catch (e) {
+          print('Error processing requester image: $e');
+          return _buildDefaultProfileImage(isLarge: isLarge);
+        }
       }
     }
+    
     return _buildDefaultProfileImage(isLarge: isLarge);
   }
 
@@ -486,12 +517,15 @@ class _PartnerRequestDetailsScreenState extends State<PartnerRequestDetailsScree
                         children: [
                           Icon(Icons.person_rounded, color: widget.primaryGreen, size: 14),
                           SizedBox(width: 4),
-                          Text(
-                            request.postedByName!,
-                            style: GoogleFonts.poppins(
-                              color: widget.primaryGreen,
-                              fontSize: isTablet ? 14 : 12,
-                              fontWeight: FontWeight.w600,
+                          Flexible(
+                            child: Text(
+                              request.postedByName!,
+                              style: GoogleFonts.poppins(
+                                color: widget.primaryGreen,
+                                fontSize: isTablet ? 14 : 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

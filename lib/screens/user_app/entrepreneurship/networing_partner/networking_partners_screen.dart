@@ -1,4 +1,3 @@
-// screens/user_app/entrepreneurship/networking_partner/networking_partners_screen.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -13,8 +12,11 @@ import 'package:bangla_hub/screens/auth/signup_screen.dart';
 import 'package:bangla_hub/screens/user_app/entrepreneurship/networing_partner/premium_partner_details_screen.dart';
 import 'package:bangla_hub/widgets/common/distance_widget.dart';
 import 'package:bangla_hub/widgets/common/global_location_filter_bar.dart';
+import 'package:bangla_hub/widgets/common/global_location_guard.dart';
 import 'package:bangla_hub/widgets/common/osm_location_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -131,9 +133,7 @@ class _NetworkingPartnersScreenState extends State<NetworkingPartnersScreen>
   // Track app lifecycle
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
-  // LOCAL FILTER STATE - separate from global filter
-  String? _localSelectedState;
-  String? _localSelectedCity;
+  // LOCAL FILTER STATE - NO STATE, NO CITY (removed)
   BusinessType? _localSelectedBusinessType;
   String? _localSelectedIndustry;
   bool _isFilterView = false;
@@ -168,7 +168,6 @@ class _NetworkingPartnersScreenState extends State<NetworkingPartnersScreen>
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     // Initialize animations
@@ -249,10 +248,8 @@ class _NetworkingPartnersScreenState extends State<NetworkingPartnersScreen>
     });
     
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _startAnimations();
     } else {
-      // App is not visible - stop animations to save resources
       _stopAnimations();
     }
   }
@@ -264,7 +261,6 @@ class _NetworkingPartnersScreenState extends State<NetworkingPartnersScreen>
       _scaleController.forward();
       _pulseController.repeat(reverse: true);
       _rotateController.repeat();
-      // Particle and bubble controllers already running via repeat
     }
   }
   
@@ -274,49 +270,40 @@ class _NetworkingPartnersScreenState extends State<NetworkingPartnersScreen>
     _scaleController.stop();
     _pulseController.stop();
     _rotateController.stop();
-    // Particle and bubble controllers continue but we don't stop them as they're repetitive
   }
 
-@override
-void didChangeDependencies() {
-  super.didChangeDependencies();
-  
-  // ✅ FIXED: Use post-frame callback to avoid calling setState during build
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (!mounted) return;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     
-    // Listen to location provider changes but DON'T automatically apply filter
-    // This ensures global filter is separate
-    final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
-    
-    // Only reload when global filter changes to show/hide global filter bar
-    if (locationProvider.isFilterActive != _previousGlobalFilterState) {
-      _previousGlobalFilterState = locationProvider.isFilterActive;
-      _loadData();
-    }
-  });
-}
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      
+      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+      
+      if (locationProvider.isFilterActive != _previousGlobalFilterState) {
+        _previousGlobalFilterState = locationProvider.isFilterActive;
+        _loadData();
+      }
+    });
+  }
 
   @override
   void dispose() {
     print('🗑️ NetworkingPartnersScreen disposing...');
     
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
     
-    // ✅ Dispose animation controllers
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
     _scaleController.dispose();
     _rotateController.dispose();
     
-    // ✅ Dispose particle controllers
     for (var controller in _particleControllers) {
       controller.dispose();
     }
     
-    // ✅ Dispose bubble controllers
     for (var controller in _bubbleControllers) {
       controller.dispose();
     }
@@ -326,63 +313,430 @@ void didChangeDependencies() {
     super.dispose();
   }
 
-  void _showLoginRequiredDialog(BuildContext context, String feature) {
-    final Color _primaryRed = Color(0xFFF42A41);
+  // Show location filter dialog
+ 
+ 
+ /* void _showLocationFilterDialog(BuildContext context) {
+    final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+    
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Filter by State', 
+                  style: GoogleFonts.poppins(
+                    fontSize: 20, 
+                    fontWeight: FontWeight.w700, 
+                    color: _primaryGreen
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close), 
+                  onPressed: () => Navigator.pop(context)
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            
+            GestureDetector(
+              onTap: () {
+                filterProvider.clearLocationFilter();
+                _loadData();
+                Navigator.pop(context);
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Showing partners from all states'),
+                    backgroundColor: Color(0xFF2E7D32),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.public, color: _primaryGreen),
+                    const SizedBox(width: 15),
+                    Text(
+                      'All States', 
+                      style: GoogleFonts.poppins(
+                        fontSize: 16, 
+                        fontWeight: FontWeight.w600
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            Container(
+              height: 300,
+              child: ListView.builder(
+                itemCount: CommunityStates.states.length,
+                itemBuilder: (context, index) {
+                  final state = CommunityStates.states[index];
+                  final isSelected = filterProvider.selectedState == state;
+                  
+                  return GestureDetector(
+                    onTap: () {
+                      filterProvider.setLocationFilter(state, fromEvents: true);
+                      _loadData();
+                      Navigator.pop(context);
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Showing partners in $state'),
+                          backgroundColor: _primaryGreen,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? _primaryGreen.withOpacity(0.1) : null,
+                        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on, color: isSelected ? _primaryGreen : Colors.grey),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: Text(
+                              state,
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected ? _primaryGreen : Colors.black87,
+                              ),
+                            ),
+                          ),
+                          if (isSelected) Icon(Icons.check_circle, color: _primaryGreen),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+ */
+ 
+
+void _showLocationFilterDialog(BuildContext context) {
+  final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+  final screenHeight = MediaQuery.of(context).size.height;
+  
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true, // ✅ Add this to allow bottom sheet to be scrollable
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+    ),
+    builder: (context) => SafeArea( // ✅ Wrap with SafeArea for notched phones
+      child: Container(
+        height: screenHeight * 0.8, // ✅ Limit height to 80% of screen
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Filter by State', 
+                  style: GoogleFonts.poppins(
+                    fontSize: 20, 
+                    fontWeight: FontWeight.w700, 
+                    color: _primaryGreen
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close), 
+                  onPressed: () => Navigator.pop(context)
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            
+            GestureDetector(
+              onTap: () {
+                filterProvider.clearLocationFilter();
+                _loadData();
+                Navigator.pop(context);
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Showing partners from all states'),
+                    backgroundColor: Color(0xFF2E7D32),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.public, color: _primaryGreen),
+                    const SizedBox(width: 15),
+                    Text(
+                      'All States', 
+                      style: GoogleFonts.poppins(
+                        fontSize: 16, 
+                        fontWeight: FontWeight.w600
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 10),
+            
+            // ✅ Replace fixed height Container with Expanded
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: CommunityStates.states.length,
+                itemBuilder: (context, index) {
+                  final state = CommunityStates.states[index];
+                  final isSelected = filterProvider.selectedState == state;
+                  
+                  return GestureDetector(
+                    onTap: () {
+                      filterProvider.setLocationFilter(state, fromEvents: true);
+                      _loadData();
+                      Navigator.pop(context);
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Showing partners in $state'),
+                          backgroundColor: _primaryGreen,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? _primaryGreen.withOpacity(0.1) : null,
+                        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on, color: isSelected ? _primaryGreen : Colors.grey),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: Text(
+                              state,
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected ? _primaryGreen : Colors.black87,
+                              ),
+                            ),
+                          ),
+                          if (isSelected) Icon(Icons.check_circle, color: _primaryGreen),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+
+  // Compact Change Location Button
+  Widget _buildChangeLocationButton(bool isTablet) {
+    return Consumer<LocationFilterProvider>(
+      builder: (context, filterProvider, child) {
+        final hasFilter = filterProvider.isFilterActive;
+        
+        return GestureDetector(
+          onTap: () => _showLocationFilterDialog(context),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 10 : 8,
+              vertical: isTablet ? 6 : 4,
+            ),
+            decoration: BoxDecoration(
+              gradient: hasFilter
+                  ? const LinearGradient(
+                      colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.2),
+                        Colors.white.withOpacity(0.1),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: hasFilter 
+                    ? const Color(0xFFFFB300).withOpacity(0.5)
+                    : _secondaryGold.withOpacity(0.4),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  hasFilter ? Icons.edit_location_rounded : Icons.location_on_rounded,
+                  size: isTablet ? 14 : 12,
+                  color: hasFilter ? const Color(0xFFFFB300) : _secondaryGold,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  hasFilter ? "Change Location" : "Location",
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 11 : 10,
+                    fontWeight: hasFilter ? FontWeight.w600 : FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+                if (hasFilter) ...[
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFB300),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+/*  void _showLoginRequiredDialog(BuildContext context, String feature) {
+    final Color _primaryRed = Color(0xFFE03C32);
     final Color _primaryGreen = Color(0xFF006A4E);
     final Color _goldAccent = Color(0xFFFFD700);
+    final Color _deepRed = Color(0xFFC62828);
     
     showDialog(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          constraints: BoxConstraints(maxWidth: 320),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
+            gradient: LinearGradient(
+              colors: [_primaryGreen, _primaryRed],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 20,
+                offset: Offset(0, 10),
+              ),
+              BoxShadow(
+                color: _primaryRed.withOpacity(0.3),
                 blurRadius: 30,
-                offset: Offset(0, 15),
+                offset: Offset(0, 0),
               ),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header with gradient - reduced size
               Container(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [_primaryRed, _primaryGreen],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: EdgeInsets.all(10),
+                      padding: EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        gradient: LinearGradient(
+                          colors: [_goldAccent, Color(0xFFFFC107)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _goldAccent.withOpacity(0.4),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Icon(
                         Icons.lock_rounded,
                         color: Colors.white,
-                        size: 28,
+                        size: 24,
                       ),
                     ),
                     SizedBox(height: 8),
                     Text(
                       'Login Required',
                       style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                         color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'to access $feature',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withOpacity(0.9),
                       ),
                     ),
                   ],
@@ -390,30 +744,29 @@ void didChangeDependencies() {
               ),
               
               Padding(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.all(16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'You need to login to $feature',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.grey[700],
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Create an account or sign in to access full details',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: Colors.grey[500],
+                      child: Text(
+                        'Create an account or sign in to access full details',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.9),
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 16),
                     
-                    // Login Button - reduced size
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -427,25 +780,33 @@ void didChangeDependencies() {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _primaryGreen,
-                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.white,
+                          foregroundColor: _primaryGreen,
                           padding: EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(14),
                           ),
+                          elevation: 3,
+                          shadowColor: Colors.white.withOpacity(0.3),
                         ),
-                        child: Text(
-                          'Login',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.login_rounded, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Login',
+                              style: GoogleFonts.poppins(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    SizedBox(height: 8),
+                    SizedBox(height: 10),
                     
-                    // Sign Up Button - reduced size
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
@@ -459,32 +820,42 @@ void didChangeDependencies() {
                           );
                         },
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: _primaryGreen,
-                          side: BorderSide(color: _primaryGreen, width: 2),
+                          foregroundColor: Colors.white,
+                          side: BorderSide(color: Colors.white, width: 1.5),
                           padding: EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: Text(
-                          'Create Account',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.person_add_rounded, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Create Account',
+                              style: GoogleFonts.poppins(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    SizedBox(height: 8),
+                    SizedBox(height: 10),
                     
-                    // Continue Browsing - slightly reduced size
                     TextButton(
                       onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      ),
                       child: Text(
                         'Continue Browsing',
                         style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: Colors.grey[600],
+                          fontSize: 13,
+                          color: Colors.white.withOpacity(0.7),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -498,6 +869,65 @@ void didChangeDependencies() {
     );
   }
 
+
+*/
+
+
+
+
+  void _showLoginRequiredDialog(BuildContext context, String feature) {
+    final Color _primaryRed = Color(0xFFE03C32);
+    final Color _primaryGreen = Color(0xFF006A4E);
+    final Color _goldAccent = Color(0xFFFFD700);
+    
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          constraints: BoxConstraints(maxWidth: 320),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [_primaryGreen, _primaryRed]),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryRed, _primaryGreen]), borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                child: Column(
+                  children: [
+                    Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(gradient: LinearGradient(colors: [_goldAccent, Color(0xFFFFC107)]), shape: BoxShape.circle), child: Icon(Icons.lock_rounded, color: Colors.white, size: 24)),
+                    SizedBox(height: 8),
+                    Text('Login Required', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Text('to access $feature', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withOpacity(0.9))),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen())); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: _primaryGreen, padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Login', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterScreen(role: 'user'))); }, style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white, width: 1.5), padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Create Account', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    TextButton(onPressed: () => Navigator.pop(context), child: Text('Continue Browsing', style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withOpacity(0.7)))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  
+
+
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -506,11 +936,6 @@ void didChangeDependencies() {
 
     try {
       final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
-      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
-      
-      // IMPORTANT: Do NOT apply global filter automatically here
-      // The filter application happens in _getFilteredPartners
-      
       await provider.loadVerifiedBusinessPartners();
       
       if (mounted) {
@@ -538,15 +963,7 @@ void didChangeDependencies() {
     // Build active filters map for display
     Map<String, dynamic> newActiveFilters = {};
     
-    // Apply new local filters
-    if (_localSelectedState != null) {
-      provider.setFilter(EntrepreneurshipCategory.networkingBusinessPartner, 'local_state', _localSelectedState);
-      newActiveFilters['local_state'] = _localSelectedState;
-    }
-    if (_localSelectedCity != null && _localSelectedCity!.isNotEmpty) {
-      provider.setFilter(EntrepreneurshipCategory.networkingBusinessPartner, 'local_city', _localSelectedCity);
-      newActiveFilters['local_city'] = _localSelectedCity;
-    }
+    // Apply new local filters (NO STATE, NO CITY)
     if (_localSelectedBusinessType != null) {
       provider.setFilter(EntrepreneurshipCategory.networkingBusinessPartner, 'local_businessType', _localSelectedBusinessType);
       newActiveFilters['local_businessType'] = _localSelectedBusinessType!.displayName;
@@ -573,11 +990,9 @@ void didChangeDependencies() {
     // Clear all local filters from provider
     provider.clearAllFilters(EntrepreneurshipCategory.networkingBusinessPartner);
     
-    // Reset local state
+    // Reset local state (NO STATE, NO CITY)
     if (mounted) {
       setState(() {
-        _localSelectedState = null;
-        _localSelectedCity = null;
         _localSelectedBusinessType = null;
         _localSelectedIndustry = null;
         _hasLocalFilters = false;
@@ -609,27 +1024,14 @@ void didChangeDependencies() {
       print('📍 After GLOBAL filter (${locationProvider.selectedState}): ${filteredPartners.length} partners');
     }
     
-    // Apply LOCAL filters if any (from this screen's filter view)
+    // Apply LOCAL filters if any (from this screen's filter view) - NO STATE, NO CITY
     if (_hasLocalFilters) {
-      // State filter
-      if (_localSelectedState != null) {
-        filteredPartners = filteredPartners.where((partner) => 
-          partner.state == _localSelectedState
-        ).toList();
-      }
-      
-      // City filter
-      if (_localSelectedCity != null && _localSelectedCity!.isNotEmpty) {
-        filteredPartners = filteredPartners.where((partner) => 
-          partner.city.toLowerCase().contains(_localSelectedCity!.toLowerCase())
-        ).toList();
-      }
-      
       // Business type filter
       if (_localSelectedBusinessType != null) {
         filteredPartners = filteredPartners.where((partner) => 
           partner.businessType == _localSelectedBusinessType
         ).toList();
+        print('🏢 After LOCAL business type filter: ${filteredPartners.length} partners');
       }
       
       // Industry filter
@@ -637,18 +1039,11 @@ void didChangeDependencies() {
         filteredPartners = filteredPartners.where((partner) => 
           partner.industry.toLowerCase().contains(_localSelectedIndustry!.toLowerCase())
         ).toList();
+        print('🏭 After LOCAL industry filter: ${filteredPartners.length} partners');
       }
-      
-      print('📊 After LOCAL filters: ${filteredPartners.length} partners');
     }
     
     return filteredPartners;
-  }
-
-  Future<List<String>> _getCitiesForState(String state) async {
-    // This is a placeholder - you'll need to implement this based on your data
-    // For now, return some sample cities
-    return ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix'];
   }
 
   Future<void> _launchPhone(String phone) async {
@@ -746,7 +1141,15 @@ void didChangeDependencies() {
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
+    return LocationGuard(
+      required: true, 
+      showBackButton: true,
+      child: _buildMainContent(context),
+    );
+  }
+
+  Widget _buildMainContent(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     
@@ -892,7 +1295,7 @@ void didChangeDependencies() {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Filters',
+                                  'Local Filters',
                                   style: GoogleFonts.poppins(
                                     fontSize: isTablet ? 24 : 20,
                                     fontWeight: FontWeight.w700,
@@ -900,7 +1303,7 @@ void didChangeDependencies() {
                                   ),
                                 ),
                                 Text(
-                                  'Apply filters specific to this screen',
+                                  'Apply screen-specific filters (State/City are global)',
                                   style: GoogleFonts.inter(
                                     fontSize: isTablet ? 14 : 12,
                                     color: _textSecondary,
@@ -913,59 +1316,6 @@ void didChangeDependencies() {
                       ),
                       
                       SizedBox(height: 24),
-                      
-                      // State Dropdown
-                      _buildDropdown<String?>(
-                        value: _localSelectedState,
-                        label: 'Select State',
-                        icon: Icons.location_on_rounded,
-                        items: [
-                          DropdownMenuItem<String?>(value: null, child: Text('All States')),
-                          ...CommunityStates.states.map((state) => 
-                            DropdownMenuItem<String?>(value: state, child: Text(state))
-                          ),
-                        ],
-                        onChanged: (String? newValue) {
-                          if (mounted) {
-                            setState(() {
-                              _localSelectedState = newValue;
-                              _localSelectedCity = null;
-                            });
-                          }
-                        },
-                        isTablet: isTablet,
-                      ),
-                      
-                      if (_localSelectedState != null) ...[
-                        SizedBox(height: 16),
-                        FutureBuilder<List<String>>(
-                          future: _getCitiesForState(_localSelectedState!),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                              return const SizedBox.shrink();
-                            }
-                            return _buildDropdown<String?>(
-                              value: _localSelectedCity,
-                              label: 'Select City',
-                              icon: Icons.location_city_rounded,
-                              items: [
-                                DropdownMenuItem<String?>(value: null, child: Text('All Cities')),
-                                ...snapshot.data!.map((city) => 
-                                  DropdownMenuItem<String?>(value: city, child: Text(city))
-                                ),
-                              ],
-                              onChanged: (String? newValue) {
-                                if (mounted) {
-                                  setState(() => _localSelectedCity = newValue);
-                                }
-                              },
-                              isTablet: isTablet,
-                            );
-                          },
-                        ),
-                      ],
-                      
-                      SizedBox(height: 16),
                       
                       // Business Type Dropdown
                       _buildDropdown<BusinessType?>(
@@ -1097,7 +1447,7 @@ void didChangeDependencies() {
             ),
             SizedBox(width: 8),
             Text(
-              _hasLocalFilters ? 'Edit Filters' : 'Filters',
+              _hasLocalFilters ? 'Edit Local Filters' : 'Local Filters',
               style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontSize: isTablet ? 16 : 14,
@@ -1139,14 +1489,6 @@ void didChangeDependencies() {
         IconData icon = Icons.filter_alt_rounded;
         
         switch (key) {
-          case 'local_state':
-            label = 'State: $value';
-            icon = Icons.location_on_rounded;
-            break;
-          case 'local_city':
-            label = 'City: $value';
-            icon = Icons.location_city_rounded;
-            break;
           case 'local_businessType':
             label = 'Business: $value';
             icon = Icons.business_rounded;
@@ -1172,12 +1514,6 @@ void didChangeDependencies() {
                 
                 // Also clear the corresponding local state variable
                 switch (key) {
-                  case 'local_state':
-                    _localSelectedState = null;
-                    break;
-                  case 'local_city':
-                    _localSelectedCity = null;
-                    break;
                   case 'local_businessType':
                     _localSelectedBusinessType = null;
                     break;
@@ -1203,7 +1539,7 @@ void didChangeDependencies() {
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 8),
               child: Text(
-                'Active Filters:',
+                'Active Local Filters:',
                 style: GoogleFonts.poppins(
                   fontSize: isTablet ? 14 : 12,
                   fontWeight: FontWeight.w600,
@@ -1329,129 +1665,151 @@ void didChangeDependencies() {
     );
   }
 
-  SliverAppBar _buildPremiumAppBar(bool isTablet) {
-    return SliverAppBar(
-      expandedHeight: isTablet ? 280 : 220,
-      floating: false,
-      pinned: true,
-      snap: false,
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_primaryGreen, _darkGreen, _primaryRed],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+SliverAppBar _buildPremiumAppBar(bool isTablet) {
+  return SliverAppBar(
+    expandedHeight: isTablet ? 260 : 200,
+    floating: false,
+    pinned: true,
+    snap: false,
+    elevation: 0,
+    backgroundColor: Colors.transparent,
+    flexibleSpace: FlexibleSpaceBar(
+      background: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_primaryGreen, _darkGreen, _primaryRed],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 40 : 24,
-                vertical: isTablet ? 30 : 20,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Premium Pattern Line
-                  Container(
-                    height: 4,
-                    width: 80,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_secondaryGold, _softGold, _secondaryGold],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 40 : 24,
+              vertical: isTablet ? 20 : 16,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Premium Pattern Line
+                Container(
+                  height: 4,
+                  width: 60,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_secondaryGold, _softGold, _secondaryGold],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(height: isTablet ? 16 : 12),
+                
+                // Title - Single line only
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [Colors.white, _secondaryGold],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds),
+                  child: Text(
+                    'Networking Partners',
+                    style: GoogleFonts.poppins(
+                    //  fontSize: isTablet ? 28 : 22,
+                       fontSize: isTablet ? 32 : 24,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                
+                SizedBox(height: isTablet ? 12 : 8),
+                
+                // Subtitle and Change Location Button in same row - Subtitle can wrap
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Subtitle - Can wrap to multiple lines
+                    Expanded(
+                      child: Text(
+                        '🤝 Connect & Grow Together',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 14 : 12,
+                          color: Colors.white.withOpacity(0.9),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(2),
                     ),
-                  ),
-                  SizedBox(height: isTablet ? 20 : 16),
-                  
-                  // Title with Gradient
-                  ShaderMask(
-                    shaderCallback: (bounds) => LinearGradient(
-                      colors: [Colors.white, _secondaryGold],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ).createShader(bounds),
-                    child: Text(
-                      'Networking Partners',
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 36 : 28,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: isTablet ? 12 : 8),
-                  
-                  // Subtitle
-                  Text(
-                    '🤝 Connect & Grow Together',
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 18 : 16,
-                      color: Colors.white.withOpacity(0.9),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  
-                  SizedBox(height: isTablet ? 20 : 16),
-                  
-                  // Stats Row
-                  Consumer<EntrepreneurshipProvider>(
-                    builder: (context, provider, child) {
-                      final verifiedCount = provider.businessPartners
-                          .where((s) => s.isVerified && s.isActive)
-                          .length;
-                      
-                      return Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isTablet ? 16 : 12,
-                              vertical: isTablet ? 8 : 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white.withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.verified_rounded, color: _secondaryGold, size: isTablet ? 18 : 16),
-                                SizedBox(width: isTablet ? 8 : 6),
-                                Text(
-                                  '$verifiedCount Verified Partners',
-                                  style: GoogleFonts.inter(
-                                    fontSize: isTablet ? 14 : 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
+                    
+                    SizedBox(width: isTablet ? 12 : 8),
+                    
+                    // Change Location Button
+                    _buildChangeLocationButton(isTablet),
+                  ],
+                ),
+                
+                SizedBox(height: isTablet ? 16 : 12),
+                
+                // Stats Row
+                Consumer<EntrepreneurshipProvider>(
+                  builder: (context, provider, child) {
+                    final verifiedCount = provider.businessPartners
+                        .where((s) => s.isVerified && s.isActive)
+                        .length;
+                    
+                    return Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 12 : 10,
+                            vertical: isTablet ? 6 : 4,
                           ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.verified_rounded, color: _secondaryGold, size: isTablet ? 14 : 12),
+                              SizedBox(width: isTablet ? 6 : 4),
+                              Text(
+                                '$verifiedCount Verified Partners',
+                                style: GoogleFonts.inter(
+                                  fontSize: isTablet ? 12 : 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ),
       ),
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back_rounded, color: Colors.white, fontWeight: FontWeight.bold, size: isTablet ? 28 : 24,),
-        onPressed: () => Navigator.pop(context),
+    ),
+    leading: IconButton(
+      icon: Icon(
+        Icons.arrow_back_rounded, 
+        color: Colors.white, 
+        fontWeight: FontWeight.bold, 
+        size: isTablet ? 28 : 24,
       ),
-    );
-  }
+      onPressed: () => Navigator.pop(context),
+    ),
+  );
+}
 
   Widget _buildAnimatedParticle(int index) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1942,6 +2300,7 @@ void didChangeDependencies() {
         : button;
   }
 
+  // KEPT ORIGINAL - No changes to card
   Widget _buildPremiumPartnerCard(NetworkingBusinessPartner partner, int index) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
@@ -2017,10 +2376,9 @@ void didChangeDependencies() {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // User Info Row - Using partner's stored user info
+                                  // User Info Row
                                   Row(
                                     children: [
-                                      // User Profile Image from partner.postedByProfileImageBase64
                                       TweenAnimationBuilder<double>(
                                         tween: Tween(begin: 0, end: 1),
                                         duration: Duration(milliseconds: 700 + (index * 80)),
@@ -2060,12 +2418,10 @@ void didChangeDependencies() {
                                       
                                       SizedBox(width: 12),
                                       
-                                      // User Info
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            // User Name from partner.postedByName
                                             ShaderMask(
                                               shaderCallback: (bounds) => _gemstoneGradient.createShader(bounds),
                                               child: Text(
@@ -2078,7 +2434,6 @@ void didChangeDependencies() {
                                               ),
                                             ),
                                             SizedBox(height: 2),
-                                            // Verified badge
                                             Row(
                                               children: [
                                                 Container(
@@ -2104,7 +2459,6 @@ void didChangeDependencies() {
                                         ),
                                       ),
                                       
-                                      // Verified Badge
                                       Container(
                                         padding: EdgeInsets.all(6),
                                         decoration: BoxDecoration(
@@ -2138,7 +2492,6 @@ void didChangeDependencies() {
                                   
                                   SizedBox(height: 16),
                                   
-                                  // Distance Badge - Add if location available
                                   if (partner.latitude != null && partner.longitude != null)
                                     Consumer<LocationFilterProvider>(
                                       builder: (context, locationProvider, _) {
@@ -2148,13 +2501,11 @@ void didChangeDependencies() {
                                             latitude: partner.latitude!,
                                             longitude: partner.longitude!,
                                             isTablet: isTablet,
-                                        //    backgroundColor: _primaryGreen,
                                           ),
                                         );
                                       },
                                     ),
                                   
-                                  // Business Name and Industry
                                   Row(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
@@ -2359,7 +2710,9 @@ void didChangeDependencies() {
     );
   }
 
-  Widget _buildPartnerPosterImage(NetworkingBusinessPartner partner) {
+
+
+/*  Widget _buildPartnerPosterImage(NetworkingBusinessPartner partner) {
     if (partner.postedByProfileImageBase64 != null && partner.postedByProfileImageBase64!.isNotEmpty) {
       try {
         String base64String = partner.postedByProfileImageBase64!;
@@ -2402,7 +2755,92 @@ void didChangeDependencies() {
         ),
       ),
     );
+  }   */
+
+
+ Widget _buildPartnerPosterImage(NetworkingBusinessPartner partner) {
+  final imageData = partner.postedByProfileImageBase64;
+  
+  if (imageData != null && imageData.isNotEmpty) {
+    // Check if it's a URL (starts with http:// or https://)
+    if (imageData.startsWith('http://') || imageData.startsWith('https://')) {
+      // It's a Cloudinary URL - use NetworkImage
+      return ClipOval(
+        child: Image.network(
+          imageData,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stackTrace) {
+            print('Error loading network image: $error');
+            return _buildDefaultProfileImage();
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(_secondaryGold),
+              ),
+            );
+          },
+        ),
+      );
+    } else {
+      // It's Base64 data - decode it
+      try {
+        String base64String = imageData;
+        
+        // Remove data:image prefix if present
+        if (base64String.contains('base64,')) {
+          base64String = base64String.split('base64,').last;
+        }
+        
+        // Clean the string
+        base64String = base64String.replaceAll(RegExp(r'\s'), '');
+        
+        // Fix padding
+        while (base64String.length % 4 != 0) {
+          base64String += '=';
+        }
+        
+        final bytes = base64Decode(base64String);
+        return ClipOval(
+          child: Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error decoding Base64 image: $error');
+              return _buildDefaultProfileImage();
+            },
+          ),
+        );
+      } catch (e) {
+        print('Error processing image: $e');
+        return _buildDefaultProfileImage();
+      }
+    }
   }
+  
+  return _buildDefaultProfileImage();
+}
+
+Widget _buildDefaultProfileImage() {
+  return Container(
+    decoration: BoxDecoration(
+      gradient: _gemstoneGradient,
+    ),
+    child: Center(
+      child: Icon(
+        Icons.person_rounded,
+        color: Colors.white,
+        size: 30,
+      ),
+    ),
+  );
+}
 
   Widget _buildPremiumTag(String text, IconData icon, [bool isTablet = false]) {
     return Container(
@@ -2512,6 +2950,23 @@ void didChangeDependencies() {
   }
 }
 
+// Helper class for states list
+class CommunityStates {
+  static const List<String> states = [
+    'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
+    'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho',
+    'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana',
+    'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
+    'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada',
+    'New Hampshire', 'New Jersey', 'New Mexico', 'New York',
+    'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon',
+    'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
+    'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington',
+    'West Virginia', 'Wisconsin', 'Wyoming'
+  ];
+}
+
+// ====================== PREMIUM ADD PARTNER DIALOG ======================
 // ====================== PREMIUM ADD PARTNER DIALOG ======================
 class PremiumAddPartnerDialog extends StatefulWidget {
   final VoidCallback? onBusinessAdded;
@@ -2572,11 +3027,12 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
   List<String> _targetMarkets = [];
   List<String> _socialMediaLinks = [];
   
-  // Image handling
+  // Image handling with compression
   File? _logoImage;
   String? _logoBase64;
   List<File> _galleryImages = [];
   List<String> _galleryBase64 = [];
+  bool _isImageProcessing = false;
   
   final List<String> _states = CommunityStates.states;
   
@@ -2592,7 +3048,6 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     _tabController = TabController(length: 3, vsync: this);
@@ -2639,7 +3094,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
             _phoneController.text.isNotEmpty &&
             _addressController.text.isNotEmpty &&
             _cityController.text.isNotEmpty &&
-            (_partnerLatitude != null && _partnerLongitude != null); // Location is now required
+            (_partnerLatitude != null && _partnerLongitude != null);
       });
     }
   }
@@ -2676,11 +3131,184 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     }
   }
 
+  // ==================== IMAGE COMPRESSION FUNCTION ====================
+  Future<String?> compressAndConvertImage(XFile imageFile, {int minWidth = 400, int minHeight = 400}) async {
+    try {
+      final file = File(imageFile.path);
+      final originalSize = await file.length();
+
+      print("Original size: ${(originalSize / 1024).toStringAsFixed(1)} KB");
+
+      final tempDir = await getTemporaryDirectory();
+
+      // If already small → direct Base64
+      if (originalSize <= 1000000) {
+        final bytes = await file.readAsBytes();
+        return "data:image/jpeg;base64,${base64Encode(bytes)}";
+      }
+
+      int quality = 85;
+      File? result;
+
+      while (quality >= 30) {
+        final targetPath =
+            "${tempDir.path}/partner_${DateTime.now().microsecondsSinceEpoch}_$quality.jpg";
+
+        final xfile = await FlutterImageCompress.compressAndGetFile(
+          file.path,
+          targetPath,
+          quality: quality,
+          minWidth: minWidth,
+          minHeight: minHeight,
+          format: CompressFormat.jpeg,
+        );
+
+        if (xfile == null) {
+          quality -= 10;
+          continue;
+        }
+
+        result = File(xfile.path);
+        final size = await result.length();
+
+        print("Quality $quality → ${(size / 1024).toStringAsFixed(1)} KB");
+
+        if (size <= 1000000) {
+          final bytes = await result.readAsBytes();
+          return "data:image/jpeg;base64,${base64Encode(bytes)}";
+        }
+
+        quality -= 10;
+      }
+
+      // Final fallback (strong compression)
+      if (result != null) {
+        final bytes = await result.readAsBytes();
+        return "data:image/jpeg;base64,${base64Encode(bytes)}";
+      }
+
+      return null;
+    } catch (e) {
+      print("Compression error: $e");
+      return null;
+    }
+  }
+
+  // ==================== UPDATED LOGO PICKER WITH COMPRESSION ====================
+  Future<void> _pickLogoImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+      );
+      
+      if (pickedFile != null) {
+        setState(() {
+          _isImageProcessing = true;
+        });
+        
+        // Check original file size
+        final File originalFile = File(pickedFile.path);
+        final int originalSize = await originalFile.length();
+        
+        if (originalSize > 5 * 1024 * 1024) {
+          setState(() {
+            _isImageProcessing = false;
+          });
+          _showErrorSnackBar('Logo is too large (max 5MB). Please select a smaller image.');
+          return;
+        }
+        
+        // Compress and convert using your function
+        final String? base64Data = await compressAndConvertImage(pickedFile, minWidth: 300, minHeight: 300);
+        
+        setState(() {
+          _isImageProcessing = false;
+        });
+        
+        if (base64Data != null) {
+          final imageFile = File(pickedFile.path);
+          setState(() {
+            _logoImage = imageFile;
+            _logoBase64 = base64Data;
+          });
+          _showSuccessSnackBar('Logo added successfully!');
+        } else {
+          _showErrorSnackBar('Failed to compress logo. Please try a different image.');
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isImageProcessing = false;
+      });
+      _showErrorSnackBar('Error picking logo: $e');
+    }
+  }
+
+  // ==================== UPDATED GALLERY IMAGE PICKER WITH COMPRESSION ====================
+  Future<void> _pickGalleryImage() async {
+    if (_galleryImages.length >= 5) {
+      _showErrorSnackBar('Maximum 5 images allowed');
+      return;
+    }
+
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+      );
+      
+      if (pickedFile != null) {
+        setState(() {
+          _isImageProcessing = true;
+        });
+        
+        // Check original file size
+        final File originalFile = File(pickedFile.path);
+        final int originalSize = await originalFile.length();
+        
+        if (originalSize > 5 * 1024 * 1024) {
+          setState(() {
+            _isImageProcessing = false;
+          });
+          _showErrorSnackBar('Image is too large (max 5MB). Please select a smaller image.');
+          return;
+        }
+        
+        // Compress and convert using your function
+        final String? base64Data = await compressAndConvertImage(pickedFile, minWidth: 800, minHeight: 800);
+        
+        setState(() {
+          _isImageProcessing = false;
+        });
+        
+        if (base64Data != null) {
+          final imageFile = File(pickedFile.path);
+          setState(() {
+            _galleryImages.add(imageFile);
+            _galleryBase64.add(base64Data);
+          });
+          _showSuccessSnackBar('Image added successfully!');
+        } else {
+          _showErrorSnackBar('Failed to compress image. Please try a different image.');
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isImageProcessing = false;
+      });
+      _showErrorSnackBar('Error picking image: $e');
+    }
+  }
+
   @override
   void dispose() {
     print('🗑️ PremiumAddPartnerDialog disposing...');
     
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
     
     _businessNameController.removeListener(_validateBasicInfo);
@@ -3248,6 +3876,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
 
   Widget _buildPremiumMediaTab() {
     final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
     
     return SingleChildScrollView(
       controller: widget.scrollController,
@@ -3261,14 +3890,37 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
             'Upload your business logo (optional)',
             style: TextStyle(color: Colors.grey[600], fontSize: 12),
           ),
+          SizedBox(height: 4),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: widget.primaryGreen.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.info_outline, size: 12, color: widget.primaryGreen),
+                SizedBox(width: 4),
+                Text(
+                  'Auto-compressed to under 1MB',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: widget.primaryGreen,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
           SizedBox(height: 16),
           
           Center(
             child: GestureDetector(
-              onTap: _pickLogoImage,
+              onTap: _isImageProcessing ? null : _pickLogoImage,
               child: Container(
-                width: screenWidth > 600 ? 150 : 120,
-                height: screenWidth > 600 ? 150 : 120,
+                width: isTablet ? 150 : 120,
+                height: isTablet ? 150 : 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
@@ -3283,69 +3935,186 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                     ),
                   ],
                 ),
-                child: _logoImage != null
-                    ? ClipOval(
-                        child: Image.file(
-                          _logoImage!,
-                          fit: BoxFit.cover,
+                child: _isImageProcessing
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              color: widget.primaryGreen,
+                              strokeWidth: 2,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Compressing...',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: widget.primaryGreen,
+                              ),
+                            ),
+                          ],
                         ),
                       )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.add_photo_alternate_rounded,
-                            size: screenWidth > 600 ? 40 : 32,
-                            color: widget.primaryGreen,
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Add Logo',
-                            style: GoogleFonts.poppins(
-                              color: widget.primaryGreen,
-                              fontSize: screenWidth > 600 ? 14 : 12,
-                              fontWeight: FontWeight.w600,
+                    : _logoImage != null
+                        ? ClipOval(
+                            child: Image.file(
+                              _logoImage!,
+                              fit: BoxFit.cover,
                             ),
+                          )
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add_photo_alternate_rounded,
+                                size: isTablet ? 40 : 32,
+                                color: widget.primaryGreen,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Add Logo',
+                                style: GoogleFonts.poppins(
+                                  color: widget.primaryGreen,
+                                  fontSize: isTablet ? 14 : 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Max 1MB',
+                                style: GoogleFonts.inter(
+                                  color: Colors.grey[500],
+                                  fontSize: 9,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
               ),
             ),
           ),
           
+          if (_logoImage != null && !_isImageProcessing)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Center(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _logoImage = null;
+                      _logoBase64 = null;
+                    });
+                    _showSuccessSnackBar('Logo removed');
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: widget.accentRed.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: widget.accentRed.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.delete_outline, size: 14, color: widget.accentRed),
+                        SizedBox(width: 4),
+                        Text(
+                          'Remove Logo',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: widget.accentRed,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          
           SizedBox(height: 24),
           
-          _buildPremiumSectionHeader('Gallery Images', Icons.photo_library_rounded),
+        /*  _buildPremiumSectionHeader('Gallery Images', Icons.photo_library_rounded),
           SizedBox(height: 8),
           Text(
             'Add up to 5 images to showcase your business (optional)',
             style: TextStyle(color: Colors.grey[600], fontSize: 12),
           ),
+          SizedBox(height: 4),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: widget.primaryGreen.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.info_outline, size: 12, color: widget.primaryGreen),
+                SizedBox(width: 4),
+                Text(
+                  'Auto-compressed to under 1MB per image',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: widget.primaryGreen,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
           SizedBox(height: 16),
           
-          GridView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: screenWidth > 600 ? 4 : 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 1,
+          if (_isImageProcessing)
+            Container(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(
+                      color: widget.primaryGreen,
+                      strokeWidth: 2,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Compressing image...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: widget.primaryGreen,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            itemCount: _galleryImages.length + 1,
-            itemBuilder: (context, index) {
-              if (index == _galleryImages.length) {
-                return _buildPremiumAddImageButton();
-              }
-              return _buildPremiumGalleryImageItem(index);
-            },
-          ),
+          
+          if (!_isImageProcessing)
+            GridView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isTablet ? 4 : 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 1,
+              ),
+              itemCount: _galleryImages.length + 1,
+              itemBuilder: (context, index) {
+                if (index == _galleryImages.length) {
+                  return _buildPremiumAddImageButton();
+                }
+                return _buildPremiumGalleryImageItem(index);
+              },
+            ),  */
         ],
       ),
     );
   }
 
   Widget _buildPremiumDetailsTab() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    
     return SingleChildScrollView(
       controller: widget.scrollController,
       padding: EdgeInsets.all(16),
@@ -3502,6 +4271,8 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
@@ -3517,10 +4288,11 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
+        style: GoogleFonts.inter(fontSize: screenWidth > 600 ? 15 : 13),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
-          prefixIcon: Icon(icon, color: widget.primaryGreen, size: 18),
+          labelStyle: TextStyle(color: Colors.grey[600], fontSize: screenWidth > 600 ? 13 : 12),
+          prefixIcon: Icon(icon, color: widget.primaryGreen, size: screenWidth > 600 ? 20 : 18),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: Colors.grey[300]!),
@@ -3550,6 +4322,8 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     required Function(T?) onChanged,
     required IconData icon,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
@@ -3565,8 +4339,8 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
         value: value,
         decoration: InputDecoration(
           labelText: hint,
-          labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
-          prefixIcon: Icon(icon, color: widget.primaryGreen, size: 18),
+          labelStyle: TextStyle(color: Colors.grey[600], fontSize: screenWidth > 600 ? 13 : 12),
+          prefixIcon: Icon(icon, color: widget.primaryGreen, size: screenWidth > 600 ? 20 : 18),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: Colors.grey[300]!),
@@ -3602,6 +4376,9 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     String hint = 'Add item',
     bool isSocialMedia = false,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -3612,7 +4389,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                 controller: controller,
                 decoration: InputDecoration(
                   hintText: hint,
-                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: isTablet ? 13 : 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: Colors.grey[300]!),
@@ -3623,7 +4400,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                   ),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: isTablet ? 14 : 12),
                 ),
               ),
             ),
@@ -3643,21 +4420,21 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
               ),
               child: IconButton(
                 onPressed: onAdd,
-                icon: Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                padding: EdgeInsets.all(10),
+                icon: Icon(Icons.add_rounded, color: Colors.white, size: isTablet ? 22 : 20),
+                padding: EdgeInsets.all(isTablet ? 10 : 8),
                 constraints: BoxConstraints(),
               ),
             ),
           ],
         ),
         if (tags.isNotEmpty) ...[
-          SizedBox(height: 12),
+          SizedBox(height: isTablet ? 12 : 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: List.generate(tags.length, (index) {
               return Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: isTablet ? 12 : 10, vertical: isTablet ? 6 : 5),
                 decoration: BoxDecoration(
                   gradient: isSocialMedia
                       ? LinearGradient(
@@ -3684,7 +4461,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                       Icon(
                         _getSocialMediaIcon(tags[index]),
                         color: Colors.white,
-                        size: 12,
+                        size: isTablet ? 14 : 12,
                       ),
                       SizedBox(width: 4),
                     ],
@@ -3692,7 +4469,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                       isSocialMedia ? _getSocialMediaName(tags[index]) : tags[index],
                       style: TextStyle(
                         color: isSocialMedia ? Colors.white : widget.primaryGreen,
-                        fontSize: 11,
+                        fontSize: isTablet ? 12 : 11,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -3702,7 +4479,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                       child: Icon(
                         Icons.close_rounded,
                         color: isSocialMedia ? Colors.white70 : widget.accentRed,
-                        size: 14,
+                        size: isTablet ? 16 : 14,
                       ),
                     ),
                   ],
@@ -3716,6 +4493,9 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
   }
 
   Widget _buildPremiumAddImageButton() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    
     return GestureDetector(
       onTap: _galleryImages.length < 5 ? _pickGalleryImage : null,
       child: Container(
@@ -3734,15 +4514,23 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
             Icon(
               _galleryImages.length < 5 ? Icons.add_photo_alternate_rounded : Icons.block_rounded,
               color: _galleryImages.length < 5 ? widget.primaryGreen : Colors.grey[400],
-              size: 24,
+              size: isTablet ? 28 : 24,
             ),
-            SizedBox(height: 4),
+            SizedBox(height: isTablet ? 6 : 4),
             Text(
               _galleryImages.length < 5 ? 'Add' : 'Max',
               style: TextStyle(
                 color: _galleryImages.length < 5 ? widget.primaryGreen : Colors.grey[500],
-                fontSize: 10,
+                fontSize: isTablet ? 11 : 10,
                 fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'Max 1MB',
+              style: GoogleFonts.inter(
+                color: Colors.grey[400],
+                fontSize: 8,
               ),
             ),
           ],
@@ -3752,6 +4540,9 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
   }
 
   Widget _buildPremiumGalleryImageItem(int index) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    
     return Stack(
       children: [
         Container(
@@ -3776,7 +4567,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
               }
             },
             child: Container(
-              padding: EdgeInsets.all(4),
+              padding: EdgeInsets.all(isTablet ? 6 : 4),
               decoration: BoxDecoration(
                 color: widget.accentRed,
                 shape: BoxShape.circle,
@@ -3787,73 +4578,12 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                   ),
                 ],
               ),
-              child: Icon(Icons.close_rounded, color: Colors.white, size: 10),
+              child: Icon(Icons.close_rounded, color: Colors.white, size: isTablet ? 14 : 12),
             ),
           ),
         ),
       ],
     );
-  }
-
-  Future<void> _pickLogoImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery, 
-      maxWidth: 400, 
-      maxHeight: 400, 
-      imageQuality: 70,
-    );
-    
-    if (pickedFile != null) {
-      final imageFile = File(pickedFile.path);
-      final bytes = await imageFile.readAsBytes();
-      final base64String = base64Encode(bytes);
-      
-      if (base64String.length > 100000) {
-        _showErrorSnackBar('Logo is too large. Please choose a smaller image.');
-        return;
-      }
-      
-      if (mounted) {
-        setState(() {
-          _logoImage = imageFile;
-          _logoBase64 = base64String;
-        });
-      }
-    }
-  }
-
-  Future<void> _pickGalleryImage() async {
-    if (_galleryImages.length >= 5) {
-      _showErrorSnackBar('Maximum 5 images allowed');
-      return;
-    }
-
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery, 
-      maxWidth: 800, 
-      maxHeight: 800, 
-      imageQuality: 70,
-    );
-    
-    if (pickedFile != null) {
-      final imageFile = File(pickedFile.path);
-      final bytes = await imageFile.readAsBytes();
-      final base64String = base64Encode(bytes);
-      
-      if (base64String.length > 200000) {
-        _showErrorSnackBar('Image is too large. Please choose a smaller image.');
-        return;
-      }
-      
-      if (mounted) {
-        setState(() {
-          _galleryImages.add(imageFile);
-          _galleryBase64.add(base64String);
-        });
-      }
-    }
   }
 
   String _getSocialMediaName(String url) {
@@ -3912,8 +4642,8 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     if (_logoBase64 != null) totalSize += _logoBase64!.length;
     _galleryBase64.forEach((img) => totalSize += img.length);
     
-    if (totalSize > 800000) {
-      _showErrorSnackBar('Total image size too large. Please use smaller images.');
+    if (totalSize > 8 * 1024 * 1024) { // 8MB total limit
+      _showErrorSnackBar('Total image size too large. Please use fewer or smaller images.');
       return;
     }
 
@@ -3959,30 +4689,42 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
       languagesSpoken: ['English', 'Bengali'],
     );
 
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 50,
+                height: 50,
+                child: CircularProgressIndicator(color: widget.primaryGreen),
+              ),
+              SizedBox(height: 20),
+              Text('Submitting...', style: GoogleFonts.poppins()),
+            ],
+          ),
+        ),
+      ),
+    );
+
     final success = await provider.addBusinessPartner(newPartner);
+    
+    if (mounted) {
+      Navigator.pop(context); // Close loading
+    }
     
     if (success && mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Business added successfully! Pending admin approval.',
-                  style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: widget.primaryGreen,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: EdgeInsets.all(12),
-        ),
-      );
+      _showSuccessSnackBar('Business added successfully! Pending admin approval.');
       
       if (widget.onBusinessAdded != null) {
         widget.onBusinessAdded!();
@@ -3990,6 +4732,37 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     } else if (mounted) {
       _showErrorSnackBar('Failed to add business. Please try again.');
     }
+  }
+
+
+
+  void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: widget.primaryGreen,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(12),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   void _showErrorSnackBar(String message) {
@@ -4008,6 +4781,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: EdgeInsets.all(12),
+        duration: Duration(seconds: 3),
       ),
     );
   }

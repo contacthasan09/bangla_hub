@@ -48,22 +48,15 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
   // Track app lifecycle
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
-  // Premium Color Palette - Matching EventDetailsScreen
+  // Premium Color Palette
   final Color _primaryRed = Color(0xFFD32F2F);
   final Color _primaryGreen = Color(0xFF2E7D32);
   final Color _darkGreen = Color(0xFF1B5E20);
   final Color _goldAccent = Color(0xFFFFB300);
-  
-  // Dark button colors
-  final Color _coralRed = Color(0xFFC62828);
-  final Color _mintGreen = Color(0xFF2E7D32);
   final Color _softGold = Color(0xFFFF8F00);
-  final Color _emeraldGreen = Color(0xFF1B5E20);
-  final Color _sapphireBlue = Color(0xFF1565C0);
-  final Color _amethystPurple = Color(0xFF6A1B9A);
   final Color _deepRed = Color(0xFFB71C1C);
   
-  // Light Green Background (50% opacity)
+  // Light backgrounds
   final Color _lightGreenBg = Color(0x80E8F5E9);
   final Color _lightGreen = Color(0xFFE8F5E9);
   final Color _lightRed = Color(0xFFFFEBEE);
@@ -71,10 +64,8 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
   final Color _lightBlue = Color(0xFFE3F2FD);
   final Color _creamWhite = Color(0xFFFFF9E6);
   
-  // 50% opacity colors for backgrounds
-  final Color _creamWhite50 = Color(0x80FFF9E6);
+  // 50% opacity colors
   final Color _lightGreen50 = Color(0x80E8F5E9);
-  final Color _lightRed50 = Color(0x80FFEBEE);
   final Color _lightYellow50 = Color(0x80FFF3E0);
   final Color _lightBlue50 = Color(0x80E3F2FD);
   
@@ -85,18 +76,15 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
   // Text Colors
   final Color _textPrimary = Color(0xFF1A2B3C);
   final Color _textSecondary = Color(0xFF5D6D7E);
-  final Color _textLight = Color(0xFF6C757D);
   
   // Additional colors
   final Color _successGreen = Color(0xFF2E7D32);
   final Color _infoBlue = Color(0xFF1565C0);
-  final Color _badgeGold = Color(0xFFFF8F00);
 
   @override
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     _animationController = AnimationController(
@@ -118,8 +106,6 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
     if (_appLifecycleState == AppLifecycleState.resumed) {
       _startAnimations();
     }
-    
-    // REMOVED: User fetching logic - now using data from partner directly
   }
   
   @override
@@ -129,10 +115,8 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
     });
     
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _startAnimations();
     } else {
-      // App is not visible - stop animations to save resources
       _stopAnimations();
     }
   }
@@ -140,33 +124,31 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
   void _startAnimations() {
     if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
       _animationController.forward();
-      // Particle controllers already running via repeat
     }
   }
   
   void _stopAnimations() {
     _animationController.stop();
-    // Particle controllers continue but we don't stop them as they're repetitive
   }
 
   @override
   void dispose() {
     print('🗑️ PremiumPartnerDetailsScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
-    
     _animationController.dispose();
     _pageController.dispose();
-    
-    // ✅ Dispose particle controllers
     for (var controller in _particleControllers) {
       controller.dispose();
     }
-    
     super.dispose();
   }
 
+  // Helper function to check if string is a URL
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
+  }
+
+  // Helper function to clean Base64 string
   String _cleanBase64String(String base64) {
     String cleaned = base64.trim();
     if (cleaned.contains('base64,')) {
@@ -179,11 +161,81 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
     return cleaned;
   }
 
-  // NEW: Build partner poster image from partner.postedByProfileImageBase64
+  // Build partner poster image (handles both URL and Base64)
   Widget _buildPartnerPosterImage({bool isLarge = false}) {
-    if (widget.partner.postedByProfileImageBase64 != null && widget.partner.postedByProfileImageBase64!.isNotEmpty) {
+    final imageData = widget.partner.postedByProfileImageBase64;
+    
+    if (imageData != null && imageData.isNotEmpty) {
+      // Check if it's a URL
+      if (_isUrlString(imageData)) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Image.network(
+            imageData,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading profile image: $error');
+              return _buildDefaultProfileImage(isLarge: isLarge);
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(_goldAccent),
+                ),
+              );
+            },
+          ),
+        );
+      } else {
+        // It's Base64 data
+        try {
+          String base64String = imageData;
+          
+          if (base64String.contains('base64,')) {
+            base64String = base64String.split('base64,').last;
+          }
+          
+          base64String = base64String.replaceAll(RegExp(r'\s'), '');
+          
+          while (base64String.length % 4 != 0) {
+            base64String += '=';
+          }
+          
+          final bytes = base64Decode(base64String);
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                print('Error decoding profile image: $error');
+                return _buildDefaultProfileImage(isLarge: isLarge);
+              },
+            ),
+          );
+        } catch (e) {
+          print('Error processing profile image: $e');
+          return _buildDefaultProfileImage(isLarge: isLarge);
+        }
+      }
+    }
+    
+    return _buildDefaultProfileImage(isLarge: isLarge);
+  }
+
+  // Build logo image (handles Base64, fills entire container)
+  Widget _buildLogoImage({bool fillContainer = false}) {
+    final logoData = widget.partner.logoImageBase64;
+    
+    if (logoData != null && logoData.isNotEmpty) {
       try {
-        String base64String = widget.partner.postedByProfileImageBase64!;
+        String base64String = logoData;
         
         if (base64String.contains('base64,')) {
           base64String = base64String.split('base64,').last;
@@ -196,18 +248,70 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
         }
         
         final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage(isLarge: isLarge);
-          },
-        );
+        
+        if (fillContainer) {
+          // Fill entire container without any shape clipping
+          return Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildDefaultLogoImage(fillContainer: fillContainer);
+            },
+          );
+        } else {
+          // For fixed size containers
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: 60,
+              height: 60,
+              errorBuilder: (context, error, stackTrace) {
+                return _buildDefaultLogoImage(fillContainer: fillContainer);
+              },
+            ),
+          );
+        }
       } catch (e) {
-        return _buildDefaultProfileImage(isLarge: isLarge);
+        print('Error decoding logo image: $e');
+        return _buildDefaultLogoImage(fillContainer: fillContainer);
       }
     }
-    return _buildDefaultProfileImage(isLarge: isLarge);
+    
+    return _buildDefaultLogoImage(fillContainer: fillContainer);
+  }
+
+  // Build gallery image (handles Base64)
+  Widget _buildGalleryImage(String base64Data) {
+    try {
+      String cleanedBase64 = _cleanBase64String(base64Data);
+      final bytes = base64Decode(cleanedBase64);
+      return Image.memory(
+        bytes,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: Center(
+              child: Icon(Icons.broken_image, size: 50, color: Colors.grey[600]),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      print('Error decoding gallery image: $e');
+      return Container(
+        color: Colors.grey[300],
+        child: Center(
+          child: Icon(Icons.broken_image, size: 50, color: Colors.grey[600]),
+        ),
+      );
+    }
   }
 
   Widget _buildDefaultProfileImage({bool isLarge = false}) {
@@ -221,6 +325,47 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
         ),
       ),
     );
+  }
+
+  Widget _buildDefaultLogoImage({bool fillContainer = false}) {
+    if (fillContainer) {
+      // Fill entire container with gradient background
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_primaryGreen, _darkGreen],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.store_rounded,
+            size: 80,
+            color: Colors.white.withOpacity(0.8),
+          ),
+        ),
+      );
+    } else {
+      // Fixed size container
+      return Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.store_rounded,
+            size: 30,
+            color: Colors.grey[600],
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildAnimatedParticle(int index, double width, double height) {
@@ -258,77 +403,12 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
     );
   }
 
-  void _showPremiumSnackBar(String message, {bool isError = false}) {
-    if (!mounted) return;
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Container(
-          padding: EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: isError 
-                  ? [_primaryRed, _deepRed] 
-                  : [_primaryGreen, _darkGreen],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                offset: Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(
-                isError ? Icons.error_rounded : Icons.check_circle_rounded,
-                color: Colors.white,
-                size: 24,
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(16),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  String _formatCount(int count) {
-    if (count >= 1000000) {
-      return '${(count / 1000000).toStringAsFixed(1)}M';
-    } else if (count >= 1000) {
-      return '${(count / 1000).toStringAsFixed(1)}K';
-    } else {
-      return count.toString();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final partner = widget.partner;
     final hasImages = partner.galleryImagesBase64 != null && partner.galleryImagesBase64!.isNotEmpty;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
-    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
@@ -378,31 +458,80 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                         ? _buildPremiumImageGallery(partner, isTablet)
                         : Container(
                             height: isTablet ? 300 : 250,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [_primaryGreen, _darkGreen],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                            ),
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(isTablet ? 24 : 20),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      Icons.business_center_rounded,
-                                      color: _goldAccent,
-                                      size: isTablet ? 70 : 60,
+                            width: double.infinity,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                // Logo image filling entire container
+                                _buildLogoImage(fillContainer: true),
+                                
+                                // Dark overlay for better text readability
+                                Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.black.withOpacity(0.4),
+                                        Colors.black.withOpacity(0.2),
+                                        Colors.black.withOpacity(0.6),
+                                      ],
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                                
+                                // Business name overlay
+                                Positioned(
+                                  bottom: isTablet ? 30 : 20,
+                                  left: isTablet ? 30 : 20,
+                                  right: isTablet ? 30 : 20,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                 /*     Text(
+                                        partner.businessName,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isTablet ? 28 : 22,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withOpacity(0.5),
+                                              blurRadius: 10,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      SizedBox(height: isTablet ? 8 : 6),*/
+                                      Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: _goldAccent,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.verified_rounded, color: Colors.white, size: isTablet ? 16 : 14),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Premium Partner',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: isTablet ? 12 : 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                   ),
@@ -416,17 +545,22 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                         children: [
                           SizedBox(height: isTablet ? 20 : 16),
                           
-                          // User Profile and Business Info - Using partner's stored user info
+                          // Business Info Row with Logo
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // User Profile Image with Premium Border - from partner.postedByProfileImageBase64
+                              // Business Logo - RECTANGULAR
                               Container(
-                                width: isTablet ? 80 : 70,
-                                height: isTablet ? 80 : 70,
+                                width: isTablet ? 90 : 80,
+                                height: isTablet ? 90 : 80,
                                 decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: _goldAccent, width: 3),
+                                  gradient: LinearGradient(
+                                    colors: [_primaryGreen, _darkGreen],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: _goldAccent, width: 2),
                                   boxShadow: [
                                     BoxShadow(
                                       color: _goldAccent.withOpacity(0.3),
@@ -435,8 +569,9 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                                     ),
                                   ],
                                 ),
-                                child: ClipOval(
-                                  child: _buildPartnerPosterImage(isLarge: true),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: _buildLogoImage(fillContainer: true),
                                 ),
                               ),
                               
@@ -491,7 +626,7 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                             ],
                           ),
                           
-                          SizedBox(height: isTablet ? 16 : 12),
+                          SizedBox(height: isTablet ? 20 : 16),
                           
                           // Industry and Type Badges
                           Wrap(
@@ -978,7 +1113,6 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                           
                           // Premium Footer
                           SizedBox(height: isTablet ? 40 : 32),
-                          
                           Container(
                             padding: EdgeInsets.all(isTablet ? 24 : 20),
                             decoration: BoxDecoration(
@@ -992,16 +1126,17 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                             ),
                             child: Row(
                               children: [
+                                // Logo container - RECTANGULAR with rounded corners
                                 Container(
-                                  width: isTablet ? 60 : 50,
-                                  height: isTablet ? 60 : 50,
+                                  width: isTablet ? 80 : 70,
+                                  height: isTablet ? 80 : 70,
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [_primaryRed, _primaryGreen],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
-                                    shape: BoxShape.circle,
+                                    borderRadius: BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(
                                         color: _primaryRed.withOpacity(0.3),
@@ -1010,12 +1145,9 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                                       ),
                                     ],
                                   ),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.business_center_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 28 : 24,
-                                    ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: _buildLogoImage(fillContainer: true),
                                   ),
                                 ),
                                 SizedBox(width: isTablet ? 20 : 16),
@@ -1102,7 +1234,6 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
 
   Widget _buildPremiumImageGallery(NetworkingBusinessPartner partner, bool isTablet) {
     final galleryImages = partner.galleryImagesBase64 ?? [];
-    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
     return Stack(
       children: [
@@ -1120,17 +1251,7 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
               }
             },
             itemBuilder: (context, index) {
-              return Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: MemoryImage(
-                      base64Decode(_cleanBase64String(galleryImages[index])),
-                    ),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              );
+              return _buildGalleryImage(galleryImages[index]);
             },
           ),
         ),
@@ -1153,10 +1274,62 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
           ),
         ),
         
+        // Business name overlay on gallery
+        Positioned(
+          bottom: isTablet ? 30 : 20,
+          left: isTablet ? 30 : 20,
+          right: isTablet ? 30 : 20,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                partner.businessName,
+                style: GoogleFonts.poppins(
+                  fontSize: isTablet ? 28 : 22,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 10,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              SizedBox(height: isTablet ? 8 : 6),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _goldAccent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.verified_rounded, color: Colors.white, size: isTablet ? 16 : 14),
+                    SizedBox(width: 4),
+                    Text(
+                      'Premium Partner',
+                      style: GoogleFonts.poppins(
+                        fontSize: isTablet ? 12 : 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        
         // Image Counter Badge
         if (galleryImages.length > 1)
           Positioned(
-            bottom: 16,
+            top: 16,
             right: 16,
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1342,8 +1515,6 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
     required List<Color> gradientColors,
     required bool isTablet,
   }) {
-    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
-    
     return Container(
       padding: EdgeInsets.all(isTablet ? 20 : 16),
       decoration: BoxDecoration(
@@ -1384,20 +1555,11 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
               ],
             ),
             child: Center(
-              child: shouldAnimate
-                  ? RotationTransition(
-                      turns: AlwaysStoppedAnimation(0), // No rotation, just placeholder
-                      child: Icon(
-                        icon,
-                        color: Colors.white,
-                        size: isTablet ? 22 : 18,
-                      ),
-                    )
-                  : Icon(
-                      icon,
-                      color: Colors.white,
-                      size: isTablet ? 22 : 18,
-                    ),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: isTablet ? 22 : 18,
+              ),
             ),
           ),
           SizedBox(width: isTablet ? 16 : 12),
@@ -1439,8 +1601,6 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
     required bool isTablet,
     VoidCallback? onTap,
   }) {
-    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
-    
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1469,20 +1629,11 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                   borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                 ),
                 child: Center(
-                  child: shouldAnimate
-                      ? RotationTransition(
-                          turns: AlwaysStoppedAnimation(0), // No rotation, just placeholder
-                          child: Icon(
-                            icon,
-                            color: onTap != null ? Colors.white : Colors.grey.shade600,
-                            size: isTablet ? 20 : 18,
-                          ),
-                        )
-                      : Icon(
-                          icon,
-                          color: onTap != null ? Colors.white : Colors.grey.shade600,
-                          size: isTablet ? 20 : 18,
-                        ),
+                  child: Icon(
+                    icon,
+                    color: onTap != null ? Colors.white : Colors.grey.shade600,
+                    size: isTablet ? 20 : 18,
+                  ),
                 ),
               ),
               SizedBox(width: isTablet ? 16 : 12),
@@ -1539,8 +1690,6 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
     required VoidCallback onPressed,
     required bool isTablet,
   }) {
-    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
-    
     return Container(
       decoration: BoxDecoration(
         gradient: gradient,

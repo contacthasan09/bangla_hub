@@ -144,7 +144,7 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
   // Search debounce timer
   Timer? _searchDebounceTimer;
 
-  void _showLoginRequiredDialog(BuildContext context, String feature) {
+/*  void _showLoginRequiredDialog(BuildContext context, String feature) {
     final Color _primaryRed = Color(0xFFF42A41);
     final Color _primaryGreen = Color(0xFF006A4E);
     final Color _goldAccent = Color(0xFFFFD700);
@@ -314,7 +314,291 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
         ),
       ),
     );
+  }   */
+
+
+/*   void _showLoginRequiredDialog(BuildContext context, String feature) {
+  final Color _primaryRed = Color(0xFFE03C32);
+  final Color _primaryGreen = Color(0xFF006A4E);
+  final Color _goldAccent = Color(0xFFFFD700);
+  final Color _deepRed = Color(0xFFC62828);
+  
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.85,
+        constraints: BoxConstraints(maxWidth: 320),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_primaryGreen, _primaryRed],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 20,
+              offset: Offset(0, 10),
+            ),
+            BoxShadow(
+              color: _primaryRed.withOpacity(0.3),
+              blurRadius: 30,
+              offset: Offset(0, 0),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header with gradient - smaller
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_primaryRed, _primaryGreen],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_goldAccent, Color(0xFFFFC107)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: _goldAccent.withOpacity(0.4),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.lock_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Login Required',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'to access $feature',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    ),
+                    child: Text(
+                      'Create an account or sign in to access full details',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.9),
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  
+                  // Login Button - colorful
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LoginScreen(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: _primaryGreen,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 3,
+                        shadowColor: Colors.white.withOpacity(0.3),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.login_rounded, size: 18),
+                          SizedBox(width: 8),
+                          Text(
+                            'Login',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  
+                  // Sign Up Button - colorful
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RegisterScreen(role: 'user'),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(color: Colors.white, width: 1.5),
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.person_add_rounded, size: 18),
+                          SizedBox(width: 8),
+                          Text(
+                            'Create Account',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  
+                  // Continue Browsing - elegant
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    ),
+                    child: Text(
+                      'Continue Browsing',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.7),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+*/
+
+
+
+  void _showLoginRequiredDialog(BuildContext context, String feature) {
+    final Color _primaryRed = Color(0xFFE03C32);
+    final Color _primaryGreen = Color(0xFF006A4E);
+    final Color _goldAccent = Color(0xFFFFD700);
+    
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          constraints: BoxConstraints(maxWidth: 320),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [_primaryGreen, _primaryRed]),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryRed, _primaryGreen]), borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                child: Column(
+                  children: [
+                    Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(gradient: LinearGradient(colors: [_goldAccent, Color(0xFFFFC107)]), shape: BoxShape.circle), child: Icon(Icons.lock_rounded, color: Colors.white, size: 24)),
+                    SizedBox(height: 8),
+                    Text('Login Required', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Text('to access $feature', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withOpacity(0.9))),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen())); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: _primaryGreen, padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Login', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterScreen(role: 'user'))); }, style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white, width: 1.5), padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Create Account', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    TextButton(onPressed: () => Navigator.pop(context), child: Text('Continue Browsing', style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withOpacity(0.7)))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
+
+  
+
+
 
   @override
   bool get wantKeepAlive => true;
@@ -664,7 +948,7 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                     child: Text(
                       'Job Sites',
                       style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 36 : 28,
+                        fontSize: isTablet ? 32 : 24,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
@@ -676,7 +960,8 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                   Text(
                     '🌐 Discover Opportunities Worldwide',
                     style: GoogleFonts.inter(
-                      fontSize: isTablet ? 18 : 16,
+                   //   fontSize: isTablet ? 18 : 16,
+                      fontSize: isTablet ? 14 : 12,
                       color: Colors.white.withOpacity(0.9),
                       fontWeight: FontWeight.w500,
                     ),
@@ -704,7 +989,7 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
                             Text(
                               '${provider.jobSites.length} Sites Available',
                               style: GoogleFonts.inter(
-                                fontSize: isTablet ? 14 : 12,
+                                fontSize: isTablet ? 12 : 10,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),

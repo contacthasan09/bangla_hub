@@ -14,6 +14,7 @@ import 'package:bangla_hub/screens/auth/signup_screen.dart';
 import 'package:bangla_hub/screens/user_app/education_youth/admissions_guidance/admissions_guidance_details_screen.dart';
 import 'package:bangla_hub/widgets/common/distance_widget.dart';
 import 'package:bangla_hub/widgets/common/global_location_filter_bar.dart';
+import 'package:bangla_hub/widgets/common/global_location_guard.dart';
 import 'package:bangla_hub/widgets/common/osm_location_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -56,6 +57,7 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
   late Animation<Offset> _slideAnimation;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  late AnimationController _rotateController;
   
   // Particle animation controllers
   late List<AnimationController> _particleControllers;
@@ -74,43 +76,27 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     // Initialize animations
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 1000),
-    );
+    _fadeController = AnimationController(vsync: this, duration: Duration(milliseconds: 1000));
     _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut);
     
-    _slideController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 800),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+    _slideController = AnimationController(vsync: this, duration: Duration(milliseconds: 800));
+    _slideAnimation = Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
     
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 1500),
-    );
-    _pulseAnimation = CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    );
+    _pulseController = AnimationController(vsync: this, duration: Duration(milliseconds: 1500));
+    _pulseAnimation = CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut);
+    
+    _rotateController = AnimationController(vsync: this, duration: Duration(milliseconds: 1500));
     
     // Initialize particle controllers
     _particleControllers = List.generate(10, (index) {
-      return AnimationController(
-        vsync: this,
-        duration: Duration(seconds: 3 + (index % 3)),
-      )..repeat(reverse: true);
+      return AnimationController(vsync: this, duration: Duration(seconds: 3 + (index % 3)))
+        ..repeat(reverse: true);
     });
     
-    // Start animations if app is visible
     if (_appLifecycleState == AppLifecycleState.resumed) {
       _startAnimations();
     }
@@ -118,7 +104,6 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
       
-      // Get user location if not already
       final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
       if (locationProvider.currentUserLocation == null) {
         locationProvider.getUserLocation(showLoading: false);
@@ -128,15 +113,10 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
   
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    setState(() {
-      _appLifecycleState = state;
-    });
-    
+    setState(() => _appLifecycleState = state);
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _startAnimations();
     } else {
-      // App is not visible - stop animations to save resources
       _stopAnimations();
     }
   }
@@ -146,7 +126,7 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
       _fadeController.forward();
       _slideController.forward();
       _pulseController.repeat(reverse: true);
-      // Particle controllers already running via repeat
+      _rotateController.repeat();
     }
   }
   
@@ -154,21 +134,19 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
     _fadeController.stop();
     _slideController.stop();
     _pulseController.stop();
-    // Particle controllers will continue but we don't stop them as they're repetitive
+    _rotateController.stop();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     
-    // ✅ SAFE: Post-frame callback prevents build-phase state changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       
       final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
       final educationProvider = Provider.of<EducationProvider>(context, listen: false);
       
-      // Sync with location filter when dependencies change
       if (locationProvider.isFilterActive && locationProvider.selectedState != null) {
         educationProvider.setFilter(
           EducationCategory.schoolCollegeAdmissions,
@@ -183,21 +161,18 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
   @override
   void dispose() {
     print('🗑️ AdmissionsGuidanceScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
-    
-    // ✅ Dispose animation controllers
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
-    
-    // ✅ Dispose particle controllers
-    for (var controller in _particleControllers) {
-      controller.dispose();
-    }
-    
+    _rotateController.dispose();
+    for (var controller in _particleControllers) { controller.dispose(); }
     super.dispose();
+  }
+
+  // Helper function to check if string is a URL
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
   }
 
   Future<void> _loadData() async {
@@ -213,32 +188,177 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
     if (mounted) setState(() => _isLoading = false);
   }
 
-  // Get filtered services - ONLY SHOW VERIFIED SERVICES and apply location filter
+  void _showLocationFilterDialog(BuildContext context) {
+    final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+      ),
+      builder: (context) => SafeArea(
+        child: Container(
+          height: screenHeight * 0.8,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Filter by State', 
+                    style: GoogleFonts.poppins(
+                      fontSize: 20, 
+                      fontWeight: FontWeight.w700, 
+                      color: _primaryGreen
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close), 
+                    onPressed: () => Navigator.pop(context)
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              
+              GestureDetector(
+                onTap: () {
+                  filterProvider.clearLocationFilter();
+                  _loadData();
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Showing consultants from all states'), 
+                      backgroundColor: Color(0xFF2E7D32), 
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade200))
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.public, color: _primaryGreen),
+                      const SizedBox(width: 15),
+                      Text('All States', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 10),
+              
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: CommunityStates.states.length,
+                  itemBuilder: (context, index) {
+                    final state = CommunityStates.states[index];
+                    final isSelected = filterProvider.selectedState == state;
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        filterProvider.setLocationFilter(state, fromEvents: true);
+                        _loadData();
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Showing consultants in $state'), 
+                            backgroundColor: _primaryGreen, 
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? _primaryGreen.withOpacity(0.1) : null,
+                          border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.location_on, color: isSelected ? _primaryGreen : Colors.grey),
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: Text(
+                                state, 
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16, 
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, 
+                                  color: isSelected ? _primaryGreen : Colors.black87
+                                ),
+                              ),
+                            ),
+                            if (isSelected) Icon(Icons.check_circle, color: _primaryGreen),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChangeLocationButton(bool isTablet) {
+    return Consumer<LocationFilterProvider>(
+      builder: (context, filterProvider, child) {
+        final hasFilter = filterProvider.isFilterActive;
+        
+        return GestureDetector(
+          onTap: () => _showLocationFilterDialog(context),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: isTablet ? 12 : 10, vertical: isTablet ? 6 : 4),
+            decoration: BoxDecoration(
+              gradient: hasFilter ? LinearGradient(colors: [_primaryGreen, _darkGreen]) : LinearGradient(colors: [Colors.white.withOpacity(0.2), Colors.white.withOpacity(0.1)]),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: hasFilter ? _goldAccent.withOpacity(0.5) : _goldAccent.withOpacity(0.4), width: 0.8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(hasFilter ? Icons.edit_location_rounded : Icons.location_on_rounded, size: isTablet ? 14 : 12, color: hasFilter ? _goldAccent : _goldAccent),
+                const SizedBox(width: 4),
+                Text(hasFilter ? "Change Location" : "Select Location", style: GoogleFonts.poppins(fontSize: isTablet ? 11 : 10, fontWeight: hasFilter ? FontWeight.w600 : FontWeight.w500, color: Colors.white)),
+                if (hasFilter) ...[
+                  const SizedBox(width: 4),
+                  Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFFFFB300), shape: BoxShape.circle)),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   List<AdmissionsGuidance> _getFilteredServices(
     List<AdmissionsGuidance> services,
     LocationFilterProvider locationProvider,
   ) {
-    // Only show verified and active services
-    var verifiedServices = services.where((service) => 
-      service.isVerified == true && service.isActive == true
-    ).toList();
+    var verifiedServices = services.where((service) => service.isVerified == true && service.isActive == true).toList();
     
     print('✅ Verified services: ${verifiedServices.length} out of ${services.length} total');
     
-    // Apply global location filter if active
     if (locationProvider.isFilterActive && locationProvider.selectedState != null) {
-      verifiedServices = verifiedServices.where((service) {
-        return service.state == locationProvider.selectedState;
-      }).toList();
+      verifiedServices = verifiedServices.where((service) => service.state == locationProvider.selectedState).toList();
       print('📍 After state filter (${locationProvider.selectedState}): ${verifiedServices.length} services');
     }
     
-    // Apply country filter
     if (_selectedFilter != 'All') {
       verifiedServices = verifiedServices.where((service) {
-        return service.countries.any((country) => 
-          country.toLowerCase().contains(_selectedFilter!.toLowerCase())
-        );
+        return service.countries.any((country) => country.toLowerCase().contains(_selectedFilter!.toLowerCase()));
       }).toList();
     }
     
@@ -246,7 +366,7 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
   }
 
   void _showLoginRequiredDialog(BuildContext context, String feature) {
-    final Color _primaryRed = Color(0xFFF42A41);
+    final Color _primaryRed = Color(0xFFE03C32);
     final Color _primaryGreen = Color(0xFF006A4E);
     final Color _goldAccent = Color(0xFFFFD700);
     
@@ -255,158 +375,36 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          constraints: BoxConstraints(maxWidth: 320),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 30,
-                offset: Offset(0, 15),
-              ),
-            ],
+            gradient: LinearGradient(colors: [_primaryGreen, _primaryRed]),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header with gradient - reduced size
               Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_primaryRed, _primaryGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                ),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryRed, _primaryGreen]), borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.lock_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
+                    Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(gradient: LinearGradient(colors: [_goldAccent, Color(0xFFFFC107)]), shape: BoxShape.circle), child: Icon(Icons.lock_rounded, color: Colors.white, size: 24)),
                     SizedBox(height: 8),
-                    Text(
-                      'Login Required',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
+                    Text('Login Required', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Text('to access $feature', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withOpacity(0.9))),
                   ],
                 ),
               ),
-              
               Padding(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.all(16),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'You need to login to $feature',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Create an account or sign in to access full details',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 16),
-                    
-                    // Login Button - reduced size
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => LoginScreen(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primaryGreen,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Login',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    
-                    // Sign Up Button - reduced size
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RegisterScreen(role: 'user'),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _primaryGreen,
-                          side: BorderSide(color: _primaryGreen, width: 2),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Create Account',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    
-                    // Continue Browsing - slightly reduced size
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        'Continue Browsing',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
+                    SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen())); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: _primaryGreen, padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Login', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterScreen(role: 'user'))); }, style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white, width: 1.5), padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Create Account', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    TextButton(onPressed: () => Navigator.pop(context), child: Text('Continue Browsing', style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withOpacity(0.7)))),
                   ],
                 ),
               ),
@@ -420,7 +418,10 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+    return LocationGuard(required: true, showBackButton: true, child: _buildMainContent(context));
+  }
+
+  Widget _buildMainContent(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     
@@ -432,7 +433,6 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
           slivers: [
             _buildPremiumAppBar(isTablet),
             
-            // Global Location Filter Bar
             SliverToBoxAdapter(
               child: Consumer<LocationFilterProvider>(
                 builder: (context, locationProvider, _) {
@@ -440,10 +440,7 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                     isTablet: isTablet,
                     onClearTap: () {
                       final educationProvider = Provider.of<EducationProvider>(context, listen: false);
-                      educationProvider.clearFilter(
-                        EducationCategory.schoolCollegeAdmissions,
-                        'state',
-                      );
+                      educationProvider.clearFilter(EducationCategory.schoolCollegeAdmissions, 'state');
                       educationProvider.loadAdmissionsGuidance();
                     },
                   );
@@ -451,9 +448,7 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
               ),
             ),
             
-            SliverToBoxAdapter(
-              child: _buildFilterChips(isTablet),
-            ),
+            SliverToBoxAdapter(child: _buildFilterChips(isTablet)),
             _buildContent(),
           ],
         ),
@@ -491,7 +486,6 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Premium Pattern Line
                   Container(
                     height: 3,
                     width: 60,
@@ -506,7 +500,6 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                   ),
                   SizedBox(height: isTablet ? 12 : 8),
                   
-                  // Title with Gradient
                   ShaderMask(
                     shaderCallback: (bounds) => LinearGradient(
                       colors: [Colors.white, _goldAccent],
@@ -514,33 +507,47 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                       end: Alignment.bottomRight,
                     ).createShader(bounds),
                     child: Text(
-                      'School & College Admissions',
+                      'Admissions Guidance',
                       style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 28 : 22,
+                        fontSize: isTablet ? 32 : 24,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  SizedBox(height: isTablet ? 8 : 4),
-                  
-                  // Subtitle
-                  Text(
-                    '🌟 Expert guidance for educational admissions worldwide',
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 14 : 12,
-                      color: Colors.white.withOpacity(0.9),
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   
                   SizedBox(height: isTablet ? 12 : 8),
                   
-                  // Stats Row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '🌟 Expert guidance for educational admissions worldwide',
+                          style: GoogleFonts.inter(
+                            fontSize: isTablet ? 14 : 12,
+                            color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w500,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      
+                      SizedBox(width: isTablet ? 12 : 8),
+                      
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: _buildChangeLocationButton(isTablet),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: isTablet ? 12 : 8),
+                  
                   Consumer<EducationProvider>(
                     builder: (context, provider, child) {
                       final verifiedCount = provider.admissionsGuidance
@@ -561,7 +568,7 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.verified_rounded, color: _goldAccent, size: isTablet ? 16 : 14),
+                                Icon(Icons.verified_rounded, color: _goldAccent, size: isTablet ? 14 : 12),
                                 SizedBox(width: isTablet ? 6 : 4),
                                 Text(
                                   '$verifiedCount Verified Consultants',
@@ -585,7 +592,7 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
         ),
       ),
       leading: IconButton(
-        icon: Icon(Icons.arrow_back_rounded, color: Colors.white, fontWeight: FontWeight.bold, size: isTablet ? 28 : 24,),
+        icon: Icon(Icons.arrow_back_rounded, color: Colors.white, fontWeight: FontWeight.bold, size: isTablet ? 28 : 24),
         onPressed: () => Navigator.pop(context),
       ),
     );
@@ -593,8 +600,8 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
 
   Widget _buildFilterChips(bool isTablet) {
     return Container(
-      height: 50,
-      margin: EdgeInsets.only(bottom: 8),
+      height: 44,
+      margin: EdgeInsets.only(top: 8, bottom: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
@@ -604,38 +611,14 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
           final isSelected = _selectedFilter == filter;
           
           return Padding(
-            padding: EdgeInsets.only(right: 12),
+            padding: EdgeInsets.only(right: 10),
             child: FilterChip(
               selected: isSelected,
-              label: Text(
-                filter,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : _textPrimary,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  fontSize: isTablet ? 14 : 12,
-                ),
-              ),
-              onSelected: (selected) {
-                setState(() {
-                  _selectedFilter = filter;
-                });
-                HapticFeedback.lightImpact();
-              },
+              label: Text(filter, style: GoogleFonts.poppins(color: isSelected ? Colors.white : _textPrimary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal, fontSize: isTablet ? 12 : 11)),
+              onSelected: (selected) { setState(() { _selectedFilter = filter; }); HapticFeedback.lightImpact(); },
               backgroundColor: Colors.white,
               selectedColor: _primaryGreen,
-              checkmarkColor: _goldAccent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-                side: BorderSide(
-                  color: isSelected ? _primaryGreen : Color(0xFFE0E7E9),
-                  width: 1,
-                ),
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 16 : 12,
-                vertical: isTablet ? 10 : 8,
-              ),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25), side: BorderSide(color: isSelected ? _primaryGreen : Color(0xFFE0E7E9), width: 0.8)),
             ),
           );
         },
@@ -660,84 +643,43 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
         backgroundColor: Colors.transparent,
         elevation: 12,
         label: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: isTablet ? 24 : 20,
-            vertical: isTablet ? 16 : 14,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: isTablet ? 20 : 16, vertical: isTablet ? 12 : 10),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_primaryGreen, _purpleAccent, _tealAccent],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            gradient: LinearGradient(colors: [_primaryGreen, _purpleAccent, _tealAccent]),
             borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: _primaryGreen.withOpacity(0.4),
-                blurRadius: 15,
-                offset: Offset(0, 8),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: _primaryGreen.withOpacity(0.4), blurRadius: 15, offset: Offset(0, 8))],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_chart_rounded, color: Colors.white, size: isTablet ? 24 : 20),
-              SizedBox(width: isTablet ? 12 : 8),
-              Text(
-                'Add Guidance',
-                style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 18 : 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
+              Icon(Icons.add_chart_rounded, color: Colors.white, size: isTablet ? 20 : 18),
+              SizedBox(width: isTablet ? 8 : 6),
+              Text('Add Guidance', style: GoogleFonts.poppins(fontSize: isTablet ? 14 : 12, fontWeight: FontWeight.w700, color: Colors.white)),
             ],
           ),
         ),
       ),
     );
     
-    return shouldAnimate
-        ? ScaleTransition(scale: _pulseAnimation, child: button)
-        : button;
+    return shouldAnimate ? ScaleTransition(scale: _pulseAnimation, child: button) : button;
   }
 
   Widget _buildContent() {
     return Consumer2<EducationProvider, LocationFilterProvider>(
       builder: (context, provider, locationProvider, child) {
-        if (provider.isLoading || _isLoading) {
-          return _buildLoadingState();
-        }
+        if (provider.isLoading || _isLoading) return _buildLoadingState();
 
         final filteredServices = _getFilteredServices(provider.admissionsGuidance, locationProvider);
 
-        if (filteredServices.isEmpty) {
-          return _buildEmptyState(locationProvider);
-        }
+        if (filteredServices.isEmpty) return _buildEmptyState(locationProvider);
 
         return SliverPadding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.all(12),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final service = filteredServices[index];
-                
-                return TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: 1),
-                  duration: Duration(milliseconds: 500 + (index * 100)),
-                  curve: Curves.easeOutBack,
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: 0.95 + (0.05 * value),
-                      child: Opacity(
-                        opacity: value.clamp(0.0, 1.0),
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: _buildPremiumGuidanceCard(service, index),
-                );
+                return Padding(padding: EdgeInsets.only(bottom: 12), child: _buildPremiumGuidanceCard(service, index));
               },
               childCount: filteredServices.length,
             ),
@@ -748,101 +690,15 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
   }
 
   Widget _buildLoadingState() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 600;
-    
+    final isTablet = MediaQuery.of(context).size.width >= 600;
     return SliverFillRemaining(
       child: Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: Duration(seconds: 2),
-              curve: Curves.easeInOut,
-              builder: (context, value, child) {
-                return RotationTransition(
-                  turns: AlwaysStoppedAnimation(value),
-                  child: Container(
-                    width: isTablet ? 100 : 80,
-                    height: isTablet ? 100 : 80,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryGreen, _purpleAccent, _tealAccent],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: _primaryGreen.withOpacity(0.3),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: isTablet ? 80 : 60,
-                        height: isTablet ? 80 : 60,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: SizedBox(
-                            width: isTablet ? 40 : 30,
-                            height: isTablet ? 40 : 30,
-                            child: CircularProgressIndicator(
-                              color: _primaryGreen,
-                              strokeWidth: 3,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            SizedBox(height: isTablet ? 24 : 16),
-            ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [_primaryGreen, _purpleAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-              child: Text(
-                'Loading Consultants...',
-                style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 24 : 20,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            SizedBox(height: isTablet ? 12 : 8),
-            _appLifecycleState == AppLifecycleState.resumed
-                ? ScaleTransition(
-                    scale: _pulseAnimation,
-                    child: Text(
-                      'Finding guidance for you ✨',
-                      style: GoogleFonts.inter(
-                        fontSize: isTablet ? 15 : 13,
-                        color: _textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  )
-                : Text(
-                    'Finding guidance for you ✨',
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 15 : 13,
-                      color: _textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+            CircularProgressIndicator(color: _primaryGreen),
+            SizedBox(height: 16),
+            Text('Loading Consultants...', style: GoogleFonts.poppins(color: _textSecondary)),
           ],
         ),
       ),
@@ -850,120 +706,116 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
   }
 
   Widget _buildEmptyState(LocationFilterProvider locationProvider) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 600;
+    final isTablet = MediaQuery.of(context).size.width >= 600;
     
     return SliverFillRemaining(
       child: Center(
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 30 : 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: Duration(milliseconds: 700),
-                curve: Curves.elasticOut,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: 0.85 + (0.15 * value),
-                    child: Container(
-                      padding: EdgeInsets.all(isTablet ? 24 : 20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_lightGreen, _primaryGreen.withOpacity(0.3)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.business_center_rounded,
-                        size: isTablet ? 60 : 50,
-                        color: _primaryGreen,
-                      ),
-                    ),
-                  );
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.business_center_rounded, size: 60, color: _primaryGreen.withOpacity(0.5)),
+            SizedBox(height: 16),
+            Text(
+              locationProvider.isFilterActive ? 'No Consultants in ${locationProvider.selectedState}' : 'No Consultants Found',
+              style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: _textPrimary),
+            ),
+            SizedBox(height: 8),
+            Text(
+              locationProvider.isFilterActive ? 'Try clearing the location filter!' : 'Be the first to offer guidance!',
+              style: GoogleFonts.inter(fontSize: 12, color: _textSecondary),
+            ),
+            if (locationProvider.isFilterActive) ...[
+              SizedBox(height: 16),
+              GestureDetector(
+                onTap: () {
+                  locationProvider.clearLocationFilter();
+                  final educationProvider = Provider.of<EducationProvider>(context, listen: false);
+                  educationProvider.clearFilter(EducationCategory.schoolCollegeAdmissions, 'state');
+                  educationProvider.loadAdmissionsGuidance();
                 },
-              ),
-              SizedBox(height: isTablet ? 24 : 16),
-              ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [_primaryGreen, _purpleAccent],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ).createShader(bounds),
-                child: Text(
-                  locationProvider.isFilterActive
-                      ? 'No Consultants in ${locationProvider.selectedState}'
-                      : 'No Consultants Found',
-                  style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 24 : 20,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryGreen, _purpleAccent]), borderRadius: BorderRadius.circular(25)),
+                  child: Text('Clear Filter', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
               ),
-              SizedBox(height: isTablet ? 12 : 8),
-              Text(
-                locationProvider.isFilterActive
-                    ? 'Try clearing the location filter or selecting a different country! 📚'
-                    : 'Be the first to offer guidance! 📚',
-                style: GoogleFonts.inter(
-                  fontSize: isTablet ? 15 : 13,
-                  color: _textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              if (locationProvider.isFilterActive) ...[
-                SizedBox(height: isTablet ? 20 : 16),
-                GestureDetector(
-                  onTap: () {
-                    locationProvider.clearLocationFilter();
-                    final educationProvider = Provider.of<EducationProvider>(context, listen: false);
-                    educationProvider.clearFilter(
-                      EducationCategory.schoolCollegeAdmissions,
-                      'state',
-                    );
-                    educationProvider.loadAdmissionsGuidance();
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isTablet ? 24 : 20,
-                      vertical: isTablet ? 12 : 10,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryGreen, _purpleAccent],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.clear_rounded, color: Colors.white, size: isTablet ? 20 : 18),
-                        SizedBox(width: isTablet ? 8 : 6),
-                        Text(
-                          'Clear Filter',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: isTablet ? 16 : 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ],
-          ),
+          ],
         ),
       ),
+    );
+  }
+
+  // UPDATED: Build poster image with URL and Base64 support
+  Widget _buildPosterImage(AdmissionsGuidance service) {
+    final imageData = service.postedByProfileImageBase64;
+    
+    if (imageData != null && imageData.isNotEmpty) {
+      // Check if it's a URL
+      if (_isUrlString(imageData)) {
+        return ClipOval(
+          child: Image.network(
+            imageData,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading guidance poster image: $error');
+              return _buildDefaultProfileImage();
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(_goldAccent),
+                ),
+              );
+            },
+          ),
+        );
+      } else {
+        // It's Base64 data
+        try {
+          String base64String = imageData;
+          
+          if (base64String.contains('base64,')) {
+            base64String = base64String.split('base64,').last;
+          }
+          
+          base64String = base64String.replaceAll(RegExp(r'\s'), '');
+          
+          while (base64String.length % 4 != 0) {
+            base64String += '=';
+          }
+          
+          final bytes = base64Decode(base64String);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                print('Error decoding guidance poster image: $error');
+                return _buildDefaultProfileImage();
+              },
+            ),
+          );
+        } catch (e) {
+          print('Error processing guidance poster image: $e');
+          return _buildDefaultProfileImage();
+        }
+      }
+    }
+    
+    return _buildDefaultProfileImage();
+  }
+
+  Widget _buildDefaultProfileImage() {
+    return Container(
+      decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryGreen, _purpleAccent])),
+      child: Center(child: Icon(Icons.person_rounded, color: Colors.white, size: 24)),
     );
   }
 
@@ -1085,12 +937,10 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                                   
                                   SizedBox(width: 12),
                                   
-                                  // User Info
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        // User Name from service.postedByName
                                         ShaderMask(
                                           shaderCallback: (bounds) => LinearGradient(
                                             colors: [_primaryGreen, _purpleAccent],
@@ -1104,6 +954,8 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                                               fontWeight: FontWeight.w800,
                                               color: Colors.white,
                                             ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         SizedBox(height: 2),
@@ -1136,7 +988,6 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                                     ),
                                   ),
                                   
-                                  // Verified Badge
                                   Container(
                                     padding: EdgeInsets.all(6),
                                     decoration: BoxDecoration(
@@ -1154,18 +1005,26 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                                         ),
                                       ],
                                     ),
-                                    child: Icon(
-                                      Icons.verified_rounded, 
-                                      color: Colors.white, 
-                                      size: isTablet ? 16 : 14,
-                                    ),
+                                    child: shouldAnimate
+                                        ? RotationTransition(
+                                            turns: _rotateController,
+                                            child: Icon(
+                                              Icons.verified_rounded, 
+                                              color: Colors.white, 
+                                              size: isTablet ? 16 : 14,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.verified_rounded, 
+                                            color: Colors.white, 
+                                            size: isTablet ? 16 : 14,
+                                          ),
                                   ),
                                 ],
                               ),
                               
                               SizedBox(height: 16),
                               
-                              // Consultant Name and Organization
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -1201,7 +1060,6 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                               
                               SizedBox(height: 14),
                               
-                              // Specializations Preview
                               Wrap(
                                 spacing: 6,
                                 runSpacing: 6,
@@ -1247,10 +1105,8 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                               
                               SizedBox(height: 14),
                               
-                              // Location, Distance, and Fee Row
                               Row(
                                 children: [
-                                  // Location
                                   Expanded(
                                     flex: 2,
                                     child: Row(
@@ -1297,7 +1153,6 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                                     ),
                                   ),
                                   
-                                  // Distance Badge
                                   if (service.latitude != null && service.longitude != null)
                                     Padding(
                                       padding: EdgeInsets.only(right: isTablet ? 10 : 8),
@@ -1308,7 +1163,6 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                                       ),
                                     ),
                                   
-                                  // Fee
                                   Container(
                                     padding: EdgeInsets.symmetric(
                                       horizontal: isTablet ? 8 : 6,
@@ -1347,7 +1201,6 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                               
                               SizedBox(height: 14),
                               
-                              // Countries Preview
                               Row(
                                 children: service.countries.take(2).map((country) {
                                   return Container(
@@ -1403,7 +1256,6 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                               
                               SizedBox(height: 14),
                               
-                              // Rating Row
                               Row(
                                 children: [
                                   Icon(Icons.star_rounded, color: Colors.amber, size: isTablet ? 16 : 14),
@@ -1429,7 +1281,6 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                               
                               SizedBox(height: 16),
                               
-                              // View Details Button
                               TweenAnimationBuilder<double>(
                                 tween: Tween(begin: 0, end: 1),
                                 duration: Duration(milliseconds: 800),
@@ -1479,11 +1330,20 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
                                               ),
                                             ),
                                             SizedBox(width: 10),
-                                            Icon(
-                                              Icons.arrow_forward_rounded,
-                                              color: Colors.white,
-                                              size: isTablet ? 18 : 16,
-                                            ),
+                                            shouldAnimate
+                                                ? RotationTransition(
+                                                    turns: _rotateController,
+                                                    child: Icon(
+                                                      Icons.arrow_forward_rounded,
+                                                      color: Colors.white,
+                                                      size: isTablet ? 18 : 16,
+                                                    ),
+                                                  )
+                                                : Icon(
+                                                    Icons.arrow_forward_rounded,
+                                                    color: Colors.white,
+                                                    size: isTablet ? 18 : 16,
+                                                  ),
                                           ],
                                         ),
                                       ),
@@ -1506,62 +1366,12 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
     );
   }
 
-  // Build poster image from service.postedByProfileImageBase64
-  Widget _buildPosterImage(AdmissionsGuidance service) {
-    if (service.postedByProfileImageBase64 != null && service.postedByProfileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = service.postedByProfileImageBase64!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage();
-          },
-        );
-      } catch (e) {
-        return _buildDefaultProfileImage();
-      }
-    }
-    return _buildDefaultProfileImage();
-  }
-
-  Widget _buildDefaultProfileImage() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_primaryGreen, _purpleAccent],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.person_rounded,
-          color: Colors.white,
-          size: 30,
-        ),
-      ),
-    );
-  }
-
   void _showGuidanceDetails(AdmissionsGuidance service) {
     HapticFeedback.mediumImpact();
     Navigator.push(
       context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => AdmissionsGuidanceDetailsScreen(
+      MaterialPageRoute(
+        builder: (context) => AdmissionsGuidanceDetailsScreen(
           service: service,
           scrollController: ScrollController(),
           primaryGreen: _primaryGreen,
@@ -1572,33 +1382,16 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
           goldAccent: _goldAccent,
           lightGreen: _lightGreen,
         ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          var begin = Offset(1.0, 0.0);
-          var end = Offset.zero;
-          var curve = Curves.easeInOutCubic;
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-          var offsetAnimation = animation.drive(tween);
-          
-          return SlideTransition(
-            position: offsetAnimation,
-            child: child,
-          );
-        },
-        transitionDuration: Duration(milliseconds: 500),
       ),
     );
   }
 
   void _showAddGuidanceDialog(BuildContext context) {
     HapticFeedback.lightImpact();
-    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.95,
         minChildSize: 0.5,
@@ -1606,14 +1399,7 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
         expand: false,
         builder: (context, scrollController) {
           return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.white, _creamWhite],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-            ),
+            decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.white, _creamWhite]), borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
             child: PremiumAddGuidanceDialog(
               scrollController: scrollController,
               onGuidanceAdded: _loadData,

@@ -1,24 +1,23 @@
-// screens/user_app/entrepreneurship/partner_requests/partner_requests_screen.dart
-import 'dart:async';
+
 import 'dart:convert';
 import 'dart:ui';
-import 'package:bangla_hub/models/business_model.dart' hide BusinessPartnerRequest;
-import 'package:bangla_hub/models/community_services_models.dart';
+
 import 'package:bangla_hub/models/entrepreneurship_models.dart';
-import 'package:bangla_hub/providers/entrepreneurship_provider.dart';
 import 'package:bangla_hub/providers/auth_provider.dart';
+import 'package:bangla_hub/providers/entrepreneurship_provider.dart';
 import 'package:bangla_hub/providers/location_filter_provider.dart';
 import 'package:bangla_hub/screens/auth/login_screen.dart';
 import 'package:bangla_hub/screens/auth/signup_screen.dart';
 import 'package:bangla_hub/screens/user_app/entrepreneurship/business_partner_request/partner_request_details_screen.dart';
 import 'package:bangla_hub/widgets/common/distance_widget.dart';
 import 'package:bangla_hub/widgets/common/global_location_filter_bar.dart';
+import 'package:bangla_hub/widgets/common/global_location_guard.dart';
 import 'package:bangla_hub/widgets/common/osm_location_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BusinessPartnerRequestsScreen extends StatefulWidget {
   @override
@@ -29,29 +28,27 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     with AutomaticKeepAliveClientMixin, TickerProviderStateMixin, WidgetsBindingObserver {
   
   // Premium Color Palette - Soft Green Accent Theme
-  final Color _softGreen = Color(0xFF98D8C8); // Main soft green accent
-  final Color _lightGreen = Color(0xFFE0F2F1); // Light green
-  final Color _lightGreenBg = Color(0x80E0F2F1); // Light green with 50% opacity
-  final Color _darkGreen = Color(0xFF2E7D32); // Dark green
-  final Color _deepGreen = Color(0xFF1B5E20); // Deep green
+  final Color _softGreen = Color(0xFF98D8C8);
+  final Color _lightGreen = Color(0xFFE0F2F1);
+  final Color _lightGreenBg = Color(0x80E0F2F1);
+  final Color _darkGreen = Color(0xFF2E7D32);
+  final Color _deepGreen = Color(0xFF1B5E20);
   
-  final Color _primaryGreen = Color(0xFF2E7D32); // Primary green
-  final Color _secondaryGold = Color(0xFFFFB300); // Gold accent
-  final Color _softGold = Color(0xFFFFD966); // Soft gold
+  final Color _primaryGreen = Color(0xFF2E7D32);
+  final Color _secondaryGold = Color(0xFFFFB300);
+  final Color _softGold = Color(0xFFFFD966);
   
-  // Supporting colors
   final Color _textPrimary = Color(0xFF1A2B3C);
   final Color _textSecondary = Color(0xFF5D6D7E);
   final Color _borderLight = Color(0xFFE0E7E9);
   final Color _shadowColor = Color(0x1A000000);
   
-  // Background Gradient - Light Green Priority
   final LinearGradient _bodyBgGradient = LinearGradient(
     colors: [
-      Color(0xFFE0F2F1), // Light green
-      Color(0xFFE8F5E9), // Very light green
-      Color(0xFFF1F8E9), // Light mint
-      Color(0xFFF9FBE7), // Light lime
+      Color(0xFFE0F2F1),
+      Color(0xFFE8F5E9),
+      Color(0xFFF1F8E9),
+      Color(0xFFF9FBE7),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -60,22 +57,21 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
 
   final LinearGradient _appBarGradient = LinearGradient(
     colors: [
-      Color(0xFF2E7D32), // Primary Green
-      Color(0xFF1B5E20), // Dark Green
-      Color(0xFF98D8C8), // Soft Green
-      Color(0xFF81C784), // Light Green
+      Color(0xFF2E7D32),
+      Color(0xFF1B5E20),
+      Color(0xFF98D8C8),
+      Color(0xFF81C784),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     stops: [0.0, 0.4, 0.7, 1.0],
   );
 
-  // Gradients for accents
   final LinearGradient _preciousGradient = LinearGradient(
     colors: [
-      Color(0xFFFFB300), // gold
-      Color(0xFF2E7D32), // green
-      Color(0xFF98D8C8), // soft green
+      Color(0xFFFFB300),
+      Color(0xFF2E7D32),
+      Color(0xFF98D8C8),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -83,9 +79,9 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
 
   final LinearGradient _gemstoneGradient = LinearGradient(
     colors: [
-      Color(0xFF2E7D32), // green
-      Color(0xFF98D8C8), // soft green
-      Color(0xFFFFB300), // gold
+      Color(0xFF2E7D32),
+      Color(0xFF98D8C8),
+      Color(0xFFFFB300),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -93,9 +89,9 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
 
   final LinearGradient _royalGradient = LinearGradient(
     colors: [
-      Color(0xFF2E7D32), // green
-      Color(0xFFFFB300), // gold
-      Color(0xFF98D8C8), // soft green
+      Color(0xFF2E7D32),
+      Color(0xFFFFB300),
+      Color(0xFF98D8C8),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -103,8 +99,8 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
 
   final LinearGradient _greenGradient = LinearGradient(
     colors: [
-      Color(0xFF2E7D32), // green
-      Color(0xFF98D8C8), // soft green
+      Color(0xFF2E7D32),
+      Color(0xFF98D8C8),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -123,7 +119,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
   
   bool _isLoading = false;
   
-  // Track app lifecycle
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
   // Animation Controllers
@@ -137,13 +132,10 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
   late Animation<double> _scaleAnimation;
   late AnimationController _rotateController;
   
-  // Particle animation controllers
   late List<AnimationController> _particleControllers;
   late List<AnimationController> _bubbleControllers;
 
-  // LOCAL FILTER STATE - separate from global filter
-  String? _localSelectedState;
-  String? _localSelectedCity;
+  // LOCAL FILTER STATE - NO STATE, NO CITY (removed)
   PartnerType? _localSelectedPartnerType;
   BusinessType? _localSelectedBusinessType;
   String? _localSelectedIndustry;
@@ -161,7 +153,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     // Initialize animations
@@ -204,7 +195,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
       duration: Duration(milliseconds: 1500),
     );
     
-    // Initialize particle controllers (30 particles)
     _particleControllers = List.generate(30, (index) {
       return AnimationController(
         vsync: this,
@@ -212,7 +202,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
       )..repeat(reverse: true);
     });
     
-    // Initialize bubble controllers (8 bubbles)
     _bubbleControllers = List.generate(8, (index) {
       return AnimationController(
         vsync: this,
@@ -220,7 +209,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
       )..repeat(reverse: true);
     });
     
-    // Start animations if app is visible
     if (_appLifecycleState == AppLifecycleState.resumed) {
       _startAnimations();
     }
@@ -228,7 +216,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
       
-      // Get user location if not already
       final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
       if (locationProvider.currentUserLocation == null) {
         locationProvider.getUserLocation(showLoading: false);
@@ -243,10 +230,8 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     });
     
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _startAnimations();
     } else {
-      // App is not visible - stop animations to save resources
       _stopAnimations();
     }
   }
@@ -258,7 +243,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
       _scaleController.forward();
       _pulseController.repeat(reverse: true);
       _rotateController.repeat();
-      // Particle and bubble controllers already running via repeat
     }
   }
   
@@ -271,42 +255,19 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    
-    // Listen to location provider changes but DON'T automatically apply filter
-    // This ensures global filter is separate
-    final locationProvider = Provider.of<LocationFilterProvider>(context);
-    
-    // Only reload when global filter changes to show/hide global filter bar
-    if (locationProvider.isFilterActive != _previousGlobalFilterState) {
-      _previousGlobalFilterState = locationProvider.isFilterActive;
-      _loadData();
-    }
-  }
-
-  bool _previousGlobalFilterState = false;
-
-  @override
   void dispose() {
-    print('🗑️ BusinessPartnerRequestsScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
     
-    // ✅ Dispose animation controllers
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
     _scaleController.dispose();
     _rotateController.dispose();
     
-    // ✅ Dispose particle controllers
     for (var controller in _particleControllers) {
       controller.dispose();
     }
     
-    // ✅ Dispose bubble controllers
     for (var controller in _bubbleControllers) {
       controller.dispose();
     }
@@ -315,24 +276,18 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     super.dispose();
   }
 
+  // Helper function to check if string is a URL
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
+  }
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
     try {
       final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
-      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
       
-      // IMPORTANT: Do NOT apply global filter automatically
-      // The provider will handle global filter separately
-      
-      // Apply LOCAL filters if any
       if (_hasLocalFilters) {
-        if (_localSelectedState != null) {
-          provider.setFilter(EntrepreneurshipCategory.lookingForBusinessPartner, 'local_state', _localSelectedState);
-        }
-        if (_localSelectedCity != null) {
-          provider.setFilter(EntrepreneurshipCategory.lookingForBusinessPartner, 'local_city', _localSelectedCity);
-        }
         if (_localSelectedPartnerType != null) {
           provider.setFilter(EntrepreneurshipCategory.lookingForBusinessPartner, 'local_partnerType', _localSelectedPartnerType);
         }
@@ -353,24 +308,215 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     }
   }
 
+  void _showLocationFilterDialog(BuildContext context) {
+    final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+      ),
+      builder: (context) => SafeArea(
+        child: Container(
+          height: screenHeight * 0.8,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Filter by State', 
+                    style: GoogleFonts.poppins(
+                      fontSize: 20, 
+                      fontWeight: FontWeight.w700, 
+                      color: _primaryGreen
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close), 
+                    onPressed: () => Navigator.pop(context)
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              
+              GestureDetector(
+                onTap: () {
+                  filterProvider.clearLocationFilter();
+                  _loadData();
+                  Navigator.pop(context);
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Showing requests from all states'),
+                      backgroundColor: Color(0xFF2E7D32),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.public, color: _primaryGreen),
+                      const SizedBox(width: 15),
+                      Text(
+                        'All States', 
+                        style: GoogleFonts.poppins(
+                          fontSize: 16, 
+                          fontWeight: FontWeight.w600
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 10),
+              
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: CommunityStates.states.length,
+                  itemBuilder: (context, index) {
+                    final state = CommunityStates.states[index];
+                    final isSelected = filterProvider.selectedState == state;
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        filterProvider.setLocationFilter(state, fromEvents: true);
+                        _loadData();
+                        Navigator.pop(context);
+                        
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Showing requests in $state'),
+                            backgroundColor: _primaryGreen,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? _primaryGreen.withOpacity(0.1) : null,
+                          border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.location_on, color: isSelected ? _primaryGreen : Colors.grey),
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: Text(
+                                state,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected ? _primaryGreen : Colors.black87,
+                                ),
+                              ),
+                            ),
+                            if (isSelected) Icon(Icons.check_circle, color: _primaryGreen),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChangeLocationButton(bool isTablet) {
+    return Consumer<LocationFilterProvider>(
+      builder: (context, filterProvider, child) {
+        final hasFilter = filterProvider.isFilterActive;
+        
+        return GestureDetector(
+          onTap: () => _showLocationFilterDialog(context),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 12 : 10,
+              vertical: isTablet ? 6 : 4,
+            ),
+            decoration: BoxDecoration(
+              gradient: hasFilter
+                  ? const LinearGradient(
+                      colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.2),
+                        Colors.white.withOpacity(0.1),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: hasFilter 
+                    ? const Color(0xFFFFB300).withOpacity(0.5)
+                    : _secondaryGold.withOpacity(0.4),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  hasFilter ? Icons.edit_location_rounded : Icons.location_on_rounded,
+                  size: isTablet ? 14 : 12,
+                  color: hasFilter ? const Color(0xFFFFB300) : _secondaryGold,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  hasFilter ? "Change Location" : "Select Location",
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 11 : 10,
+                    fontWeight: hasFilter ? FontWeight.w600 : FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+                if (hasFilter) ...[
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFB300),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _applyLocalFilters() async {
     final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
     
-    // Clear any existing local filters first
     provider.clearAllFilters(EntrepreneurshipCategory.lookingForBusinessPartner);
     
-    // Build active filters map for display
     Map<String, dynamic> newActiveFilters = {};
     
-    // Apply new local filters
-    if (_localSelectedState != null) {
-      provider.setFilter(EntrepreneurshipCategory.lookingForBusinessPartner, 'local_state', _localSelectedState);
-      newActiveFilters['local_state'] = _localSelectedState;
-    }
-    if (_localSelectedCity != null && _localSelectedCity!.isNotEmpty) {
-      provider.setFilter(EntrepreneurshipCategory.lookingForBusinessPartner, 'local_city', _localSelectedCity);
-      newActiveFilters['local_city'] = _localSelectedCity;
-    }
     if (_localSelectedPartnerType != null) {
       provider.setFilter(EntrepreneurshipCategory.lookingForBusinessPartner, 'local_partnerType', _localSelectedPartnerType);
       newActiveFilters['local_partnerType'] = _localSelectedPartnerType!.displayName;
@@ -396,13 +542,9 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
   void _clearLocalFilters() {
     final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
     
-    // Clear all local filters from provider
     provider.clearAllFilters(EntrepreneurshipCategory.lookingForBusinessPartner);
     
-    // Reset local state
     setState(() {
-      _localSelectedState = null;
-      _localSelectedCity = null;
       _localSelectedPartnerType = null;
       _localSelectedBusinessType = null;
       _localSelectedIndustry = null;
@@ -414,64 +556,36 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     provider.loadPartnerRequests();
   }
 
-  // Get filtered requests - applying BOTH global and local filters
   List<BusinessPartnerRequest> _getFilteredRequests(
     List<BusinessPartnerRequest> requests,
     LocationFilterProvider locationProvider,
   ) {
-    // Start with all verified and active requests
     var filteredRequests = requests.where((r) => 
       r.isVerified && r.isActive && !r.isDeleted
     ).toList();
     
-    print('📊 Initial verified requests: ${filteredRequests.length}');
-    
-    // Apply GLOBAL location filter if active (from LocationFilterProvider)
     if (locationProvider.isFilterActive && locationProvider.selectedState != null) {
       filteredRequests = filteredRequests.where((request) {
         return request.state == locationProvider.selectedState;
       }).toList();
-      print('📍 After GLOBAL filter (${locationProvider.selectedState}): ${filteredRequests.length} requests');
     }
     
-    // Apply LOCAL filters if any (from this screen's filter view)
     if (_hasLocalFilters) {
-      // State filter
-      if (_localSelectedState != null) {
-        filteredRequests = filteredRequests.where((request) => 
-          request.state == _localSelectedState
-        ).toList();
-      }
-      
-      // City filter
-      if (_localSelectedCity != null && _localSelectedCity!.isNotEmpty) {
-        filteredRequests = filteredRequests.where((request) => 
-          request.city.toLowerCase().contains(_localSelectedCity!.toLowerCase())
-        ).toList();
-      }
-      
-      // Partner type filter
       if (_localSelectedPartnerType != null) {
         filteredRequests = filteredRequests.where((request) => 
           request.partnerType == _localSelectedPartnerType
         ).toList();
       }
-      
-      // Business type filter
       if (_localSelectedBusinessType != null) {
         filteredRequests = filteredRequests.where((request) => 
           request.businessType == _localSelectedBusinessType
         ).toList();
       }
-      
-      // Industry filter
       if (_localSelectedIndustry != null && _localSelectedIndustry!.isNotEmpty) {
         filteredRequests = filteredRequests.where((request) => 
           request.industry?.toLowerCase().contains(_localSelectedIndustry!.toLowerCase()) ?? false
         ).toList();
       }
-      
-      print('📊 After LOCAL filters: ${filteredRequests.length} requests');
     }
     
     return filteredRequests;
@@ -490,9 +604,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     try {
       if (await canLaunchUrl(phoneUri)) {
         await launchUrl(phoneUri);
-        if (mounted) {
-          _showSuccessSnackBar('Opening phone dialer...');
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -510,9 +621,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     try {
       if (await canLaunchUrl(emailUri)) {
         await launchUrl(emailUri);
-        if (mounted) {
-          _showSuccessSnackBar('Opening email app...');
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -561,7 +669,7 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
   }
 
   void _showLoginRequiredDialog(BuildContext context, String feature) {
-    final Color _primaryRed = Color(0xFFF42A41);
+    final Color _primaryRed = Color(0xFFE03C32);
     final Color _primaryGreen = Color(0xFF006A4E);
     final Color _goldAccent = Color(0xFFFFD700);
     
@@ -570,158 +678,36 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          constraints: BoxConstraints(maxWidth: 320),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 30,
-                offset: Offset(0, 15),
-              ),
-            ],
+            gradient: LinearGradient(colors: [_primaryGreen, _primaryRed]),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header with gradient - reduced size
               Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_primaryRed, _primaryGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                ),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [_primaryRed, _primaryGreen]), borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.lock_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
+                    Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(gradient: LinearGradient(colors: [_goldAccent, Color(0xFFFFC107)]), shape: BoxShape.circle), child: Icon(Icons.lock_rounded, color: Colors.white, size: 24)),
                     SizedBox(height: 8),
-                    Text(
-                      'Login Required',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
+                    Text('Login Required', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Text('to access $feature', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withOpacity(0.9))),
                   ],
                 ),
               ),
-              
               Padding(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.all(16),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'You need to login to $feature',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Create an account or sign in to access full details',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 16),
-                    
-                    // Login Button - reduced size
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => LoginScreen(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primaryGreen,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Login',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    
-                    // Sign Up Button - reduced size
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RegisterScreen(role: 'user'),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _primaryGreen,
-                          side: BorderSide(color: _primaryGreen, width: 2),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Create Account',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    
-                    // Continue Browsing - slightly reduced size
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        'Continue Browsing',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
+                    SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen())); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: _primaryGreen, padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Login', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterScreen(role: 'user'))); }, style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white, width: 1.5), padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Text('Create Account', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)))),
+                    SizedBox(height: 10),
+                    TextButton(onPressed: () => Navigator.pop(context), child: Text('Continue Browsing', style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withOpacity(0.7)))),
                   ],
                 ),
               ),
@@ -735,7 +721,15 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
+    return LocationGuard(
+      required: true, 
+      showBackButton: true,
+      child: _buildMainContent(context),
+    );
+  }
+
+  Widget _buildMainContent(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
 
@@ -753,13 +747,9 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
           ),
           child: Stack(
             children: [
-              // Animated Background Particles
               ...List.generate(30, (index) => _buildAnimatedParticle(index)),
-              
-              // Floating Bubbles
               ...List.generate(8, (index) => _buildFloatingBubble(index)),
               
-              // Main Content
               RefreshIndicator(
                 color: _secondaryGold,
                 backgroundColor: Colors.white,
@@ -771,23 +761,22 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                         slivers: [
                           _buildPremiumAppBar(isTablet),
                           
-                          // Global Location Filter Bar - SEPARATE
+                          // Global Location Filter Bar
                           SliverToBoxAdapter(
                             child: Consumer<LocationFilterProvider>(
                               builder: (context, locationProvider, _) {
                                 return GlobalLocationFilterBar(
                                   isTablet: isTablet,
                                   onClearTap: () {
-                                    // This only clears GLOBAL filter
                                     locationProvider.clearLocationFilter();
-                                    _loadData(); // Reload with global filter cleared
+                                    _loadData();
                                   },
                                 );
                               },
                             ),
                           ),
                           
-                          // Local Filter Toggle Button - SEPARATE
+                          // Local Filter Toggle Button
                           SliverToBoxAdapter(
                             child: Padding(
                               padding: EdgeInsets.symmetric(
@@ -806,7 +795,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                       ),
               ),
               
-              // Premium Floating Action Button
               Positioned(
                 bottom: 30,
                 right: 30,
@@ -827,7 +815,7 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
         _buildPremiumAppBar(isTablet),
         const SliverToBoxAdapter(child: SizedBox(height: 8)),
         
-        // Global Location Filter Bar - still visible but separate
+        // Global Location Filter Bar
         SliverToBoxAdapter(
           child: Consumer<LocationFilterProvider>(
             builder: (context, locationProvider, _) {
@@ -880,7 +868,7 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Filters',
+                                  'Local Filters',
                                   style: GoogleFonts.poppins(
                                     fontSize: isTablet ? 24 : 20,
                                     fontWeight: FontWeight.w700,
@@ -888,7 +876,7 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                                   ),
                                 ),
                                 Text(
-                                  'Apply filters specific to this screen',
+                                  'Apply screen-specific filters (State/City are global)',
                                   style: GoogleFonts.inter(
                                     fontSize: isTablet ? 14 : 12,
                                     color: _textSecondary,
@@ -901,61 +889,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                       ),
                       
                       SizedBox(height: 24),
-                      
-                      // State Dropdown
-                      _buildDropdown<String?>(
-                        value: _localSelectedState,
-                        label: 'Select State',
-                        icon: Icons.location_on_rounded,
-                        items: [
-                          DropdownMenuItem<String?>(value: null, child: Text('All States')),
-                          ...CommunityStates.states.map((state) => 
-                            DropdownMenuItem<String?>(value: state, child: Text(state))
-                          ),
-                        ],
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _localSelectedState = newValue;
-                            _localSelectedCity = null;
-                          });
-                        },
-                        isTablet: isTablet,
-                      ),
-                      
-                      SizedBox(height: 16),
-                      
-                      // City Text Field (optional)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 8,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: TextFormField(
-                          initialValue: _localSelectedCity,
-                          onChanged: (value) => _localSelectedCity = value,
-                          decoration: InputDecoration(
-                            labelText: 'City (Optional)',
-                            labelStyle: GoogleFonts.poppins(fontSize: 13),
-                            prefixIcon: Icon(Icons.location_city_rounded, color: _primaryGreen, size: 20),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                            filled: true,
-                            fillColor: Colors.transparent,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                        ),
-                      ),
-                      
-                      SizedBox(height: 16),
                       
                       // Partner Type Dropdown
                       _buildDropdown<PartnerType?>(
@@ -1034,7 +967,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                       
                       SizedBox(height: 24),
                       
-                      // Action Buttons
                       Row(
                         children: [
                           Expanded(
@@ -1101,7 +1033,7 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
             ),
             SizedBox(width: 8),
             Text(
-              _hasLocalFilters ? 'Edit Filters' : 'Filters',
+              _hasLocalFilters ? 'Edit Local Filters' : 'Local Filters',
               style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontSize: isTablet ? 16 : 14,
@@ -1143,14 +1075,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
         IconData icon = Icons.filter_alt_rounded;
         
         switch (key) {
-          case 'local_state':
-            label = 'State: $value';
-            icon = Icons.location_on_rounded;
-            break;
-          case 'local_city':
-            label = 'City: $value';
-            icon = Icons.location_city_rounded;
-            break;
           case 'local_partnerType':
             label = 'Partner: $value';
             icon = Icons.people_rounded;
@@ -1169,7 +1093,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
           label: label,
           icon: icon,
           onRemove: () {
-            // Remove this specific local filter
             final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
             provider.clearFilter(EntrepreneurshipCategory.lookingForBusinessPartner, key);
             
@@ -1177,14 +1100,7 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
               _activeLocalFilters.remove(key);
               _hasLocalFilters = _activeLocalFilters.isNotEmpty;
               
-              // Also clear the corresponding local state variable
               switch (key) {
-                case 'local_state':
-                  _localSelectedState = null;
-                  break;
-                case 'local_city':
-                  _localSelectedCity = null;
-                  break;
                 case 'local_partnerType':
                   _localSelectedPartnerType = null;
                   break;
@@ -1212,7 +1128,7 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 8),
               child: Text(
-                'Active Filters:',
+                'Active Local Filters:',
                 style: GoogleFonts.poppins(
                   fontSize: isTablet ? 14 : 12,
                   fontWeight: FontWeight.w600,
@@ -1366,7 +1282,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Premium Pattern Line
                   Container(
                     height: 4,
                     width: 80,
@@ -1381,7 +1296,7 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                   ),
                   SizedBox(height: isTablet ? 20 : 16),
                   
-                  // Title with Gradient
+                  // Title - Single line only
                   ShaderMask(
                     shaderCallback: (bounds) => LinearGradient(
                       colors: [Colors.white, _secondaryGold],
@@ -1391,22 +1306,36 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                     child: Text(
                       'Find Business Partner',
                       style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 36 : 28,
+                        fontSize: isTablet ? 32 : 24,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  
                   SizedBox(height: isTablet ? 12 : 8),
                   
-                  // Subtitle
-                  Text(
-                    '🤝 Connect with Potential Business Partners',
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 18 : 16,
-                      color: Colors.white.withOpacity(0.9),
-                      fontWeight: FontWeight.w500,
-                    ),
+                  // Subtitle and Change Location Button in same row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '🤝 Connect with Potential Business Partners',
+                          style: GoogleFonts.inter(
+                            fontSize: isTablet ? 14 : 12,
+                            color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: isTablet ? 12 : 8),
+                      
+                      _buildChangeLocationButton(isTablet),
+                    ],
                   ),
                   
                   SizedBox(height: isTablet ? 20 : 16),
@@ -1437,7 +1366,7 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                                 Text(
                                   '$verifiedCount Active Partners',
                                   style: GoogleFonts.inter(
-                                    fontSize: isTablet ? 14 : 12,
+                                    fontSize: isTablet ? 12 : 10,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.white,
                                   ),
@@ -1562,11 +1491,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
             offset: Offset(0, 12),
             spreadRadius: 3,
           ),
-          BoxShadow(
-            color: _softGreen.withOpacity(0.4),
-            blurRadius: 30,
-            offset: Offset(0, 0),
-          ),
         ],
       ),
       child: Material(
@@ -1652,7 +1576,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
               (context, index) {
                 final request = filteredRequests[index];
                 
-                // Only animate if app is visible
                 Widget card = Padding(
                   padding: EdgeInsets.only(bottom: 16),
                   child: _buildPremiumRequestCard(request, index),
@@ -1681,7 +1604,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
   Widget _buildLoadingState() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
-    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
     return SliverFillRemaining(
       child: Center(
@@ -1746,27 +1668,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                 ),
               ),
             ),
-            SizedBox(height: isTablet ? 12 : 8),
-            shouldAnimate
-                ? ScaleTransition(
-                    scale: _pulseAnimation,
-                    child: Text(
-                      'Finding best partnership opportunities',
-                      style: GoogleFonts.inter(
-                        fontSize: isTablet ? 15 : 13,
-                        color: _textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  )
-                : Text(
-                    'Finding best partnership opportunities',
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 15 : 13,
-                      color: _textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
           ],
         ),
       ),
@@ -1776,7 +1677,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
   Widget _buildEmptyState(LocationFilterProvider locationProvider) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
-    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
     String emptyMessage = 'No partner requests found';
     if (locationProvider.isFilterActive && _hasLocalFilters) {
@@ -1833,29 +1733,6 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
                   ),
                 ),
               ),
-              SizedBox(height: isTablet ? 12 : 8),
-              shouldAnimate
-                  ? ScaleTransition(
-                      scale: _pulseAnimation,
-                      child: Text(
-                        'Try adjusting your filters or be the first to post!',
-                        style: GoogleFonts.inter(
-                          fontSize: isTablet ? 15 : 13,
-                          color: _textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  : Text(
-                      'Try adjusting your filters or be the first to post!',
-                      style: GoogleFonts.inter(
-                        fontSize: isTablet ? 15 : 13,
-                        color: _textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
               if (locationProvider.isFilterActive || _hasLocalFilters) ...[
                 SizedBox(height: isTablet ? 20 : 16),
                 Row(
@@ -1919,602 +1796,70 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     );
   }
 
-  // UPDATED: Now uses request's own user info fields instead of separate UserModel
-  Widget _buildPremiumRequestCard(BusinessPartnerRequest request, int index) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 600;
-    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  // UPDATED: Build requester poster image with URL and Base64 support
+  Widget _buildRequesterPosterImage(BusinessPartnerRequest request) {
+    final imageData = request.postedByProfileImageBase64;
     
-    Widget cardContent = Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: isTablet ? 16 : 12,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: _primaryGreen.withOpacity(0.2),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-            spreadRadius: -2,
-          ),
-          BoxShadow(
-            color: _softGreen.withOpacity(0.1),
-            blurRadius: 25,
-            offset: Offset(0, -4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withOpacity(0.95),
-                  Colors.white.withOpacity(0.9),
-                  _lightGreen.withOpacity(0.3),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                  if (authProvider.isGuestMode) {
-                    _showLoginRequiredDialog(context, 'View Business Partner Request');
-                    return;
-                  }
-                  _showRequestDetails(request);
-                },
-                borderRadius: BorderRadius.circular(30),
-                splashColor: _secondaryGold.withOpacity(0.15),
-                highlightColor: Colors.transparent,
-                child: Padding(
-                  padding: EdgeInsets.all(isTablet ? 20 : 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // User Info Row - Using request's stored user info
-                      Row(
-                        children: [
-                          // User Profile Image from request.postedByProfileImageBase64
-                          TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0, end: 1),
-                            duration: Duration(milliseconds: 700 + (index * 80)),
-                            curve: Curves.elasticOut,
-                            builder: (context, value, child) {
-                              final nestedClampedValue = value.clamp(0.0, 1.0);
-                              return Transform.scale(
-                                scale: 0.85 + (0.15 * nestedClampedValue),
-                                child: Container(
-                                  width: isTablet ? 50 : 40,
-                                  height: isTablet ? 50 : 40,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: _royalGradient,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 2,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _secondaryGold.withOpacity(0.4),
-                                        blurRadius: 12,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Padding(
-                                    padding: EdgeInsets.all(2),
-                                    child: ClipOval(
-                                      child: _buildRequesterPosterImage(request),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          
-                          SizedBox(width: 12),
-                          
-                          // User Info
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // User Name from request.postedByName
-                                ShaderMask(
-                                  shaderCallback: (bounds) => _gemstoneGradient.createShader(bounds),
-                                  child: Text(
-                                    request.postedByName ?? 'Business Seeker',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: isTablet ? 16 : 14,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(height: 2),
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: BoxDecoration(
-                                        gradient: _gemstoneGradient,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    SizedBox(width: 3),
-                                    Text(
-                                      'Looking for Partner',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        color: _secondaryGold,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          // Verified Badge
-                          if (request.isVerified)
-                            Container(
-                              padding: EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                gradient: _preciousGradient,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _secondaryGold.withOpacity(0.4),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
-                                  ),
-                                ],
-                              ),
-                              child: shouldAnimate
-                                  ? RotationTransition(
-                                      turns: _rotateController,
-                                      child: Icon(
-                                        Icons.verified_rounded, 
-                                        color: Colors.white, 
-                                        size: isTablet ? 16 : 14,
-                                      ),
-                                    )
-                                  : Icon(
-                                      Icons.verified_rounded, 
-                                      color: Colors.white, 
-                                      size: isTablet ? 16 : 14,
-                                    ),
-                            ),
-                        ],
-                      ),
-                      
-                      SizedBox(height: 16),
-                      
-                      // Partner Type and Business Type
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ShaderMask(
-                                  shaderCallback: (bounds) => _gemstoneGradient.createShader(bounds),
-                                  child: Text(
-                                    request.partnerType.displayName,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: isTablet ? 20 : 18,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
-                                      letterSpacing: -0.5,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                SizedBox(height: 6),
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: _greenGradient,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _primaryGreen.withOpacity(0.3),
-                                        blurRadius: 8,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Text(
-                                    request.businessType.displayName,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: isTablet ? 14 : 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          // Urgent Badge
-                          if (request.isUrgent)
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [_primaryGreen, _darkGreen],
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _primaryGreen.withOpacity(0.3),
-                                    blurRadius: 6,
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.priority_high_rounded, color: Colors.white, size: 12),
-                                  SizedBox(width: 3),
-                                  Text(
-                                    'URGENT',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                      
-                      SizedBox(height: 14),
-                      
-                      // Tags
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          _buildPremiumTag(request.partnerType.displayName, Icons.person_rounded, isTablet),
-                          _buildPremiumTag(request.city, Icons.location_on_rounded, isTablet),
-                          if (request.industry != null && request.industry!.isNotEmpty && request.industry != 'Not specified')
-                            _buildPremiumTag(request.industry!, Icons.category_rounded, isTablet),
-                        ],
-                      ),
-                      
-                      SizedBox(height: 14),
-                      
-                      // Distance Badge - Add if location available
-                      if (request.latitude != null && request.longitude != null)
-                        Consumer<LocationFilterProvider>(
-                          builder: (context, locationProvider, _) {
-                            return Padding(
-                              padding: EdgeInsets.only(bottom: 12),
-                              child: DistanceBadge(
-                                latitude: request.latitude!,
-                                longitude: request.longitude!,
-                                isTablet: isTablet,
-                              ),
-                            );
-                          },
-                        ),
-                      
-                      // Budget and Duration Row
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                vertical: 6,
-                                horizontal: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _primaryGreen.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Budget',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 9,
-                                      color: _textSecondary,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    '\$${request.budgetMin.toStringAsFixed(0)} - \$${request.budgetMax.toStringAsFixed(0)}',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: isTablet ? 13 : 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: _primaryGreen,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                vertical: 6,
-                                horizontal: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _softGreen.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Duration',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 9,
-                                      color: _textSecondary,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    request.investmentDuration,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: isTablet ? 13 : 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: _softGreen,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      SizedBox(height: 14),
-                      
-                      // Description preview
-                      Text(
-                        request.description.length > 80
-                            ? '${request.description.substring(0, 80)}...'
-                            : request.description,
-                        style: GoogleFonts.inter(
-                          fontSize: isTablet ? 13 : 12,
-                          color: _textSecondary,
-                          height: 1.4,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      
-                      SizedBox(height: 14),
-                      
-                      // Stats Row
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _primaryGreen.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.remove_red_eye_rounded, size: 12, color: _primaryGreen),
-                                SizedBox(width: 3),
-                                Text(
-                                  '${request.totalViews} views',
-                                  style: GoogleFonts.inter(
-                                    color: _primaryGreen,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      SizedBox(height: 16),
-                      
-                      // View Details Button
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0, end: 1),
-                        duration: Duration(milliseconds: 800),
-                        curve: Curves.elasticOut,
-                        builder: (context, value, child) {
-                          final buttonClampedValue = value.clamp(0.0, 1.0);
-                          return Transform.scale(
-                            scale: 0.92 + (0.08 * buttonClampedValue),
-                            child: GestureDetector(
-                              onTap: () {
-                                final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                                if (authProvider.isGuestMode) {
-                                  _showLoginRequiredDialog(context, 'View Business Partner Request');
-                                  return;
-                                }
-                                _showRequestDetails(request);
-                              },
-                              child: Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: isTablet ? 14 : 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: _royalGradient,
-                                  borderRadius: BorderRadius.circular(24),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _primaryGreen.withOpacity(0.3),
-                                      blurRadius: 14,
-                                      offset: Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'View Details',
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontSize: isTablet ? 16 : 14,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    SizedBox(width: 10),
-                                    shouldAnimate
-                                        ? RotationTransition(
-                                            turns: _rotateController,
-                                            child: Icon(
-                                              Icons.arrow_forward_rounded,
-                                              color: Colors.white,
-                                              size: isTablet ? 18 : 16,
-                                            ),
-                                          )
-                                        : Icon(
-                                            Icons.arrow_forward_rounded,
-                                            color: Colors.white,
-                                            size: isTablet ? 18 : 16,
-                                          ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+    if (imageData != null && imageData.isNotEmpty) {
+      // Check if it's a URL
+      if (_isUrlString(imageData)) {
+        return ClipOval(
+          child: Image.network(
+            imageData,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading requester image: $error');
+              return _buildDefaultProfileImage();
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(_secondaryGold),
                 ),
-              ),
-            ),
+              );
+            },
           ),
-        ),
-      ),
-    );
-    
-    // Apply scale animation if app is visible
-    if (shouldAnimate) {
-      return TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: Duration(milliseconds: 500 + (index * 100)),
-        curve: Curves.elasticOut,
-        builder: (context, value, child) {
-          final clampedValue = value.clamp(0.0, 1.0);
-          return Transform.scale(
-            scale: 0.92 + (0.08 * clampedValue),
-            child: Opacity(
-              opacity: clampedValue,
-              child: cardContent,
+        );
+      } else {
+        // It's Base64 data
+        try {
+          String base64String = imageData;
+          
+          if (base64String.contains('base64,')) {
+            base64String = base64String.split('base64,').last;
+          }
+          
+          base64String = base64String.replaceAll(RegExp(r'\s'), '');
+          
+          while (base64String.length % 4 != 0) {
+            base64String += '=';
+          }
+          
+          final bytes = base64Decode(base64String);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                print('Error decoding requester image: $error');
+                return _buildDefaultProfileImage();
+              },
             ),
           );
-        },
-      );
-    }
-    
-    return cardContent;
-  }
-
-  // NEW: Build poster image from request.postedByProfileImageBase64
-  Widget _buildRequesterPosterImage(BusinessPartnerRequest request) {
-    if (request.postedByProfileImageBase64 != null && request.postedByProfileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = request.postedByProfileImageBase64!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
+        } catch (e) {
+          print('Error processing requester image: $e');
+          return _buildDefaultProfileImage();
         }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage();
-          },
-        );
-      } catch (e) {
-        return _buildDefaultProfileImage();
       }
     }
+    
     return _buildDefaultProfileImage();
-  }
-
-  // Updated helper method for tags
-  Widget _buildPremiumTag(String text, IconData icon, [bool isTablet = false]) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isTablet ? 10 : 8,
-        vertical: isTablet ? 5 : 4,
-      ),
-      decoration: BoxDecoration(
-        gradient: _glassMorphismGradient,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _secondaryGold.withOpacity(0.25)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: isTablet ? 11 : 10, color: _secondaryGold),
-          SizedBox(width: isTablet ? 5 : 4),
-          Text(
-            text,
-            style: GoogleFonts.poppins(
-              color: _textPrimary,
-              fontSize: isTablet ? 11 : 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildDefaultProfileImage() {
@@ -2532,15 +1877,446 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     );
   }
 
-  // UPDATED: Now only passes request, not user
+  Widget _buildPremiumRequestCard(BusinessPartnerRequest request, int index) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
+    Widget cardContent = Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: isTablet ? 16 : 12,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+            spreadRadius: -1,
+          ),
+          BoxShadow(
+            color: _primaryGreen.withOpacity(0.25),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.white,
+                Colors.white,
+                _lightGreen.withOpacity(0.3),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: _secondaryGold.withOpacity(0.25),
+              width: 1,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                if (authProvider.isGuestMode) {
+                  _showLoginRequiredDialog(context, 'View Business Partner Request');
+                  return;
+                }
+                _showRequestDetails(request);
+              },
+              borderRadius: BorderRadius.circular(20),
+              splashColor: _secondaryGold.withOpacity(0.15),
+              highlightColor: Colors.transparent,
+              child: Padding(
+                padding: EdgeInsets.all(isTablet ? 14 : 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // User Info Row - Compact
+                    Row(
+                      children: [
+                        Container(
+                          width: isTablet ? 44 : 38,
+                          height: isTablet ? 44 : 38,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: _royalGradient,
+                            border: Border.all(
+                              color: _secondaryGold,
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _secondaryGold.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(1.5),
+                            child: ClipOval(
+                              child: _buildRequesterPosterImage(request),
+                            ),
+                          ),
+                        ),
+                        
+                        SizedBox(width: 10),
+                        
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                request.postedByName ?? 'Business Seeker',
+                                style: GoogleFonts.poppins(
+                                  fontSize: isTablet ? 14 : 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: _textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 5,
+                                    height: 5,
+                                    decoration: BoxDecoration(
+                                      color: _secondaryGold,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Looking for Partner',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 9,
+                                      color: _secondaryGold,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        if (request.isVerified)
+                          Container(
+                            padding: EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              gradient: _preciousGradient,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.verified_rounded, 
+                              color: Colors.white, 
+                              size: isTablet ? 14 : 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: 10),
+                    
+                    // Partner Type and Business Type - Compact
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            request.partnerType.displayName,
+                            style: GoogleFonts.poppins(
+                              fontSize: isTablet ? 16 : 14,
+                              fontWeight: FontWeight.w800,
+                              color: _primaryGreen,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        
+                        if (request.isUrgent)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [_primaryGreen, _darkGreen],
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'URGENT',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: 6),
+                    
+                    // Business Type Badge - Compact
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: _greenGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        request.businessType.displayName,
+                        style: GoogleFonts.poppins(
+                          fontSize: isTablet ? 11 : 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    
+                    SizedBox(height: 10),
+                    
+                    // Tags - Compact
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _buildCompactTag(request.city, Icons.location_on_rounded, isTablet),
+                        if (request.industry != null && request.industry!.isNotEmpty && request.industry != 'Not specified')
+                          _buildCompactTag(request.industry!, Icons.category_rounded, isTablet),
+                      ],
+                    ),
+                    
+                    // Distance Badge - Compact
+                    if (request.latitude != null && request.longitude != null)
+                      Consumer<LocationFilterProvider>(
+                        builder: (context, locationProvider, _) {
+                          return Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: DistanceBadge(
+                              latitude: request.latitude!,
+                              longitude: request.longitude!,
+                              isTablet: isTablet,
+                            ),
+                          );
+                        },
+                      ),
+                    
+                    SizedBox(height: 8),
+                    
+                    // Budget and Duration Row - Compact
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              vertical: 4,
+                              horizontal: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _primaryGreen.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Budget',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 8,
+                                    color: _primaryGreen,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  '\$${request.budgetMin.toStringAsFixed(0)}-\$${request.budgetMax.toStringAsFixed(0)}',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: isTablet ? 11 : 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: _primaryGreen,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              vertical: 4,
+                              horizontal: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _softGreen.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Duration',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 8,
+                                    color: _primaryGreen,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  request.investmentDuration,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: isTablet ? 10 : 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: _primaryGreen,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: 10),
+                    
+                    // View Details Button - Compact
+                    GestureDetector(
+                      onTap: () {
+                        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                        if (authProvider.isGuestMode) {
+                          _showLoginRequiredDialog(context, 'View Business Partner Request');
+                          return;
+                        }
+                        _showRequestDetails(request);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                          vertical: isTablet ? 8 : 7,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: _royalGradient,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _primaryGreen.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'View Details',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: isTablet ? 12 : 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: isTablet ? 14 : 12,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    
+    if (shouldAnimate) {
+      return TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: Duration(milliseconds: 400 + (index * 80)),
+        curve: Curves.easeOut,
+        builder: (context, value, child) {
+          final clampedValue = value.clamp(0.0, 1.0);
+          return Transform.scale(
+            scale: 0.96 + (0.04 * clampedValue),
+            child: Opacity(
+              opacity: clampedValue,
+              child: cardContent,
+            ),
+          );
+        },
+      );
+    }
+    
+    return cardContent;
+  }
+
+  // Compact Tag
+  Widget _buildCompactTag(String text, IconData icon, [bool isTablet = false]) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 8 : 6,
+        vertical: isTablet ? 4 : 3,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _secondaryGold.withOpacity(0.3),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: isTablet ? 10 : 9, color: _secondaryGold),
+          SizedBox(width: isTablet ? 4 : 3),
+          Text(
+            text,
+            style: GoogleFonts.poppins(
+              color: _textSecondary,
+              fontSize: isTablet ? 10 : 9,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showRequestDetails(BusinessPartnerRequest request) async {
     HapticFeedback.mediumImpact();
     
-    // Increment view count
     final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
     await provider.incrementViewCount(EntrepreneurshipCategory.lookingForBusinessPartner, request.id!);
     
-    // Refresh to show updated view count
     await provider.loadPartnerRequests();
     
     if (!mounted) return;
@@ -2611,6 +2387,21 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
   }
 }
 
+// Helper class for states list
+class CommunityStates {
+  static const List<String> states = [
+    'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
+    'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho',
+    'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana',
+    'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
+    'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada',
+    'New Hampshire', 'New Jersey', 'New Mexico', 'New York',
+    'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon',
+    'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
+    'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington',
+    'West Virginia', 'Wisconsin', 'Wyoming'
+  ];
+}
 
 // ====================== ADD PARTNER REQUEST DIALOG ======================
 class AddPartnerRequestDialog extends StatefulWidget {

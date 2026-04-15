@@ -54,7 +54,6 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     _animationController = AnimationController(
@@ -74,14 +73,14 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
   @override
   void dispose() {
     print('🗑️ TutoringDetailsScreen disposing...');
-    
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
-    
-    // ✅ Dispose animation controller
     _animationController.dispose();
-    
     super.dispose();
+  }
+
+  // Helper function to check if string is a URL
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
   }
 
   Future<void> _launchEmail(String email) async {
@@ -176,34 +175,69 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
     );
   }
 
-  // NEW: Build poster image from service.postedByProfileImageBase64
+  // UPDATED: Build service poster image with URL and Base64 support
   Widget _buildServicePosterImage({bool isLarge = false}) {
-    if (widget.service.postedByProfileImageBase64 != null && widget.service.postedByProfileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = widget.service.postedByProfileImageBase64!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage(isLarge: isLarge);
-          },
+    final imageData = widget.service.postedByProfileImageBase64;
+    
+    if (imageData != null && imageData.isNotEmpty) {
+      // Check if it's a URL
+      if (_isUrlString(imageData)) {
+        return ClipOval(
+          child: Image.network(
+            imageData,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              print('Error loading tutor poster image: $error');
+              return _buildDefaultProfileImage(isLarge: isLarge);
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(widget.goldAccent),
+                ),
+              );
+            },
+          ),
         );
-      } catch (e) {
-        return _buildDefaultProfileImage(isLarge: isLarge);
+      } else {
+        // It's Base64 data
+        try {
+          String base64String = imageData;
+          
+          if (base64String.contains('base64,')) {
+            base64String = base64String.split('base64,').last;
+          }
+          
+          base64String = base64String.replaceAll(RegExp(r'\s'), '');
+          
+          while (base64String.length % 4 != 0) {
+            base64String += '=';
+          }
+          
+          final bytes = base64Decode(base64String);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                print('Error decoding tutor poster image: $error');
+                return _buildDefaultProfileImage(isLarge: isLarge);
+              },
+            ),
+          );
+        } catch (e) {
+          print('Error processing tutor poster image: $e');
+          return _buildDefaultProfileImage(isLarge: isLarge);
+        }
       }
     }
+    
     return _buildDefaultProfileImage(isLarge: isLarge);
   }
 
@@ -225,6 +259,7 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
     final service = widget.service;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
@@ -439,12 +474,15 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
                                           children: [
                                             Icon(Icons.person_rounded, color: widget.primaryBlue, size: 14),
                                             SizedBox(width: 4),
-                                            Text(
-                                              service.postedByName!,
-                                              style: GoogleFonts.poppins(
-                                                color: widget.primaryBlue,
-                                                fontSize: isTablet ? 14 : 12,
-                                                fontWeight: FontWeight.w600,
+                                            Flexible(
+                                              child: Text(
+                                                service.postedByName!,
+                                                style: GoogleFonts.poppins(
+                                                  color: widget.primaryBlue,
+                                                  fontSize: isTablet ? 14 : 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                           ],
@@ -1002,28 +1040,6 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
                           
                           SizedBox(height: isTablet ? 16 : 12),
                           
-                          // Close Button
-                          OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: widget.primaryBlue,
-                              padding: EdgeInsets.symmetric(vertical: isTablet ? 18 : 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              side: BorderSide(color: widget.primaryBlue, width: 2),
-                            ),
-                            child: Text(
-                              'Close',
-                              style: GoogleFonts.poppins(
-                                fontSize: isTablet ? 18 : 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          
-                          SizedBox(height: isTablet ? 24 : 20),
-                          
                           // Premium Footer
                           Container(
                             padding: EdgeInsets.all(isTablet ? 24 : 20),
@@ -1057,11 +1073,20 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
                                     ],
                                   ),
                                   child: Center(
-                                    child: Icon(
-                                      Icons.school_rounded,
-                                      color: Colors.white,
-                                      size: isTablet ? 28 : 24,
-                                    ),
+                                    child: shouldAnimate
+                                        ? RotationTransition(
+                                            turns: _animationController,
+                                            child: Icon(
+                                              Icons.school_rounded,
+                                              color: Colors.white,
+                                              size: isTablet ? 28 : 24,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.school_rounded,
+                                            color: Colors.white,
+                                            size: isTablet ? 28 : 24,
+                                          ),
                                   ),
                                 ),
                                 SizedBox(width: isTablet ? 20 : 16),
@@ -1156,6 +1181,8 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
     required Widget child,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1171,7 +1198,12 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
                 ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: isTablet ? 20 : 18),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: _animationController,
+                      child: Icon(icon, color: color, size: isTablet ? 20 : 18),
+                    )
+                  : Icon(icon, color: color, size: isTablet ? 20 : 18),
             ),
             SizedBox(width: isTablet ? 12 : 10),
             Text(
@@ -1198,6 +1230,8 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
     required VoidCallback onTap,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -1216,7 +1250,12 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: isTablet ? 22 : 18),
+              child: shouldAnimate
+                  ? RotationTransition(
+                      turns: _animationController,
+                      child: Icon(icon, color: color, size: isTablet ? 22 : 18),
+                    )
+                  : Icon(icon, color: color, size: isTablet ? 22 : 18),
             ),
             SizedBox(width: isTablet ? 16 : 12),
             Expanded(
@@ -1263,6 +1302,8 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
     required VoidCallback onPressed,
     required bool isTablet,
   }) {
+    final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+    
     return Container(
       decoration: BoxDecoration(
         gradient: gradient,
@@ -1285,7 +1326,12 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
+                shouldAnimate
+                    ? RotationTransition(
+                        turns: _animationController,
+                        child: Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
+                      )
+                    : Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
                 SizedBox(width: isTablet ? 10 : 8),
                 Text(
                   label,

@@ -3,6 +3,9 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:bangla_hub/providers/auth_provider.dart';
 import 'package:bangla_hub/screens/auth/login_screen.dart';
+import 'package:bangla_hub/screens/user_app/home_screen.dart';
+import 'package:bangla_hub/screens/user_app/webview_screen.dart';
+import 'package:bangla_hub/screens/user_app/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +14,8 @@ import 'package:country_picker/country_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
+import 'package:bangla_hub/services/cloudinary_service.dart';
+
 
 class RegisterScreen extends StatefulWidget {
   final String role;
@@ -670,7 +675,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             ),
           ],
         ),
-        const SizedBox(height: 8),
+     /*   const SizedBox(height: 8),
         Text(
           'Profile Picture (Optional)',
           style: GoogleFonts.inter(
@@ -679,7 +684,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             fontWeight: FontWeight.w500,
             letterSpacing: 0.3,
           ),
-        ),
+        ), */
         if (_profileImagePath != null) ...[
           const SizedBox(height: 4),
           Container(
@@ -1239,7 +1244,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
-  Widget _buildLuxuryTermsAndConditions() {
+/*  Widget _buildLuxuryTermsAndConditions() {
     return GestureDetector(
       onTap: _toggleTermsAccepted,
       child: Row(
@@ -1347,6 +1352,141 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
+  */
+  
+
+  Widget _buildLuxuryTermsAndConditions() {
+  return GestureDetector(
+    onTap: _toggleTermsAccepted,
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Checkbox
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          width: 22,
+          height: 22,
+          margin: const EdgeInsets.only(top: 2),
+          decoration: BoxDecoration(
+            color: _isTermsAccepted 
+                ? _bangladeshGreen 
+                : _bangladeshGreen.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: _isTermsAccepted 
+                  ? _bangladeshGreen 
+                  : _bangladeshGreen.withOpacity(0.3),
+              width: _isTermsAccepted ? 0 : 1.5,
+            ),
+            boxShadow: _isTermsAccepted 
+                ? [
+                    BoxShadow(
+                      color: _bangladeshGreen.withOpacity(0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Center(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _isTermsAccepted
+                  ? Icon(
+                      Icons.check_rounded,
+                      size: 16,
+                      color: Colors.white,
+                      key: const ValueKey('checked'),
+                    )
+                  : const SizedBox.shrink(key: ValueKey('unchecked')),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: Colors.grey[700],
+                height: 1.5,
+                letterSpacing: 0.3,
+              ),
+              children: [
+                const TextSpan(text: 'By registering, you agree to our '),
+                WidgetSpan(
+                  child: GestureDetector(
+                    onTap: () {
+                      _navigateToTermsOfService();
+                    },
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Text(
+                        'Terms of Service',
+                        style: TextStyle(
+                          color: _bangladeshGreen,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const TextSpan(text: ' and '),
+                WidgetSpan(
+                  child: GestureDetector(
+                    onTap: () {
+                      _navigateToPrivacyPolicy();
+                    },
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Text(
+                        'Privacy Policy',
+                        style: TextStyle(
+                          color: _bangladeshGreen,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const TextSpan(text: '.'),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Navigation methods
+void _navigateToTermsOfService() {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => WebViewScreen(
+        title: 'Terms of Service',
+        url: 'https://contacthasan09.github.io/bangla-hub-privacy-policies/terms_of_service.html',
+      ),
+    ),
+  );
+}
+
+void _navigateToPrivacyPolicy() {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => WebViewScreen(
+        title: 'Privacy Policy',
+        url: 'https://contacthasan09.github.io/bangla-hub-privacy-policies/privacy_policy.html',
+      ),
+    ),
+  );
+}
+  
   Widget _buildLuxuryRegisterButton(bool isSmallScreen, AuthProvider authProvider) {
     // The button is enabled only when ALL conditions are met including checkbox
     final bool isButtonEnabled = _isFormValid && !authProvider.isLoading;
@@ -1857,6 +1997,8 @@ class _RegisterScreenState extends State<RegisterScreen>
     }
   }
 
+  
+  
   Widget _buildImageSourceBottomSheet() {
     return Container(
       decoration: BoxDecoration(
@@ -2112,7 +2254,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
-  Future<void> _register(BuildContext context, AuthProvider authProvider) async {
+/*  Future<void> _register(BuildContext context, AuthProvider authProvider) async {
     if (_formKey.currentState!.validate()) {
       try {
         await authProvider.signUp(
@@ -2158,4 +2300,138 @@ class _RegisterScreenState extends State<RegisterScreen>
       }
     }
   }
+
+*/
+
+Future<void> _register(BuildContext context, AuthProvider authProvider) async {
+  if (_formKey.currentState!.validate()) {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_bangladeshGreen, _bangladeshRed],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                color: _goldAccent,
+                strokeWidth: 3,
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Creating your account...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    
+    try {
+      String? profileImageUrl;
+      
+      // Upload profile image to Cloudinary if selected
+      if (_profileImageFile != null) {
+        print('📸 Uploading profile image to Cloudinary...');
+
+  String userId = CloudinaryService.sanitizeEmailForFolder(
+    _emailController.text.trim()
+  );
+
+
+
+  profileImageUrl = await CloudinaryService.uploadImage(
+    _profileImageFile!,
+    customFolder: 'profile_images/$userId',
+  );
+        if (profileImageUrl != null) {
+          print('✅ Profile image uploaded: $profileImageUrl');
+        } else {
+          print('⚠️ Profile image upload failed, continuing without image');
+        }
+      }
+      
+      // Register user with Cloudinary URL
+      await authProvider.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+        location: _selectedLocation!,
+        profileImageUrl: profileImageUrl,
+        country: _selectedCountry?.name,
+        countryCode: _selectedCountry?.phoneCode,
+        latitude: _latitude,
+        longitude: _longitude,
+        context: context,
+      );
+      
+      // Close loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+      
+      // ✅ NAVIGATE TO WELCOME SCREEN
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => WelcomeScreen(
+              onComplete: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => HomeScreen()),
+                );
+              },
+            ),
+          ),
+        );
+      }
+      
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+      
+      String errorMessage = 'Registration failed. Please try again.';
+      
+      if (e.toString().contains('email-already-in-use')) {
+        errorMessage = 'Email already in use. Please use a different email or login.';
+      } else if (e.toString().contains('too-many-requests')) {
+        errorMessage = 'Too many attempts. Please try again later.';
+      } else if (e.toString().contains('weak-password')) {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      } else if (e.toString().contains('network-request-failed')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: _bangladeshRed,
+          content: Text(errorMessage),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+}
+
+
+
 }
