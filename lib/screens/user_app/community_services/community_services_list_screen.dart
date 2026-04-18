@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
+import 'package:bangla_hub/main.dart';
 import 'package:bangla_hub/models/community_services_models.dart';
 import 'package:bangla_hub/providers/auth_provider.dart';
 import 'package:bangla_hub/providers/location_filter_provider.dart';
@@ -18,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CommunityServicesListScreen extends StatefulWidget {
   const CommunityServicesListScreen({super.key});
@@ -288,7 +290,9 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
   }
 
   // Optimized image builder with caching - FIXED to show user images
-  Widget _buildProviderImage(ServiceProviderModel provider) {
+
+
+ /* Widget _buildProviderImage(ServiceProviderModel provider) {
     if (provider.profileImageBase64 == null || provider.profileImageBase64!.isEmpty) {
       return _buildDefaultProfileImage();
     }
@@ -339,6 +343,91 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
       ),
     );
   }
+
+ */
+ 
+ 
+Widget _buildProviderImage(ServiceProviderModel provider) {
+  // Check if there's an image
+  if (provider.profileImageBase64 == null || provider.profileImageBase64!.isEmpty) {
+    return _buildDefaultAvatar();
+  }
+
+  // Check cache
+  if (_imageCache.containsKey(provider.id)) {
+    final bytes = _imageCache[provider.id];
+    if (bytes != null) {
+      return ClipOval(
+        child: Image.memory(
+          bytes, 
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildDefaultAvatar();
+          },
+        ),
+      );
+    }
+  }
+
+  try {
+    String base64String = provider.profileImageBase64!;
+    if (base64String.contains('base64,')) {
+      base64String = base64String.split('base64,').last;
+    }
+    base64String = base64String.replaceAll(RegExp(r'\s'), '');
+    while (base64String.length % 4 != 0) base64String += '=';
+    
+    final bytes = base64Decode(base64String);
+    _imageCache[provider.id!] = bytes;
+    return ClipOval(
+      child: Image.memory(
+        bytes, 
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildDefaultAvatar();
+        },
+      ),
+    );
+  } catch (e) {
+    print('Error decoding image: $e');
+    return _buildDefaultAvatar();
+  }
+}
+
+Widget _buildDefaultAvatar() {
+  return ClipOval(
+    child: Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(
+          color: _primaryGreen.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Icon(
+          Icons.person_rounded, 
+          color: _primaryGreen, 
+          size: 30,
+        ),
+      ),
+    ),
+  );
+}
+
 
   // Get filtered providers - applying BOTH global and local filters (NO STATE from local)
   List<ServiceProviderModel> _getFilteredProviders(
@@ -1191,6 +1280,85 @@ Widget _buildLocalFilterCard(ServiceProviderProvider provider, bool isTablet) {
   final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
   provider.loadServiceProviders();
 }
+
+
+Future<void> _performPremiumLogout(BuildContext context) async {
+    BuildContext? dialogContext;
+    
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          dialogContext = context;
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: EdgeInsets.all(30),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_primaryGreen, _primaryRed],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(
+                    color: _goldAccent,
+                    strokeWidth: 3,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Logging out...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.signOut(context);
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('selected_tab_index');
+      print('📊 Cleared saved tab index on logout');
+
+      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.of(dialogContext!, rootNavigator: true).pop();
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      });
+    } catch (e) {
+      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.of(dialogContext!, rootNavigator: true).pop();
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Logout failed: $e'),
+              backgroundColor: _primaryRed,
+            ),
+          );
+        }
+      });
+    }
+  }
   
   Widget _buildDropdown<T>({
     required T? value,
@@ -1663,7 +1831,9 @@ Widget _buildLocalFilterCard(ServiceProviderProvider provider, bool isTablet) {
     );
   }
 
-  Widget _buildProviderCard(
+
+
+/*  Widget _buildProviderCard(
     ServiceProviderModel provider,
     String? userId,
     LocationFilterProvider locationProvider,
@@ -1840,6 +2010,7 @@ Widget _buildLocalFilterCard(ServiceProviderProvider provider, bool isTablet) {
                                       latitude: provider.latitude!,
                                       longitude: provider.longitude!,
                                       isTablet: isTablet,
+                                      color: Colors.white.withOpacity(0.9),
                                     ),
                                   ],
                                 ],
@@ -1950,7 +2121,301 @@ Widget _buildLocalFilterCard(ServiceProviderProvider provider, bool isTablet) {
     );
   }
 
+*/
+
+
+Widget _buildProviderCard(
+    ServiceProviderModel provider,
+    String? userId,
+    LocationFilterProvider locationProvider,
+    bool isTablet,
+    int index,
+  ) {
+    final categoryGradient = _getCategoryGradient(provider.serviceCategory);
+    
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 16 : 12,
+        vertical: 6,
+      ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.95, end: 1.0),
+        duration: Duration(milliseconds: 200 + (index * 30)),
+        curve: Curves.easeOut,
+        builder: (context, scale, child) {
+          return Transform.scale(
+            scale: scale,
+            child: GestureDetector(
+              onTap: () {
+                if (userId == null || userId.isEmpty) {
+                  _showLoginRequiredDialog(context, 'view details');
+                  return;
+                }
+                HapticFeedback.mediumImpact();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ServiceProviderDetailScreen(providerId: provider.id!),
+                  ),
+                );
+              },
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+                  child: Stack(
+                    children: [
+                      // Premium Green Gradient Background (NO RED)
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              _primaryGreen,
+                              _darkGreen,
+                              const Color(0xFF2E7D32), // Darker green
+                              const Color(0xFF1B5E20), // Even darker green
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            stops: const [0.0, 0.3, 0.7, 1.0],
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header Row
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Profile Image (Circle Avatar Only)
+                                  Container(
+                                    width: isTablet ? 70 : 60,
+                                    height: isTablet ? 70 : 60,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 8,
+                                        ),
+                                      ],
+                                    ),
+                                    child: _buildProviderImage(provider),
+                                  ),
+                                  
+                                  const SizedBox(width: 12),
+                                  
+                                  // Name and Company
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                provider.fullName,
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: isTablet ? 18 : 16,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.white,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (provider.isVerified)
+                                              Container(
+                                                margin: const EdgeInsets.only(left: 4),
+                                                padding: const EdgeInsets.all(2),
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.blue,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.check,
+                                                  color: Colors.white,
+                                                  size: 10,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          provider.companyName,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: isTablet ? 13 : 11,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white.withOpacity(0.9),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              
+                              const SizedBox(height: 12),
+                              
+                              // Location and Distance
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    color: _goldAccent,
+                                    size: isTablet ? 16 : 14,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      provider.city ?? provider.state ?? 'Location',
+                                      style: GoogleFonts.inter(
+                                        fontSize: isTablet ? 13 : 11,
+                                        color: Colors.white,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (provider.latitude != null && provider.longitude != null) ...[
+                                    const Spacer(),
+                                    DistanceBadge(
+                                      latitude: provider.latitude!,
+                                      longitude: provider.longitude!,
+                                      isTablet: isTablet,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              
+                              const SizedBox(height: 8),
+                              
+                              // Category and Service Type
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      provider.serviceCategory.icon,
+                                      color: _goldAccent,
+                                      size: isTablet ? 16 : 14,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        provider.serviceProvider ?? 'Service',
+                                        style: GoogleFonts.inter(
+                                          fontSize: isTablet ? 12 : 10,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              const SizedBox(height: 12),
+                              
+                              // Contact Buttons
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildContactButton(
+                                      icon: Icons.phone,
+                                      label: 'Call',
+                                      onTap: () {
+                                        // Add phone call functionality
+                                      },
+                                      isTablet: isTablet,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _buildContactButton(
+                                      icon: Icons.email,
+                                      label: 'Email',
+                                      onTap: () {
+                                        // Add email functionality
+                                      },
+                                      isTablet: isTablet,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // Like Button
+                                  _buildCompactLikeButton(provider, userId, isTablet),
+                                ],
+                              ),
+                              
+                              const SizedBox(height: 12),
+                              
+                              // View Details Button (Green gradient only)
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isTablet ? 10 : 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [_primaryGreen, _darkGreen],
+                                  ),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'View Details',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: isTablet ? 13 : 11,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+
   // Helper method for contact buttons
+
+
   Widget _buildContactButton({
     required IconData icon,
     required String label,
@@ -2287,7 +2752,7 @@ Widget _buildLocalFilterCard(ServiceProviderProvider provider, bool isTablet) {
 
 
 
-  void _showSuggestionDialog(BuildContext context, bool isTablet) {
+/*  void _showSuggestionDialog(BuildContext context, bool isTablet) {
     HapticFeedback.mediumImpact();
     
     showDialog(
@@ -2510,6 +2975,277 @@ Widget _buildLocalFilterCard(ServiceProviderProvider provider, bool isTablet) {
       ),
     );
   }
+
+*/
+
+void _showSuggestionDialog(BuildContext context, bool isTablet) {
+    HapticFeedback.mediumImpact();
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: EdgeInsets.all(isTablet ? 30 : 16),
+            child: Container(
+              width: isTablet ? 500 : null,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_primaryRed, _primaryGreen],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.add_circle, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Suggest Service',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: isTablet ? 18 : 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Body
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: [
+                          _buildSuggestionField(
+                            controller: _suggestFullNameController,
+                            label: 'Full Name',
+                            icon: Icons.person,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSuggestionField(
+                            controller: _suggestCompanyNameController,
+                            label: 'Company',
+                            icon: Icons.business,
+                            required: false,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSuggestionField(
+                            controller: _suggestPhoneController,
+                            label: 'Phone',
+                            icon: Icons.phone,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSuggestionField(
+                            controller: _suggestEmailController,
+                            label: 'Email',
+                            icon: Icons.email,
+                          ),
+                          const SizedBox(height: 8),
+                          
+                          // Location Picker
+                          _buildLocationPickerField(setState, isTablet),
+                          const SizedBox(height: 8),
+                          
+                          // Category Dropdown
+                          _buildSuggestionDropdown<ServiceCategory>(
+                            value: _suggestSelectedCategory,
+                            label: 'Category',
+                            icon: Icons.category,
+                            items: ServiceCategory.values.map((category) {
+                              return DropdownMenuItem<ServiceCategory>(
+                                value: category,
+                                child: Row(
+                                  children: [
+                                    Icon(category.icon, color: _primaryRed, size: 14),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        category.displayName,
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _suggestSelectedCategory = value;
+                                _suggestSelectedServiceProvider = null;
+                                _suggestAvailableServiceProviders = value?.serviceProviders ?? [];
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          
+                          // Service Type Dropdown
+                          if (_suggestSelectedCategory != null)
+                            _buildSuggestionDropdown<String>(
+                              value: _suggestSelectedServiceProvider,
+                              label: 'Service Type',
+                              icon: Icons.work,
+                              items: _suggestAvailableServiceProviders.map((provider) {
+                                return DropdownMenuItem<String>(
+                                  value: provider,
+                                  child: Text(
+                                    provider,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) => setState(() => _suggestSelectedServiceProvider = value),
+                            ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // 📝 Note Box - Added before buttons
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFFFEF3E8),
+                                  const Color(0xFFFFF8E8),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFFFB74D).withOpacity(0.5),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  color: const Color(0xFFFF9800),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    '📌 Note: After you submit your suggestion, our BanglaHub admin team will review the information. We may contact you for additional details before publishing the service. Once verified and approved, the service will be visible in the app.',
+                                    style: GoogleFonts.inter(
+                                      fontSize: isTablet ? 12 : 11,
+                                      color: const Color(0xFFE65100),
+                                      height: 1.4,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  // Footer
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                    ),
+                    child: Row(
+                      children: [
+                        // Cancel Button
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primaryRed,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(width: 8),
+                        
+                        // Submit Button
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _isSubmittingSuggestion ? null : () => _submitSuggestion(context, setState),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primaryGreen,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: _isSubmittingSuggestion
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : Text(
+                                    'Submit',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
 
   Widget _buildLocationPickerField(StateSetter setState, bool isTablet) {
     return GestureDetector(

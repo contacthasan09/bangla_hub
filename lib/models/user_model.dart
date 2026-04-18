@@ -130,6 +130,31 @@ class UserModel {
     );
   }
 
+
+  // models/user_model.dart - Add this method
+
+UserModel copyWithProfileImage(String? profileImageUrl) {
+  return UserModel(
+    id: id,
+    email: email,
+    firstName: firstName,
+    lastName: lastName,
+    phoneNumber: phoneNumber,
+    location: location,
+    profileImageUrl: profileImageUrl,
+    role: role,
+    isEmailVerified: isEmailVerified,
+    isActive: isActive,
+    createdAt: createdAt,
+    updatedAt: DateTime.now(),
+    country: country,
+    countryCode: countryCode,
+    latitude: latitude,
+    longitude: longitude,
+    lastActiveAt: lastActiveAt,
+  );
+}
+
   bool get isAdmin => role == 'admin';
   bool get isUser => role == 'user';
   

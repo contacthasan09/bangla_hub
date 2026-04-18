@@ -61,6 +61,54 @@ class _AdminNetworkingPartnersScreenState extends State<AdminNetworkingPartnersS
     }
   }
 
+
+  Future<void> _permanentDeletePartner(dynamic item) async {
+  final id = item.id!;
+  final name = item.businessName;
+  
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Permanent Delete'),
+      content: Text(
+        'Are you sure you want to permanently delete "$name"? This action cannot be undone.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Delete Permanently'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed == true) {
+    final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
+    final success = await provider.permanentDeleteBusinessPartner(id);
+    
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Business partner permanently deleted'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete: ${provider.error}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChange);
@@ -690,10 +738,8 @@ class _AdminNetworkingPartnersScreenState extends State<AdminNetworkingPartnersS
               SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-               //   onPressed: () => _permanentDeletePartner(partner),
-               onPressed: () {
-                 
-               },
+                  onPressed: () => _permanentDeletePartner(partner),
+               
                   icon: Icon(Icons.delete_forever_rounded, size: isSmallScreen ? 16 : 18),
                   label: Text(
                     'Delete\nPermanently',

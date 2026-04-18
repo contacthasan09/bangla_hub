@@ -12,18 +12,22 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+
+
 class AdminEntrepreneurshipDashboard extends StatefulWidget {
   @override
   _AdminEntrepreneurshipDashboardState createState() => _AdminEntrepreneurshipDashboardState();
 }
 
 class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDashboard> with SingleTickerProviderStateMixin {
-  final Color _primaryGreen = Color(0xFF006A4E);
-  final Color _darkGreen = Color(0xFF004D38);
-  final Color _lightGreen = Color(0xFFE8F5E9);
+  final Color _primaryGreen = const Color(0xFF006A4E);
+  final Color _darkGreen = const Color(0xFF004D38);
+  final Color _lightGreen = const Color(0xFFE8F5E9);
+
+  bool _isRefreshing = false;
+  DateTime _lastRefreshTime = DateTime.now();
   
   late TabController _tabController;
-  DateTime? _lastRefreshTime;
 
   @override
   void initState() {
@@ -39,16 +43,109 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
   }
 
   Future<void> _loadData() async {
-    final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
-    await Future.wait([
-      provider.loadBusinessPartners(adminView: true),
-      provider.loadJobPostings(adminView: true, includeExpired: true),
-      provider.loadBusinessPromotions(adminView: true),
-      provider.loadPartnerRequests(adminView: true),
-    ]);
+    if (_isRefreshing) return;
+    
     setState(() {
-      _lastRefreshTime = DateTime.now();
+      _isRefreshing = true;
     });
+    
+    try {
+      final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
+      
+      await Future.wait([
+        provider.loadBusinessPartners(adminView: true),
+        provider.loadJobPostings(adminView: true, includeExpired: true),
+        provider.loadBusinessPromotions(adminView: true),
+        provider.loadPartnerRequests(adminView: true),
+      ]);
+      
+      setState(() {
+        _lastRefreshTime = DateTime.now();
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All data refreshed successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+      
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
+  }
+
+  // Navigation methods for pending items
+  void _showJobDetails(JobPosting job) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AdminJobDetailsSheet(
+        job: job,
+        type: 'pending',
+        onStatusChanged: () => _loadData(),
+        primaryGreen: _primaryGreen,
+      ),
+    );
+  }
+
+  void _showRequestDetails(BusinessPartnerRequest request) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AdminRequestDetailsSheet(
+        request: request,
+        type: 'pending',
+        onStatusChanged: () => _loadData(),
+        primaryGreen: _primaryGreen,
+      ),
+    );
+  }
+
+  void _showPromotionDetails(SmallBusinessPromotion promotion) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AdminPromotionDetailsSheet(
+        promotion: promotion,
+        type: 'pending',
+        onStatusChanged: () => _loadData(),
+        primaryGreen: _primaryGreen,
+      ),
+    );
+  }
+
+  void _showPartnerDetails(NetworkingBusinessPartner partner) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AdminPartnerDetailsSheet(
+        partner: partner,
+        type: 'pending',
+        onStatusChanged: () => _loadData(),
+        primaryGreen: _primaryGreen,
+      ),
+    );
   }
 
   @override
@@ -74,8 +171,7 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
                   ),
                   child: SafeArea(
                     child: Padding(
-                    //  padding: EdgeInsets.all(20),
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,14 +184,7 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
                               color: Colors.white,
                             ),
                           ),
-                          SizedBox(height: 25),
-                      /*    Text(
-                            'Admin Management Panel',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),*/
+                          const SizedBox(height: 25),
                         ],
                       ),
                     ),
@@ -108,7 +197,7 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
                 indicatorWeight: 3,
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white.withOpacity(0.7),
-                tabs: [
+                tabs: const [
                   Tab(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -143,9 +232,18 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _loadData,
+        onPressed: _isRefreshing ? null : _loadData,
         backgroundColor: _primaryGreen,
-        child: Icon(Icons.refresh_rounded),
+        child: _isRefreshing
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.refresh_rounded),
       ),
     );
   }
@@ -157,17 +255,17 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
           onRefresh: _loadData,
           color: _primaryGreen,
           child: ListView(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             children: [
               // Last refreshed
               if (_lastRefreshTime != null)
                 Padding(
-                  padding: EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Icon(Icons.update_rounded, size: 14, color: Colors.grey[500]),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
                         'Last updated: ${_formatTimeAgo(_lastRefreshTime!)}',
                         style: TextStyle(fontSize: 12, color: Colors.grey[500]),
@@ -177,10 +275,7 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
                 ),
               
               _buildStatsSection(provider),
-              SizedBox(height: 24),
-              
-              _buildQuickActions(),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               
               _buildSectionHeader('Business Management'),
               _buildMenuCard(
@@ -193,7 +288,7 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
                     .where((p) => !p.isVerified && !p.isDeleted && p.isActive)
                     .length,
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               
               _buildMenuCard(
                 icon: Icons.work_rounded,
@@ -205,7 +300,7 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
                     .where((j) => !j.isVerified && !j.isDeleted && j.isActive)
                     .length,
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               
               _buildMenuCard(
                 icon: Icons.storefront_rounded,
@@ -217,7 +312,7 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
                     .where((p) => !p.isVerified && !p.isDeleted && p.isActive)
                     .length,
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               
               _buildMenuCard(
                 icon: Icons.people_rounded,
@@ -229,7 +324,7 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
                     .where((r) => !r.isVerified && !r.isDeleted && r.isActive)
                     .length,
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               
               _buildMenuCard(
                 icon: Icons.public_rounded,
@@ -239,12 +334,12 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
                 color: Colors.teal,
               ),
               
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               
               // System Status
               _buildSystemStatus(),
               
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
             ],
           ),
         );
@@ -263,12 +358,12 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.check_circle_rounded, size: 80, color: Colors.green[300]),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
                   'All caught up!',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.green[700]),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
                   'No pending items to review',
                   style: TextStyle(fontSize: 14, color: Colors.grey[600]),
@@ -282,7 +377,7 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
           onRefresh: _loadData,
           color: _primaryGreen,
           child: ListView.builder(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             itemCount: pendingItems.length,
             itemBuilder: (context, index) {
               final item = pendingItems[index];
@@ -294,9 +389,140 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
     );
   }
 
+  Widget _buildPendingItemCard(dynamic item) {
+    String type;
+    Color color;
+    IconData icon;
+    String title;
+    String subtitle;
+    VoidCallback onTap;
+
+    if (item is NetworkingBusinessPartner) {
+      type = 'Business Partner';
+      color = Colors.blue;
+      icon = Icons.store_rounded;
+      title = item.businessName;
+      subtitle = 'Requested by: ${item.ownerName}';
+      onTap = () => _showPartnerDetails(item);
+    } else if (item is JobPosting) {
+      type = 'Job Posting';
+      color = Colors.green;
+      icon = Icons.work_rounded;
+      title = item.jobTitle;
+      subtitle = '${item.companyName} • ${item.location}';
+      onTap = () => _showJobDetails(item);
+    } else if (item is SmallBusinessPromotion) {
+      type = 'Business Promotion';
+      color = Colors.purple;
+      icon = Icons.storefront_rounded;
+      title = item.businessName;
+      subtitle = 'Posted by: ${item.ownerName}';
+      onTap = () => _showPromotionDetails(item);
+    } else if (item is BusinessPartnerRequest) {
+      type = 'Partner Request';
+      color = Colors.orange;
+      icon = Icons.people_rounded;
+      title = item.title;
+      subtitle = 'Partner Type: ${item.partnerType.displayName}';
+      onTap = () => _showRequestDetails(item);
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            type,
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _getTimeAgo(item.createdAt),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[500],
+                            ),
+                            textAlign: TextAlign.right,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatsSection(EntrepreneurshipProvider provider) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+    
     return Container(
-      padding: EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -304,7 +530,7 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: Offset(0, 5),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -314,7 +540,7 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
           Row(
             children: [
               Icon(Icons.analytics_rounded, color: _primaryGreen, size: 24),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 'Overview',
                 style: GoogleFonts.poppins(
@@ -325,13 +551,13 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
               ),
             ],
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           
           // Stats Grid
           GridView.count(
             shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: isTablet ? 4 : 2,
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
             childAspectRatio: 1.5,
@@ -375,9 +601,9 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
             ],
           ),
           
-          SizedBox(height: 16),
-          Divider(),
-          SizedBox(height: 8),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 8),
           
           // Engagement Stats
           Row(
@@ -390,16 +616,6 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
                   color: Colors.red,
                 ),
               ),
-     /*         Expanded(
-                child: _buildEngagementStat(
-                  icon: Icons.visibility_rounded,
-                  value: _formatNumber(provider.jobPostings.fold<int>(0, (sum, j) => sum + (j.totalViews ?? 0)) +
-                                      provider.businessPromotions.fold<int>(0, (sum, p) => sum + p.totalViews) +
-                                      provider.partnerRequests.fold<int>(0, (sum, r) => sum + r.totalViews)),
-                  label: 'Total Views',
-                  color: Colors.blue,
-                ),
-              ), */
             ],
           ),
         ],
@@ -407,148 +623,80 @@ class _AdminEntrepreneurshipDashboardState extends State<AdminEntrepreneurshipDa
     );
   }
 
-/*  Widget _buildStatCard({
+  Widget _buildStatCard({
     required IconData icon,
     required String value,
     required String label,
     required Color color,
     int pending = 0,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+    
     return Container(
-      padding: EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(icon, color: color, size: 20),
-                  if (pending > 0) ...[
-                    SizedBox(width: 4),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        pending.toString(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
+              Icon(icon, color: color, size: 20),
+              if (pending > 0) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      pending.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
-                ],
-              ),
-              SizedBox(height: 8),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87,
+                  ),
                 ),
-              ),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                ),
-              ),
+              ],
             ],
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey[600],
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
     );
-  }  */
-
-Widget _buildStatCard({
-  required IconData icon,
-  required String value,
-  required String label,
-  required Color color,
-  int pending = 0,
-}) {
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      return Container(
-        padding: EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 20),
-                if (pending > 0) ...[
-                  SizedBox(width: 4),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        pending.toString(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                value,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-            SizedBox(height: 2),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-
+  }
 
   Widget _buildEngagementStat({
     required IconData icon,
@@ -559,20 +707,20 @@ Widget _buildStatCard({
     return Row(
       children: [
         Container(
-          padding: EdgeInsets.all(8),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 16),
         ),
-        SizedBox(width: 8),
+        const SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               value,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
@@ -591,246 +739,9 @@ Widget _buildStatCard({
     );
   }
 
-  Widget _buildQuickActions() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.flash_on_rounded, color: _primaryGreen, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Quick Actions',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: _primaryGreen,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickActionButton(
-                  icon: Icons.add_business_rounded,
-                  label: 'Add Partner',
-                  color: Colors.blue,
-                  onTap: () {
-                    // Navigate to add partner screen
-                  },
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _buildQuickActionButton(
-                  icon: Icons.add_rounded,
-                  label: 'Add Job',
-                  color: Colors.green,
-                  onTap: () {
-                    // Navigate to add job screen
-                  },
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickActionButton(
-                  icon: Icons.add_business_rounded,
-                  label: 'Add Promotion',
-                  color: Colors.purple,
-                  onTap: () {
-                    // Navigate to add promotion screen
-                  },
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _buildQuickActionButton(
-                  icon: Icons.group_add_rounded,
-                  label: 'Add Request',
-                  color: Colors.orange,
-                  onTap: () {
-                    // Navigate to add request screen
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 20),
-            SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPendingItemCard(dynamic item) {
-    String type;
-    Color color;
-    IconData icon;
-    String title;
-    String subtitle;
-
-    if (item is NetworkingBusinessPartner) {
-      type = 'Business Partner';
-      color = Colors.blue;
-      icon = Icons.store_rounded;
-      title = item.businessName;
-      subtitle = 'Requested by: ${item.ownerName}';
-    } else if (item is JobPosting) {
-      type = 'Job Posting';
-      color = Colors.green;
-      icon = Icons.work_rounded;
-      title = item.jobTitle;
-      subtitle = '${item.companyName} • ${item.location}';
-    } else if (item is SmallBusinessPromotion) {
-      type = 'Business Promotion';
-      color = Colors.purple;
-      icon = Icons.storefront_rounded;
-      title = item.businessName;
-      subtitle = 'Posted by: ${item.ownerName}';
-    } else if (item is BusinessPartnerRequest) {
-      type = 'Partner Request';
-      color = Colors.orange;
-      icon = Icons.people_rounded;
-      title = item.title;
-      subtitle = 'Partner Type: ${item.partnerType.displayName}';
-    } else {
-      return SizedBox.shrink();
-    }
-
-    return Card(
-      margin: EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () {
-          // Navigate to appropriate details screen
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            type,
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _getTimeAgo(item.createdAt),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey[500],
-                            ),
-                            textAlign: TextAlign.right,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSystemStatus() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -838,7 +749,7 @@ Widget _buildStatCard({
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: Offset(0, 5),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -848,7 +759,7 @@ Widget _buildStatCard({
           Row(
             children: [
               Icon(Icons.settings_rounded, color: _primaryGreen, size: 20),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 'System Status',
                 style: GoogleFonts.poppins(
@@ -859,7 +770,7 @@ Widget _buildStatCard({
               ),
             ],
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _buildStatusRow(
             label: 'Database Connection',
             status: 'Connected',
@@ -891,11 +802,11 @@ Widget _buildStatCard({
     required Color color,
   }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
           Icon(Icons.check_circle_rounded, color: color, size: 14),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
@@ -920,7 +831,7 @@ Widget _buildStatCard({
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Text(
         title,
         style: GoogleFonts.poppins(
@@ -950,7 +861,7 @@ Widget _buildStatCard({
         ),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Container(
@@ -962,7 +873,7 @@ Widget _buildStatCard({
                 ),
                 child: Icon(icon, color: color, size: 30),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -981,14 +892,14 @@ Widget _buildStatCard({
                         ),
                         if (pendingCount > 0)
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.red,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               pendingCount.toString(),
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -997,7 +908,7 @@ Widget _buildStatCard({
                           ),
                       ],
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: TextStyle(
@@ -1021,22 +932,18 @@ Widget _buildStatCard({
     
     pending.addAll(provider.businessPartners
         .where((p) => !p.isVerified && !p.isDeleted && p.isActive)
-        .take(5)
         .toList());
     
     pending.addAll(provider.jobPostings
         .where((j) => !j.isVerified && !j.isDeleted && j.isActive)
-        .take(5)
         .toList());
     
     pending.addAll(provider.businessPromotions
         .where((p) => !p.isVerified && !p.isDeleted && p.isActive)
-        .take(5)
         .toList());
     
     pending.addAll(provider.partnerRequests
         .where((r) => !r.isVerified && !r.isDeleted && r.isActive)
-        .take(5)
         .toList());
     
     // Sort by date (newest first)

@@ -1,5 +1,3 @@
-// lib/screens/admin/education/admin_education_dashboard.dart
-
 import 'package:bangla_hub/models/education_models.dart';
 import 'package:bangla_hub/providers/education_provider.dart';
 import 'package:bangla_hub/screens/admin_app/screens/education_dashboard/admission_guidance/admission_guidance_screen.dart';
@@ -11,18 +9,22 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+
+
 class AdminEducationDashboard extends StatefulWidget {
   @override
   _AdminEducationDashboardState createState() => _AdminEducationDashboardState();
 }
 
 class _AdminEducationDashboardState extends State<AdminEducationDashboard> with SingleTickerProviderStateMixin {
-  final Color _primaryBlue = Color(0xFF1976D2);
-  final Color _darkBlue = Color(0xFF0D47A1);
-  final Color _lightBlue = Color(0xFFE3F2FD);
+  final Color _primaryBlue = const Color(0xFF1976D2);
+  final Color _darkBlue = const Color(0xFF0D47A1);
+  final Color _lightBlue = const Color(0xFFE3F2FD);
   
   late TabController _tabController;
-  DateTime? _lastRefreshTime;
+
+  bool _isRefreshing = false;
+  DateTime _lastRefreshTime = DateTime.now();
 
   @override
   void initState() {
@@ -37,17 +39,110 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
     super.dispose();
   }
 
+  // Navigation methods for pending items
+  void _showTutoringDetails(TutoringService service) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AdminTutoringDetailsSheet(
+        service: service,
+        type: 'pending',
+        onStatusChanged: () => _loadData(),
+        primaryBlue: _primaryBlue,
+      ),
+    );
+  }
+
+  void _showAdmissionsDetails(AdmissionsGuidance guidance) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AdminAdmissionsDetailsSheet(
+        guidance: guidance,
+        type: 'pending',
+        onStatusChanged: () => _loadData(),
+        primaryGreen: _primaryBlue,
+      ),
+    );
+  }
+
+  void _showBanglaClassDetails(BanglaClass banglaClass) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AdminBanglaClassDetailsSheet(
+        banglaClass: banglaClass,
+        type: 'pending',
+        onStatusChanged: () => _loadData(),
+        primaryOrange: Colors.orange,
+      ),
+    );
+  }
+
+  void _showSportsClubDetails(SportsClub club) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AdminSportsClubDetailsSheet(
+        club: club,
+        type: 'pending',
+        onStatusChanged: () => _loadData(),
+        primaryRed: Colors.red,
+      ),
+    );
+  }
+
   Future<void> _loadData() async {
-    final provider = Provider.of<EducationProvider>(context, listen: false);
-    await Future.wait([
-      provider.loadTutoringServices(adminView: true),
-      provider.loadAdmissionsGuidance(adminView: true),
-      provider.loadBanglaClasses(adminView: true),
-      provider.loadSportsClubs(adminView: true),
-    ]);
+    if (_isRefreshing) return;
+    
     setState(() {
-      _lastRefreshTime = DateTime.now();
+      _isRefreshing = true;
     });
+    
+    try {
+      final provider = Provider.of<EducationProvider>(context, listen: false);
+      
+      await Future.wait([
+        provider.loadTutoringServices(adminView: true),
+        provider.loadAdmissionsGuidance(adminView: true),
+        provider.loadBanglaClasses(adminView: true),
+        provider.loadSportsClubs(adminView: true),
+      ]);
+      
+      setState(() {
+        _lastRefreshTime = DateTime.now();
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All education data refreshed successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+      
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
   }
 
   @override
@@ -73,8 +168,7 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
                   ),
                   child: SafeArea(
                     child: Padding(
-                  //    padding: EdgeInsets.all(20),
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,14 +181,7 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
                               color: Colors.white,
                             ),
                           ),
-                          SizedBox(height: 25),
-                      /*    Text(
-                            'Admin Management Panel',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),*/
+                          const SizedBox(height: 25),
                         ],
                       ),
                     ),
@@ -107,7 +194,7 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
                 indicatorWeight: 3,
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white.withOpacity(0.7),
-                tabs: [
+                tabs: const [
                   Tab(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -142,9 +229,18 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _loadData,
+        onPressed: _isRefreshing ? null : _loadData,
         backgroundColor: _primaryBlue,
-        child: Icon(Icons.refresh_rounded),
+        child: _isRefreshing
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.refresh_rounded),
       ),
     );
   }
@@ -156,17 +252,17 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
           onRefresh: _loadData,
           color: _primaryBlue,
           child: ListView(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             children: [
               // Last refreshed
               if (_lastRefreshTime != null)
                 Padding(
-                  padding: EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Icon(Icons.update_rounded, size: 14, color: Colors.grey[500]),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
                         'Last updated: ${_formatTimeAgo(_lastRefreshTime!)}',
                         style: TextStyle(fontSize: 12, color: Colors.grey[500]),
@@ -176,10 +272,7 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
                 ),
               
               _buildStatsSection(provider),
-              SizedBox(height: 24),
-              
-              _buildQuickActions(),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               
               _buildSectionHeader('Education Management'),
               _buildMenuCard(
@@ -192,7 +285,7 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
                     .where((t) => !t.isVerified && !t.isDeleted && t.isActive)
                     .length,
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               _buildMenuCard(
                 icon: Icons.business_center_rounded,
                 title: 'Admissions Guidance',
@@ -203,7 +296,7 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
                     .where((a) => !a.isVerified && !a.isDeleted && a.isActive)
                     .length,
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               _buildMenuCard(
                 icon: Icons.language_rounded,
                 title: 'Bangla Classes',
@@ -214,7 +307,7 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
                     .where((b) => !b.isVerified && !b.isDeleted && b.isActive)
                     .length,
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               _buildMenuCard(
                 icon: Icons.sports_rounded,
                 title: 'Sports Clubs',
@@ -226,12 +319,12 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
                     .length,
               ),
               
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               
               // System Status
               _buildSystemStatus(),
               
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
             ],
           ),
         );
@@ -250,12 +343,12 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.check_circle_rounded, size: 80, color: Colors.green[300]),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
                   'All caught up!',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.green[700]),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
                   'No pending items to review',
                   style: TextStyle(fontSize: 14, color: Colors.grey[600]),
@@ -269,7 +362,7 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
           onRefresh: _loadData,
           color: _primaryBlue,
           child: ListView.builder(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             itemCount: pendingItems.length,
             itemBuilder: (context, index) {
               final item = pendingItems[index];
@@ -281,6 +374,134 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
     );
   }
 
+  Widget _buildPendingItemCard(dynamic item) {
+    String type;
+    Color color;
+    IconData icon;
+    String title;
+    String subtitle;
+    VoidCallback onTap;
+
+    if (item is TutoringService) {
+      type = 'Tutoring';
+      color = Colors.blue;
+      icon = Icons.school_rounded;
+      title = item.tutorName;
+      subtitle = '${item.subjects.length} subjects • ${item.city}';
+      onTap = () => _showTutoringDetails(item);
+    } else if (item is AdmissionsGuidance) {
+      type = 'Admissions';
+      color = Colors.green;
+      icon = Icons.business_center_rounded;
+      title = item.consultantName;
+      subtitle = '${item.specializations.length} specializations';
+      onTap = () => _showAdmissionsDetails(item);
+    } else if (item is BanglaClass) {
+      type = 'Bangla Class';
+      color = Colors.orange;
+      icon = Icons.language_rounded;
+      title = item.instructorName;
+      subtitle = '${item.classTypes.join(', ')}';
+      onTap = () => _showBanglaClassDetails(item);
+    } else if (item is SportsClub) {
+      type = 'Sports Club';
+      color = Colors.red;
+      icon = Icons.sports_rounded;
+      title = item.clubName;
+      subtitle = item.sportType.displayName;
+      onTap = () => _showSportsClubDetails(item);
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            type,
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _getTimeAgo(item.createdAt),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[500],
+                            ),
+                            textAlign: TextAlign.right,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatsSection(EducationProvider provider) {
     final totalTutoring = provider.tutoringServices.length;
     final totalAdmissions = provider.admissionsGuidance.length;
@@ -288,8 +509,11 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
     final totalSports = provider.sportsClubs.length;
     final total = totalTutoring + totalAdmissions + totalBangla + totalSports;
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+
     return Container(
-      padding: EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -297,7 +521,7 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: Offset(0, 5),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -307,7 +531,7 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
           Row(
             children: [
               Icon(Icons.analytics_rounded, color: _primaryBlue, size: 24),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 'Overview',
                 style: GoogleFonts.poppins(
@@ -318,13 +542,13 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
               ),
             ],
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           
           // Stats Grid
           GridView.count(
             shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: isTablet ? 4 : 2,
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
             childAspectRatio: 1.5,
@@ -368,9 +592,9 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
             ],
           ),
           
-          SizedBox(height: 16),
-          Divider(),
-          SizedBox(height: 8),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 8),
           
           // Engagement Stats
           Row(
@@ -404,12 +628,12 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
             ],
           ),
           
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.folder_rounded, size: 20, color: _primaryBlue),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 'Total Listings: $total',
                 style: TextStyle(
@@ -425,7 +649,7 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
     );
   }
 
-/*  Widget _buildStatCard({
+  Widget _buildStatCard({
     required IconData icon,
     required String value,
     required String label,
@@ -433,135 +657,69 @@ class _AdminEducationDashboardState extends State<AdminEducationDashboard> with 
     int pending = 0,
   }) {
     return Container(
-      padding: EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(icon, color: color, size: 20),
-                  if (pending > 0) ...[
-                    SizedBox(width: 4),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        pending.toString(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
+              Icon(icon, color: color, size: 20),
+              if (pending > 0) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      pending.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
-                ],
-              ),
-              SizedBox(height: 8),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87,
+                  ),
                 ),
-              ),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                ),
-              ),
+              ],
             ],
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey[600],
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
     );
-  }  */
-
-Widget _buildStatCard({
-  required IconData icon,
-  required String value,
-  required String label,
-  required Color color,
-  int pending = 0,
-}) {
-  return Container(
-    padding: EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: color, size: 20),
-            if (pending > 0) ...[
-              SizedBox(width: 4),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    pending.toString(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-        SizedBox(height: 6),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Colors.black87,
-            ),
-          ),
-        ),
-        SizedBox(height: 2),
-        Flexible(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[600],
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
+  }
 
   Widget _buildEngagementStat({
     required IconData icon,
@@ -572,20 +730,20 @@ Widget _buildStatCard({
     return Row(
       children: [
         Container(
-          padding: EdgeInsets.all(8),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 16),
         ),
-        SizedBox(width: 8),
+        const SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               value,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
@@ -604,238 +762,9 @@ Widget _buildStatCard({
     );
   }
 
-  Widget _buildQuickActions() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.flash_on_rounded, color: _primaryBlue, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Quick Actions',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: _primaryBlue,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          GridView.count(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 2,
-            children: [
-              _buildQuickActionButton(
-                icon: Icons.school_rounded,
-                label: 'Add Tutor',
-                color: Colors.blue,
-                onTap: () {
-                  // Navigate to add tutor screen
-                },
-              ),
-              _buildQuickActionButton(
-                icon: Icons.business_center_rounded,
-                label: 'Add Consultant',
-                color: Colors.green,
-                onTap: () {
-                  // Navigate to add consultant screen
-                },
-              ),
-              _buildQuickActionButton(
-                icon: Icons.language_rounded,
-                label: 'Add Class',
-                color: Colors.orange,
-                onTap: () {
-                  // Navigate to add class screen
-                },
-              ),
-              _buildQuickActionButton(
-                icon: Icons.sports_rounded,
-                label: 'Add Club',
-                color: Colors.red,
-                onTap: () {
-                  // Navigate to add club screen
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 16),
-            SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPendingItemCard(dynamic item) {
-    String type;
-    Color color;
-    IconData icon;
-    String title;
-    String subtitle;
-
-    if (item is TutoringService) {
-      type = 'Tutoring';
-      color = Colors.blue;
-      icon = Icons.school_rounded;
-      title = item.tutorName;
-      subtitle = '${item.subjects.length} subjects • ${item.city}';
-    } else if (item is AdmissionsGuidance) {
-      type = 'Admissions';
-      color = Colors.green;
-      icon = Icons.business_center_rounded;
-      title = item.consultantName;
-      subtitle = '${item.specializations.length} specializations';
-    } else if (item is BanglaClass) {
-      type = 'Bangla Class';
-      color = Colors.orange;
-      icon = Icons.language_rounded;
-      title = item.instructorName;
-      subtitle = '${item.classTypes.join(', ')}';
-    } else if (item is SportsClub) {
-      type = 'Sports Club';
-      color = Colors.red;
-      icon = Icons.sports_rounded;
-      title = item.clubName;
-      subtitle = item.sportType.displayName;
-    } else {
-      return SizedBox.shrink();
-    }
-
-    return Card(
-      margin: EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () {
-          // Navigate to appropriate details screen
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            type,
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _getTimeAgo(item.createdAt),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey[500],
-                            ),
-                            textAlign: TextAlign.right,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSystemStatus() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -843,7 +772,7 @@ Widget _buildStatCard({
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: Offset(0, 5),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -853,7 +782,7 @@ Widget _buildStatCard({
           Row(
             children: [
               Icon(Icons.settings_rounded, color: _primaryBlue, size: 20),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 'System Status',
                 style: GoogleFonts.poppins(
@@ -864,7 +793,7 @@ Widget _buildStatCard({
               ),
             ],
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _buildStatusRow(
             label: 'Database Connection',
             status: 'Connected',
@@ -896,11 +825,11 @@ Widget _buildStatCard({
     required Color color,
   }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
           Icon(Icons.check_circle_rounded, color: color, size: 14),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
@@ -925,7 +854,7 @@ Widget _buildStatCard({
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Text(
         title,
         style: GoogleFonts.poppins(
@@ -955,7 +884,7 @@ Widget _buildStatCard({
         ),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Container(
@@ -967,7 +896,7 @@ Widget _buildStatCard({
                 ),
                 child: Icon(icon, color: color, size: 30),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -986,14 +915,14 @@ Widget _buildStatCard({
                         ),
                         if (pendingCount > 0)
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.red,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               pendingCount.toString(),
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -1002,7 +931,7 @@ Widget _buildStatCard({
                           ),
                       ],
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: TextStyle(
@@ -1026,22 +955,18 @@ Widget _buildStatCard({
     
     pending.addAll(provider.tutoringServices
         .where((t) => !t.isVerified && !t.isDeleted && t.isActive)
-        .take(5)
         .toList());
     
     pending.addAll(provider.admissionsGuidance
         .where((a) => !a.isVerified && !a.isDeleted && a.isActive)
-        .take(5)
         .toList());
     
     pending.addAll(provider.banglaClasses
         .where((b) => !b.isVerified && !b.isDeleted && b.isActive)
-        .take(5)
         .toList());
     
     pending.addAll(provider.sportsClubs
         .where((s) => !s.isVerified && !s.isDeleted && s.isActive)
-        .take(5)
         .toList());
     
     // Sort by date (newest first)

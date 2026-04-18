@@ -60,6 +60,53 @@ class _AdminBusinessPartnerRequestsScreenState extends State<AdminBusinessPartne
     }
   }
 
+  Future<void> _permanentDeleteRequest(dynamic item) async {
+  final id = item.id!;
+  final title = item.title;
+  
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Permanent Delete'),
+      content: Text(
+        'Are you sure you want to permanently delete "$title"? This action cannot be undone.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Delete Permanently'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed == true) {
+    final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
+    final success = await provider.permanentDeletePartnerRequest(id);
+    
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Partner request permanently deleted'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete: ${provider.error}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChange);
@@ -713,10 +760,8 @@ class _AdminBusinessPartnerRequestsScreenState extends State<AdminBusinessPartne
               SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                //  onPressed: () => _permanentDeleteRequest(request),
-                onPressed: () {
-                  
-                },
+                  onPressed: () => _permanentDeleteRequest(request),
+               
                   icon: Icon(Icons.delete_forever_rounded, size: isSmallScreen ? 14 : 18),
                   label: Text(
                     'Delete\nPermanently',

@@ -1081,7 +1081,7 @@ class _TutoringScreenState extends State<TutoringScreen>
     );
   }
 
-  Widget _buildPremiumTutoringCard(TutoringService service, int index) {
+/*  Widget _buildPremiumTutoringCard(TutoringService service, int index) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
@@ -1598,6 +1598,486 @@ class _TutoringScreenState extends State<TutoringScreen>
     );
   }
 
+*/
+
+
+Widget _buildPremiumTutoringCard(TutoringService service, int index) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isTablet = screenWidth >= 600;
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Same margin as other cards (16 for tablet, 12 for mobile)
+  final horizontalMargin = isTablet ? 16.0 : 12.0;
+  
+  // Premium gradient - Blue to Purple to Teal (matching app bar)
+  final LinearGradient _cardGradient = LinearGradient(
+    colors: [
+      Color(0xFF1976D2), // Deep Blue
+      Color(0xFF0D47A1), // Dark Blue
+      Color(0xFF8E24AA), // Purple
+      Color(0xFF6B4E71), // Royal Purple
+      Color(0xFF00897B), // Teal
+      Color(0xFF00796B), // Dark Teal
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: [0.0, 0.25, 0.5, 0.7, 0.85, 1.0],
+  );
+  
+  Widget cardContent = Container(
+    margin: EdgeInsets.symmetric(
+      horizontal: horizontalMargin,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.15),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+          spreadRadius: -1,
+        ),
+        BoxShadow(
+          color: Color(0xFF1976D2).withOpacity(0.25),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _cardGradient,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.2),
+            width: 0.5,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isGuestMode) {
+                _showLoginRequiredDialog(context, 'View Tutoring Details');
+                return;
+              }
+              _showTutoringDetails(service);
+            },
+            borderRadius: BorderRadius.circular(20),
+            splashColor: Colors.white.withOpacity(0.15),
+            highlightColor: Colors.white.withOpacity(0.05),
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 14 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Info Row - Compact
+                  Row(
+                    children: [
+                      Container(
+                        width: isTablet ? 44 : 38,
+                        height: isTablet ? 44 : 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFFFB300), Color(0xFFFF8F00)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFFFFB300).withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(1.5),
+                          child: ClipOval(
+                            child: _buildServicePosterImage(service),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: 10),
+                      
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              service.postedByName ?? 'Tutor',
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 14 : 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 5,
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFFFD700),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Tutor Provider',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 9,
+                                    color: Color(0xFFFFD700),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Verified Badge - Compact
+                      Container(
+                        padding: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFFFB300), Color(0xFFFF8F00)],
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: shouldAnimate
+                            ? RotationTransition(
+                                turns: _rotateController,
+                                child: Icon(
+                                  Icons.verified_rounded, 
+                                  color: Colors.white, 
+                                  size: isTablet ? 12 : 10,
+                                ),
+                              )
+                            : Icon(
+                                Icons.verified_rounded, 
+                                color: Colors.white, 
+                                size: isTablet ? 12 : 10,
+                              ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Tutor Name
+                  Text(
+                    service.tutorName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  SizedBox(height: 4),
+                  
+                  // Organization Name
+                  Text(
+                    service.organizationName ?? 'Independent Tutor',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 11 : 10,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFFFD700),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Subjects Tags - Compact
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: service.subjects.take(3).map((subject) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.25),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          subject.displayName,
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 10 : 9,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  
+                  if (service.subjects.length > 3)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '+${service.subjects.length - 3} more',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 10 : 9,
+                          color: Colors.white.withOpacity(0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Location and Rate Row
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.location_on_rounded,
+                              color: Color(0xFFFFD700),
+                              size: 12,
+                            ),
+                            SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '${service.city}, ${service.state}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: isTablet ? 11 : 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Distance Badge
+                      if (service.latitude != null && service.longitude != null)
+                        Padding(
+                          padding: EdgeInsets.only(right: 8),
+                          child: DistanceBadge(
+                            latitude: service.latitude!,
+                            longitude: service.longitude!,
+                            isTablet: isTablet,
+                          ),
+                        ),
+                      
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.25),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.attach_money_rounded,
+                              color: Color(0xFFFFD700),
+                              size: 10,
+                            ),
+                            SizedBox(width: 2),
+                            Text(
+                              service.formattedRate,
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 10 : 9,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              '/hr',
+                              style: GoogleFonts.inter(
+                                fontSize: isTablet ? 9 : 8,
+                                color: Colors.white.withOpacity(0.7),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Teaching Methods - Compact
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: service.teachingMethods.take(2).map((method) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.25),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              method == TeachingMethod.inPerson ? Icons.person : Icons.videocam_rounded,
+                              color: Color(0xFFFFD700),
+                              size: 10,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              method.displayName,
+                              style: GoogleFonts.inter(
+                                fontSize: isTablet ? 10 : 9,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  
+                  SizedBox(height: 12),
+                  
+                  // View Details Button - Compact
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: Duration(milliseconds: 600),
+                    curve: Curves.elasticOut,
+                    builder: (context, value, child) {
+                      final buttonClampedValue = value.clamp(0.0, 1.0);
+                      return Transform.scale(
+                        scale: 0.97 + (0.03 * buttonClampedValue),
+                        child: GestureDetector(
+                          onTap: () {
+                            final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                            if (authProvider.isGuestMode) {
+                              _showLoginRequiredDialog(context, 'View Tutoring Details');
+                              return;
+                            }
+                            _showTutoringDetails(service);
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                              vertical: isTablet ? 8 : 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'View Details',
+                                  style: GoogleFonts.poppins(
+                                    color: Color(0xFF1976D2),
+                                    fontSize: isTablet ? 12 : 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                SizedBox(width: 6),
+                                shouldAnimate
+                                    ? RotationTransition(
+                                        turns: _rotateController,
+                                        child: Icon(
+                                          Icons.arrow_forward_rounded,
+                                          color: Color(0xFF1976D2),
+                                          size: isTablet ? 14 : 12,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: Color(0xFF1976D2),
+                                        size: isTablet ? 14 : 12,
+                                      ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  
+  if (shouldAnimate) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.96 + (0.04 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: cardContent,
+          ),
+        );
+      },
+    );
+  }
+  
+  return cardContent;
+}
+
+
+
+
   void _showTutoringDetails(TutoringService service) {
     HapticFeedback.mediumImpact();
     Navigator.push(
@@ -1709,6 +2189,7 @@ class _TutoringScreenState extends State<TutoringScreen>
 
 
 // ====================== PREMIUM ADD TUTORING DIALOG ======================
+
 class PremiumAddTutoringDialog extends StatefulWidget {
   final VoidCallback? onTutoringAdded;
   final ScrollController scrollController;
@@ -1772,8 +2253,9 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
   late TabController _tabController;
   late AnimationController _animationController;
   
-  // Track dialog lifecycle
+  // Track dialog lifecycle and keyboard
   AppLifecycleState _dialogLifecycleState = AppLifecycleState.resumed;
+  bool _isKeyboardVisible = false;
 
   @override
   void initState() {
@@ -1781,10 +2263,13 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
     
     WidgetsBinding.instance.addObserver(this);
     
+    _setupKeyboardListeners();
+    
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_handleTabChange);
     _animationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 500),
     );
     _animationController.forward();
     
@@ -1796,6 +2281,43 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
         _descriptionLength = _descriptionController.text.length;
       });
     });
+  }
+  
+  void _setupKeyboardListeners() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusManager.instance.addListener(() {
+        final hasFocus = FocusManager.instance.primaryFocus != null;
+        if (mounted && _isKeyboardVisible != hasFocus) {
+          setState(() {
+            _isKeyboardVisible = hasFocus;
+          });
+          if (hasFocus) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (mounted && widget.scrollController.hasClients) {
+                widget.scrollController.animateTo(
+                  widget.scrollController.position.maxScrollExtent,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              }
+            });
+          }
+        }
+      });
+    });
+  }
+  
+  void _handleTabChange() {
+    if (mounted) {
+      setState(() {});
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    }
   }
   
   @override
@@ -1821,6 +2343,8 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
     _qualificationsController.dispose();
     _availableDaysController.dispose();
     _availableTimesController.dispose();
+    
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _animationController.dispose();
     super.dispose();
@@ -1829,172 +2353,180 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 600;
     
-    return FadeTransition(
-      opacity: _animationController,
-      child: Column(
-        children: [
-          // Premium Header
-          Container(
-            padding: EdgeInsets.all(isTablet ? 24 : 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [widget.primaryBlue, widget.purpleAccent, widget.tealAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-              boxShadow: [
-                BoxShadow(
-                  color: widget.primaryBlue.withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(isTablet ? 12 : 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.school_rounded, color: widget.tealAccent, size: isTablet ? 28 : 22),
-                ),
-                SizedBox(width: isTablet ? 16 : 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Add Tutoring Service',
-                        style: GoogleFonts.poppins(
-                          fontSize: isTablet ? 20 : 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Your listing will be visible after admin approval',
-                        style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: isTablet ? 13 : 12),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close_rounded, color: Colors.white),
-                  padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(),
-                  iconSize: isTablet ? 24 : 20,
-                ),
-              ],
-            ),
-          ),
-
-          // Tab Bar
-          Container(
-            margin: EdgeInsets.all(isTablet ? 20 : 16),
-            height: isTablet ? 50 : 45,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
+    return Container(
+      height: screenHeight * 0.9,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: FadeTransition(
+        opacity: _animationController,
+        child: Column(
+          children: [
+            // Premium Header
+            Container(
+              padding: EdgeInsets.all(isTablet ? 24 : 16),
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [widget.primaryBlue, widget.purpleAccent],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
+                  colors: [widget.primaryBlue, widget.purpleAccent, widget.tealAccent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.primaryBlue.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
-              labelColor: Colors.white,
-              unselectedLabelColor: widget.primaryBlue,
-              labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: isTablet ? 14 : 12),
-              unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: isTablet ? 13 : 11),
-              tabs: [
-                Tab(text: 'Basic Info'),
-                Tab(text: 'Subjects'),
-                Tab(text: 'Details'),
-              ],
-            ),
-          ),
-
-          // Form Content
-          Expanded(
-            child: Form(
-              key: _formKey,
-              child: TabBarView(
-                controller: _tabController,
-                physics: NeverScrollableScrollPhysics(),
+              child: Row(
                 children: [
-                  _buildBasicInfoTab(isTablet),
-                  _buildSubjectsTab(isTablet),
-                  _buildDetailsTab(isTablet),
+                  Container(
+                    padding: EdgeInsets.all(isTablet ? 12 : 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.school_rounded, color: widget.tealAccent, size: isTablet ? 28 : 22),
+                  ),
+                  SizedBox(width: isTablet ? 16 : 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add Tutoring Service',
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 20 : 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Your listing will be visible after admin approval',
+                          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: isTablet ? 13 : 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close_rounded, color: Colors.white),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    iconSize: isTablet ? 24 : 20,
+                  ),
                 ],
               ),
             ),
-          ),
 
-          // Navigation Buttons
-          Container(
-            padding: EdgeInsets.all(isTablet ? 20 : 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 20,
-                  offset: Offset(0, -5),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                if (_tabController.index > 0)
-                  Expanded(
-                    child: _buildNavButton(
-                      label: 'Previous',
-                      onPressed: () {
-                        if (_tabController.index > 0) {
-                          _tabController.animateTo(_tabController.index - 1);
-                        }
-                      },
-                      isPrimary: false,
-                      isTablet: isTablet,
-                    ),
+            // Tab Bar
+            Container(
+              margin: EdgeInsets.all(isTablet ? 20 : 16),
+              height: isTablet ? 50 : 45,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  gradient: LinearGradient(
+                    colors: [widget.primaryBlue, widget.purpleAccent],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
-                if (_tabController.index > 0) SizedBox(width: isTablet ? 12 : 8),
-                Expanded(
-                  child: _tabController.index < 2
-                      ? _buildNavButton(
-                          label: 'Next',
-                          onPressed: () {
-                            if (_tabController.index == 0) {
-                              if (_validateBasicInfo()) {
-                                _tabController.animateTo(_tabController.index + 1);
-                              }
-                            } else if (_tabController.index == 1) {
-                              if (_validateSubjects()) {
-                                _tabController.animateTo(_tabController.index + 1);
-                              }
-                            }
-                          },
-                          isPrimary: true,
-                          isTablet: isTablet,
-                        )
-                      : _buildSubmitButton(isTablet),
                 ),
-              ],
+                labelColor: Colors.white,
+                unselectedLabelColor: widget.primaryBlue,
+                labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: isTablet ? 14 : 12),
+                unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: isTablet ? 13 : 11),
+                tabs: const [
+                  Tab(text: 'Basic Info'),
+                  Tab(text: 'Subjects'),
+                  Tab(text: 'Details'),
+                ],
+              ),
             ),
-          ),
-        ],
+
+            // Form Content
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: TabBarView(
+                  controller: _tabController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _buildBasicInfoTab(isTablet),
+                    _buildSubjectsTab(isTablet),
+                    _buildDetailsTab(isTablet),
+                  ],
+                ),
+              ),
+            ),
+
+            // Navigation Buttons
+            Container(
+              padding: EdgeInsets.all(isTablet ? 20 : 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  if (_tabController.index > 0)
+                    Expanded(
+                      child: _buildNavButton(
+                        label: 'Previous',
+                        onPressed: () {
+                          if (_tabController.index > 0) {
+                            _tabController.animateTo(_tabController.index - 1);
+                          }
+                        },
+                        isPrimary: false,
+                        isTablet: isTablet,
+                      ),
+                    ),
+                  if (_tabController.index > 0) SizedBox(width: isTablet ? 12 : 8),
+                  Expanded(
+                    child: _tabController.index < 2
+                        ? _buildNavButton(
+                            label: 'Next',
+                            onPressed: () {
+                              if (_tabController.index == 0) {
+                                if (_validateBasicInfo()) {
+                                  _tabController.animateTo(_tabController.index + 1);
+                                }
+                              } else if (_tabController.index == 1) {
+                                if (_validateSubjects()) {
+                                  _tabController.animateTo(_tabController.index + 1);
+                                }
+                              }
+                            },
+                            isPrimary: true,
+                            isTablet: isTablet,
+                          )
+                        : _buildSubmitButton(isTablet),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2002,12 +2534,17 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
   Widget _buildBasicInfoTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('Tutor Information', Icons.person_rounded, widget.primaryBlue, isTablet),
-          SizedBox(height: isTablet ? 20 : 16),
+           SizedBox(height: isTablet ? 20 : 16),
           
           _buildPremiumTextField(
             controller: _tutorNameController,
@@ -2017,7 +2554,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _organizationController,
@@ -2027,7 +2564,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             isRequired: false,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _emailController,
@@ -2038,7 +2575,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumPhoneField(
             controller: _phoneController,
@@ -2048,11 +2585,11 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           // Location Picker with Map
           _buildLocationPickerField(isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
         ],
       ),
     );
@@ -2114,7 +2651,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
                 size: isTablet ? 22 : 18,
               ),
             ),
-            SizedBox(width: isTablet ? 16 : 12),
+             SizedBox(width: isTablet ? 16 : 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2127,7 +2664,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
                       color: widget.primaryBlue,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     _fullAddress ?? 'Tap to select location on map',
                     style: GoogleFonts.inter(
@@ -2138,7 +2675,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (_latitude != null && _longitude != null) ...[
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       '📍 Coordinates: ${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)}',
                       style: GoogleFonts.inter(
@@ -2165,12 +2702,17 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
   Widget _buildSubjectsTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('Subjects', Icons.subject_rounded, widget.primaryBlue, isTablet),
-          SizedBox(height: isTablet ? 20 : 16),
+           SizedBox(height: isTablet ? 20 : 16),
           
           Container(
             padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: isTablet ? 8 : 6),
@@ -2181,7 +2723,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             child: Row(
               children: [
                 Icon(Icons.info_outline, color: widget.primaryBlue, size: isTablet ? 20 : 16),
-                SizedBox(width: isTablet ? 12 : 8),
+                 SizedBox(width: isTablet ? 12 : 8),
                 Expanded(
                   child: Text(
                     'Select all subjects you can teach',
@@ -2195,7 +2737,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
               ],
             ),
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           Container(
             decoration: BoxDecoration(
@@ -2232,10 +2774,10 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             ),
           ),
           
-          SizedBox(height: isTablet ? 24 : 20),
+           SizedBox(height: isTablet ? 24 : 20),
           
           _buildSectionHeader('Education Levels', Icons.school_rounded, widget.successGreen, isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           Container(
             padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: isTablet ? 8 : 6),
@@ -2246,7 +2788,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             child: Row(
               children: [
                 Icon(Icons.info_outline, color: widget.successGreen, size: isTablet ? 20 : 16),
-                SizedBox(width: isTablet ? 12 : 8),
+                 SizedBox(width: isTablet ? 12 : 8),
                 Expanded(
                   child: Text(
                     'Select which grade levels you can teach',
@@ -2260,7 +2802,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
               ],
             ),
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           Container(
             decoration: BoxDecoration(
@@ -2297,10 +2839,10 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             ),
           ),
           
-          SizedBox(height: isTablet ? 24 : 20),
+           SizedBox(height: isTablet ? 24 : 20),
           
           _buildSectionHeader('Teaching Methods', Icons.video_call_rounded, widget.tealAccent, isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           Container(
             padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: isTablet ? 8 : 6),
@@ -2311,7 +2853,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             child: Row(
               children: [
                 Icon(Icons.info_outline, color: widget.tealAccent, size: isTablet ? 20 : 16),
-                SizedBox(width: isTablet ? 12 : 8),
+                 SizedBox(width: isTablet ? 12 : 8),
                 Expanded(
                   child: Text(
                     'Select how you can teach (in-person, online, or both)',
@@ -2325,7 +2867,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
               ],
             ),
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           Container(
             decoration: BoxDecoration(
@@ -2369,12 +2911,17 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
   Widget _buildDetailsTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('Description', Icons.description_rounded, widget.purpleAccent, isTablet),
-          SizedBox(height: isTablet ? 20 : 16),
+           SizedBox(height: isTablet ? 20 : 16),
           
           Container(
             padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: isTablet ? 8 : 6),
@@ -2385,7 +2932,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             child: Row(
               children: [
                 Icon(Icons.info_outline, color: widget.purpleAccent, size: isTablet ? 20 : 16),
-                SizedBox(width: isTablet ? 12 : 8),
+                 SizedBox(width: isTablet ? 12 : 8),
                 Expanded(
                   child: Text(
                     'Minimum $_minDescriptionLength characters, maximum $_maxDescriptionLength characters',
@@ -2399,7 +2946,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
               ],
             ),
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _descriptionController,
@@ -2414,18 +2961,18 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             minLength: _minDescriptionLength,
             maxLength: _maxDescriptionLength,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _hourlyRateController,
             label: 'Hourly Rate (\$) *',
-            hintText: 'e.g., 50 ',
+            hintText: 'e.g., 50',
             icon: Icons.attach_money_rounded,
             keyboardType: TextInputType.number,
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _experienceController,
@@ -2435,7 +2982,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             isRequired: false,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _qualificationsController,
@@ -2445,10 +2992,10 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             isRequired: false,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildSectionHeader('Availability', Icons.schedule_rounded, widget.tealAccent, isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           Row(
             children: [
@@ -2475,7 +3022,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
               ),
             ],
           ),
-          SizedBox(height: isTablet ? 12 : 8),
+           SizedBox(height: isTablet ? 12 : 8),
           
           Container(
             padding: EdgeInsets.all(isTablet ? 16 : 12),
@@ -2487,7 +3034,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
             child: Row(
               children: [
                 Icon(Icons.lightbulb_outline, color: widget.tealAccent, size: isTablet ? 20 : 18),
-                SizedBox(width: isTablet ? 12 : 8),
+                 SizedBox(width: isTablet ? 12 : 8),
                 Expanded(
                   child: Text(
                     '💡 Example: Monday, Wednesday, Friday | 4 PM - 8 PM',
@@ -2539,15 +3086,13 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
     required String label,
     required String hintText,
     required IconData icon,
-    TextInputType keyboardType = TextInputType.phone,
-    int maxLines = 1,
     required bool isRequired,
     required bool isTablet,
   }) {
     return TextFormField(
       controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
+      keyboardType: TextInputType.phone,
+      textInputAction: TextInputAction.next,
       style: GoogleFonts.inter(
         fontSize: isTablet ? 16 : 14,
         color: Colors.grey[800],
@@ -2583,7 +3128,7 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
         fillColor: Colors.white,
         contentPadding: EdgeInsets.symmetric(
           horizontal: isTablet ? 20 : 16,
-          vertical: maxLines > 1 ? (isTablet ? 20 : 16) : (isTablet ? 18 : 14),
+          vertical: isTablet ? 18 : 14,
         ),
       ),
       validator: (value) {
@@ -2591,7 +3136,6 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
           return '📞 Phone number is required';
         }
         if (value != null && value.isNotEmpty) {
-          // Remove all non-digit characters for validation
           String digitsOnly = value.replaceAll(RegExp(r'\D'), '');
           if (digitsOnly.length < 10) {
             return '📞 Please enter a valid 10-digit phone number';
@@ -2605,118 +3149,120 @@ class _PremiumAddTutoringDialogState extends State<PremiumAddTutoringDialog>
     );
   }
 
-Widget _buildPremiumTextField({
-  required TextEditingController controller,
-  required String label,
-  required String hintText,
-  required IconData icon,
-  TextInputType keyboardType = TextInputType.text,
-  int maxLines = 1,
-  required bool isRequired,
-  required bool isTablet,
-  bool showCounter = false,
-  int currentLength = 0,
-  int minLength = 0,
-  int maxLength = 0,
-}) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        maxLength: showCounter ? maxLength : null,
-        style: GoogleFonts.inter(
-          fontSize: isTablet ? 16 : 14,
-          color: Colors.grey[800],
-          fontWeight: FontWeight.w500,
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hintText,
-          hintStyle: GoogleFonts.inter(
-            fontSize: isTablet ? 14 : 12,
-            color: Colors.grey[500],
-            fontStyle: FontStyle.italic,
+  Widget _buildPremiumTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hintText,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+    required bool isRequired,
+    required bool isTablet,
+    bool showCounter = false,
+    int currentLength = 0,
+    int minLength = 0,
+    int maxLength = 0,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
+          style: GoogleFonts.inter(
+            fontSize: isTablet ? 16 : 14,
+            color: Colors.grey[800],
+            fontWeight: FontWeight.w500,
           ),
-          labelStyle: GoogleFonts.poppins(
-            fontSize: isTablet ? 14 : 12,
-            color: widget.primaryBlue,
-            fontWeight: FontWeight.w600,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hintText,
+            hintStyle: GoogleFonts.inter(
+              fontSize: isTablet ? 14 : 12,
+              color: Colors.grey[500],
+              fontStyle: FontStyle.italic,
+            ),
+            labelStyle: GoogleFonts.poppins(
+              fontSize: isTablet ? 14 : 12,
+              color: widget.primaryBlue,
+              fontWeight: FontWeight.w600,
+            ),
+            prefixIcon: Icon(icon, color: widget.primaryBlue, size: isTablet ? 22 : 18),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: widget.primaryBlue, width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 20 : 16,
+              vertical: maxLines > 1 ? (isTablet ? 20 : 16) : (isTablet ? 18 : 14),
+            ),
+            counterText: showCounter ? '$currentLength / $maxLength characters' : null,
           ),
-          prefixIcon: Icon(icon, color: widget.primaryBlue, size: isTablet ? 22 : 18),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey[300]!),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey[300]!),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: widget.primaryBlue, width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: isTablet ? 20 : 16,
-            vertical: maxLines > 1 ? (isTablet ? 20 : 16) : (isTablet ? 18 : 14),
-          ),
-          counterText: showCounter ? '$currentLength / $maxLength characters' : null,
-        ),
-        validator: (value) {
-          if (isRequired && (value == null || value.isEmpty)) {
-            return 'This field is required';
-          }
-          if (showCounter && value != null && value.isNotEmpty) {
-            if (value.length < minLength) {
-              return 'Please enter at least $minLength characters (currently ${value.length})';
+          validator: (value) {
+            if (isRequired && (value == null || value.isEmpty)) {
+              return 'This field is required';
             }
-          }
-          return null;
-        },
-      ),
-      if (showCounter && currentLength > 0 && currentLength < minLength)
-        Padding(
-          padding: const EdgeInsets.only(top: 8, left: 12),
-          child: Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 14),
-              SizedBox(width: 6),
-              Text(
-                'Need $minLength characters minimum (${minLength - currentLength} more)',
-                style: GoogleFonts.inter(
-                  fontSize: isTablet ? 11 : 10,
-                  color: Colors.orange,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+            if (showCounter && value != null && value.isNotEmpty) {
+              if (value.length < minLength) {
+                return 'Please enter at least $minLength characters (currently ${value.length})';
+              }
+            }
+            return null;
+          },
         ),
-      if (showCounter && currentLength >= minLength && currentLength > 0)
-        Padding(
-          padding: const EdgeInsets.only(top: 8, left: 12),
-          child: Row(
-            children: [
-              Icon(Icons.check_circle, color: widget.successGreen, size: 14),
-              SizedBox(width: 6),
-              Text(
-                '✓ Good length (minimum $minLength characters)',
-                style: GoogleFonts.inter(
-                  fontSize: isTablet ? 11 : 10,
-                  color: widget.successGreen,
-                  fontWeight: FontWeight.w500,
+        if (showCounter && currentLength > 0 && currentLength < minLength)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, left: 12),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 14),
+                const SizedBox(width: 6),
+                Text(
+                  'Need $minLength characters minimum (${minLength - currentLength} more)',
+                  style: GoogleFonts.inter(
+                    fontSize: isTablet ? 11 : 10,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-    ],
-  );
-}  Widget _buildNavButton({
+        if (showCounter && currentLength >= minLength && currentLength > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, left: 12),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle, color: widget.successGreen, size: 14),
+                const SizedBox(width: 6),
+                Text(
+                  '✓ Good length (minimum $minLength characters)',
+                  style: GoogleFonts.inter(
+                    fontSize: isTablet ? 11 : 10,
+                    color: widget.successGreen,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNavButton({
     required String label,
     required VoidCallback onPressed,
     required bool isPrimary,
@@ -2744,7 +3290,7 @@ Widget _buildPremiumTextField({
                   BoxShadow(
                     color: widget.primaryBlue.withOpacity(0.3),
                     blurRadius: 10,
-                    offset: Offset(0, 5),
+                    offset: const Offset(0, 5),
                   ),
                 ]
               : null,
@@ -2781,7 +3327,7 @@ Widget _buildPremiumTextField({
             BoxShadow(
               color: widget.successGreen.withOpacity(0.3),
               blurRadius: 15,
-              offset: Offset(0, 8),
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -2789,7 +3335,7 @@ Widget _buildPremiumTextField({
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: isTablet ? 22 : 20),
-            SizedBox(width: isTablet ? 10 : 8),
+             SizedBox(width: isTablet ? 10 : 8),
             Text(
               'Submit',
               style: GoogleFonts.poppins(
@@ -2822,7 +3368,6 @@ Widget _buildPremiumTextField({
       return false;
     }
     
-    // Validate phone number (10-11 digits)
     String phoneDigits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
     if (phoneDigits.length < 10) {
       _showErrorSnackBar('Please enter a valid 10-digit phone number');
@@ -2889,7 +3434,6 @@ Widget _buildPremiumTextField({
       return;
     }
 
-    // Get current user from AuthProvider
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUser = authProvider.user;
     
@@ -2902,7 +3446,6 @@ Widget _buildPremiumTextField({
 
     final provider = Provider.of<EducationProvider>(context, listen: false);
 
-    // Get user's profile image
     String? userProfileImage;
     if (currentUser.profileImageUrl != null && currentUser.profileImageUrl!.isNotEmpty) {
       userProfileImage = currentUser.profileImageUrl;
@@ -2930,11 +3473,9 @@ Widget _buildPremiumTextField({
           ? _availableTimesController.text.split(',').map((time) => time.trim()).toList()
           : ['4 PM - 8 PM'],
       
-      // Location coordinates
       latitude: _latitude,
       longitude: _longitude,
       
-      // Store user info directly in the service document
       postedByUserId: currentUser.id,
       postedByName: currentUser.fullName,
       postedByEmail: currentUser.email,
@@ -2949,9 +3490,7 @@ Widget _buildPremiumTextField({
 
     print('📝 Creating tutoring service with createdBy: ${newService.createdBy} (user ID)');
     print('📍 Location: $_latitude, $_longitude in $_selectedState');
-    print('📝 Service will be hidden until admin verification (isVerified: false)');
 
-    // Show loading
     if (!mounted) return;
     
     showDialog(
@@ -2959,7 +3498,7 @@ Widget _buildPremiumTextField({
       barrierDismissible: false,
       builder: (context) => Center(
         child: Container(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -2972,7 +3511,7 @@ Widget _buildPremiumTextField({
                 height: 50,
                 child: CircularProgressIndicator(color: widget.primaryBlue),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Text('Submitting...', style: GoogleFonts.poppins()),
             ],
           ),
@@ -2983,22 +3522,18 @@ Widget _buildPremiumTextField({
     final success = await provider.addTutoringService(newService);
     
     if (mounted) {
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
     }
     
-    if (success) {
-      if (mounted) {
-        Navigator.pop(context); // Close dialog
-        _showSuccessSnackBar('Tutoring service added successfully! Pending admin approval. ✨');
-        
-        if (widget.onTutoringAdded != null) {
-          widget.onTutoringAdded!();
-        }
+    if (success && mounted) {
+      Navigator.pop(context);
+      _showSuccessSnackBar('Tutoring service added successfully! Pending admin approval. ✨');
+      
+      if (widget.onTutoringAdded != null) {
+        widget.onTutoringAdded!();
       }
-    } else {
-      if (mounted) {
-        _showErrorSnackBar('Failed to add tutoring service. Please try again.');
-      }
+    } else if (mounted) {
+      _showErrorSnackBar('Failed to add tutoring service. Please try again.');
     }
   }
 
@@ -3010,7 +3545,7 @@ Widget _buildPremiumTextField({
         content: Row(
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
@@ -3026,8 +3561,8 @@ Widget _buildPremiumTextField({
         backgroundColor: widget.successGreen,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(12),
-        duration: Duration(seconds: 3),
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -3040,7 +3575,7 @@ Widget _buildPremiumTextField({
         content: Row(
           children: [
             Icon(Icons.error_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
@@ -3056,7 +3591,7 @@ Widget _buildPremiumTextField({
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(12),
+        margin: const EdgeInsets.all(12),
       ),
     );
   }

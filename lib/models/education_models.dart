@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
@@ -55,13 +57,13 @@ extension EducationCategoryExtension on EducationCategory {
   Color get color {
     switch (this) {
       case EducationCategory.tutoringHomework:
-        return Color(0xFF2196F3); // Blue
+        return Color(0xFF2196F3);
       case EducationCategory.schoolCollegeAdmissions:
-        return Color(0xFF4CAF50); // Green
+        return Color(0xFF4CAF50);
       case EducationCategory.banglaLanguageCulture:
-        return Color(0xFFFF9800); // Orange
+        return Color(0xFFFF9800);
       case EducationCategory.localSports:
-        return Color(0xFFF44336); // Red
+        return Color(0xFFF44336);
     }
   }
 }
@@ -206,7 +208,21 @@ extension TeachingMethodExtension on TeachingMethod {
   }
 }
 
-// ====================== TUTORING & HOMEWORK HELP MODEL ======================
+// ====================== HELPER FUNCTIONS ======================
+
+String cleanBase64String(String base64) {
+  String cleaned = base64.trim();
+  if (cleaned.contains('base64,')) {
+    cleaned = cleaned.split('base64,').last;
+  }
+  cleaned = cleaned.replaceAll(RegExp(r'\s'), '');
+  if (cleaned.length % 4 != 0) {
+    cleaned = cleaned.padRight(cleaned.length + (4 - cleaned.length % 4), '=');
+  }
+  return cleaned;
+}
+
+// ====================== TUTORING SERVICE MODEL ======================
 class TutoringService {
   String? id;
   EducationCategory category;
@@ -230,17 +246,14 @@ class TutoringService {
   List<String> availableTimes;
   List<String> languagesSpoken;
 
-          // Add these fields to store user information directly
-  String? postedByUserId; // Keep the user ID for reference
-  String? postedByName; // Store user's full name
-  String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image
+  String? postedByUserId;
+  String? postedByName;
+  String? postedByEmail;
+  String? postedByProfileImageBase64;
 
-    final double? latitude;
+  final double? latitude;
   final double? longitude;
 
-  
-  // Status fields
   bool isVerified;
   bool isActive;
   bool isDeleted;
@@ -249,12 +262,10 @@ class TutoringService {
   int totalLikes;
   List<String> likedByUsers;
   
-  // Timestamps
   String createdBy;
   DateTime createdAt;
   DateTime updatedAt;
   
-  // Additional info
   Map<String, dynamic>? additionalInfo;
   List<String>? certifications;
   String? website;
@@ -283,15 +294,12 @@ class TutoringService {
     required this.availableDays,
     required this.availableTimes,
     this.languagesSpoken = const ['English', 'Bengali'],
-
-                    this.postedByUserId,
+    this.postedByUserId,
     this.postedByName,
     this.postedByEmail,
     this.postedByProfileImageBase64,
-
     this.latitude,
     this.longitude,
-
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -335,15 +343,12 @@ class TutoringService {
       'availableDays': availableDays,
       'availableTimes': availableTimes,
       'languagesSpoken': languagesSpoken,
-
-                              'postedByUserId': postedByUserId ?? '',
+      'postedByUserId': postedByUserId ?? '',
       'postedByName': postedByName ?? '',
       'postedByEmail': postedByEmail ?? '',
       'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
-
-            'latitude': latitude,
+      'latitude': latitude,
       'longitude': longitude,
-
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -414,17 +419,13 @@ class TutoringService {
       galleryImagesBase64: List<String>.from(data['galleryImagesBase64'] ?? []),
       availableDays: List<String>.from(data['availableDays'] ?? []),
       availableTimes: List<String>.from(data['availableTimes'] ?? []),
-
       languagesSpoken: List<String>.from(data['languagesSpoken'] ?? []),
-
-                              postedByUserId: data['postedByUserId'] ?? '',
+      postedByUserId: data['postedByUserId'] ?? '',
       postedByName: data['postedByName'] ?? '',
       postedByEmail: data['postedByEmail'] ?? '',
       postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
-
-            latitude: data['latitude']?.toDouble(),
+      latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
-
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
@@ -521,20 +522,98 @@ class TutoringService {
     );
   }
 
-  String cleanBase64String(String base64) {
-    String cleaned = base64.trim();
-    if (cleaned.contains('base64,')) {
-      cleaned = cleaned.split('base64,').last;
-    }
-    cleaned = cleaned.replaceAll(RegExp(r'\s'), '');
-    if (cleaned.length % 4 != 0) {
-      cleaned = cleaned.padRight(cleaned.length + (4 - cleaned.length % 4), '=');
-    }
-    return cleaned;
+  TutoringService copyWith({
+    String? id,
+    EducationCategory? category,
+    String? tutorName,
+    String? organizationName,
+    String? email,
+    String? phone,
+    String? address,
+    String? state,
+    String? city,
+    List<TutoringSubject>? subjects,
+    List<EducationLevel>? levels,
+    List<TeachingMethod>? teachingMethods,
+    String? description,
+    double? hourlyRate,
+    String? experience,
+    String? qualifications,
+    String? profileImageBase64,
+    List<String>? galleryImagesBase64,
+    List<String>? availableDays,
+    List<String>? availableTimes,
+    List<String>? languagesSpoken,
+    String? postedByUserId,
+    String? postedByName,
+    String? postedByEmail,
+    String? postedByProfileImageBase64,
+    double? latitude,
+    double? longitude,
+    bool? isVerified,
+    bool? isActive,
+    bool? isDeleted,
+    double? rating,
+    int? totalReviews,
+    int? totalLikes,
+    List<String>? likedByUsers,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Map<String, dynamic>? additionalInfo,
+    List<String>? certifications,
+    String? website,
+    String? socialMediaLinks,
+    List<String>? serviceAreas,
+  }) {
+    return TutoringService(
+      id: id ?? this.id,
+      category: category ?? this.category,
+      tutorName: tutorName ?? this.tutorName,
+      organizationName: organizationName ?? this.organizationName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      state: state ?? this.state,
+      city: city ?? this.city,
+      subjects: subjects ?? this.subjects,
+      levels: levels ?? this.levels,
+      teachingMethods: teachingMethods ?? this.teachingMethods,
+      description: description ?? this.description,
+      hourlyRate: hourlyRate ?? this.hourlyRate,
+      experience: experience ?? this.experience,
+      qualifications: qualifications ?? this.qualifications,
+      profileImageBase64: profileImageBase64 ?? this.profileImageBase64,
+      galleryImagesBase64: galleryImagesBase64 ?? this.galleryImagesBase64,
+      availableDays: availableDays ?? this.availableDays,
+      availableTimes: availableTimes ?? this.availableTimes,
+      languagesSpoken: languagesSpoken ?? this.languagesSpoken,
+      postedByUserId: postedByUserId ?? this.postedByUserId,
+      postedByName: postedByName ?? this.postedByName,
+      postedByEmail: postedByEmail ?? this.postedByEmail,
+      postedByProfileImageBase64: postedByProfileImageBase64 ?? this.postedByProfileImageBase64,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isVerified: isVerified ?? this.isVerified,
+      isActive: isActive ?? this.isActive,
+      isDeleted: isDeleted ?? this.isDeleted,
+      rating: rating ?? this.rating,
+      totalReviews: totalReviews ?? this.totalReviews,
+      totalLikes: totalLikes ?? this.totalLikes,
+      likedByUsers: likedByUsers ?? this.likedByUsers,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      additionalInfo: additionalInfo ?? this.additionalInfo,
+      certifications: certifications ?? this.certifications,
+      website: website ?? this.website,
+      socialMediaLinks: socialMediaLinks ?? this.socialMediaLinks,
+      serviceAreas: serviceAreas ?? this.serviceAreas,
+    );
   }
 }
 
-// ====================== SCHOOL & COLLEGE ADMISSIONS GUIDANCE MODEL ======================
+// ====================== ADMISSIONS GUIDANCE MODEL ======================
 class AdmissionsGuidance {
   String? id;
   EducationCategory category;
@@ -545,8 +624,8 @@ class AdmissionsGuidance {
   String address;
   String state;
   String city;
-  List<String> specializations; // e.g., Undergraduate, Graduate, Medical, Law
-  List<String> countries; // Countries they provide guidance for
+  List<String> specializations;
+  List<String> countries;
   String description;
   double consultationFee;
   String? experience;
@@ -556,16 +635,14 @@ class AdmissionsGuidance {
   List<String> servicesOffered;
   List<String> languagesSpoken;
 
-          // Add these fields to store user information directly
-  String? postedByUserId; // Keep the user ID for reference
-  String? postedByName; // Store user's full name
-  String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image
+  String? postedByUserId;
+  String? postedByName;
+  String? postedByEmail;
+  String? postedByProfileImageBase64;
 
-      final double? latitude;
+  final double? latitude;
   final double? longitude;
   
-  // Status fields
   bool isVerified;
   bool isActive;
   bool isDeleted;
@@ -574,12 +651,10 @@ class AdmissionsGuidance {
   int totalLikes;
   List<String> likedByUsers;
   
-  // Timestamps
   String createdBy;
   DateTime createdAt;
   DateTime updatedAt;
   
-  // Additional info
   Map<String, dynamic>? additionalInfo;
   List<String>? certifications;
   String? website;
@@ -606,15 +681,12 @@ class AdmissionsGuidance {
     this.successStories,
     required this.servicesOffered,
     this.languagesSpoken = const ['English', 'Bengali'],
-
-                    this.postedByUserId,
+    this.postedByUserId,
     this.postedByName,
     this.postedByEmail,
     this.postedByProfileImageBase64,
-
-        this.latitude,
+    this.latitude,
     this.longitude,
-
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -653,15 +725,12 @@ class AdmissionsGuidance {
       'successStories': successStories ?? [],
       'servicesOffered': servicesOffered,
       'languagesSpoken': languagesSpoken,
-
-                              'postedByUserId': postedByUserId ?? '',
+      'postedByUserId': postedByUserId ?? '',
       'postedByName': postedByName ?? '',
       'postedByEmail': postedByEmail ?? '',
       'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
-
-            'latitude': latitude,
+      'latitude': latitude,
       'longitude': longitude,
-
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -715,15 +784,12 @@ class AdmissionsGuidance {
       successStories: List<String>.from(data['successStories'] ?? []),
       servicesOffered: List<String>.from(data['servicesOffered'] ?? []),
       languagesSpoken: List<String>.from(data['languagesSpoken'] ?? []),
-
-                              postedByUserId: data['postedByUserId'] ?? '',
+      postedByUserId: data['postedByUserId'] ?? '',
       postedByName: data['postedByName'] ?? '',
       postedByEmail: data['postedByEmail'] ?? '',
       postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
-
-                  latitude: data['latitude']?.toDouble(),
+      latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
-
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
@@ -773,7 +839,7 @@ class AdmissionsGuidance {
         ? '\$${consultationFee.toStringAsFixed(2)}/consultation'
         : 'Free Consultation';
   }
-    // Add this method for cleaning base64 strings
+
   String cleanBase64String(String base64) {
     String cleaned = base64.trim();
     if (cleaned.contains('base64,')) {
@@ -786,7 +852,6 @@ class AdmissionsGuidance {
     return cleaned;
   }
 
-  // Add profile image widget method
   Widget getProfileImageWidget({
     double size = 100,
     BoxShape shape = BoxShape.circle,
@@ -834,9 +899,95 @@ class AdmissionsGuidance {
       ),
     );
   }
+
+  AdmissionsGuidance copyWith({
+    String? id,
+    EducationCategory? category,
+    String? consultantName,
+    String? organizationName,
+    String? email,
+    String? phone,
+    String? address,
+    String? state,
+    String? city,
+    List<String>? specializations,
+    List<String>? countries,
+    String? description,
+    double? consultationFee,
+    String? experience,
+    String? qualifications,
+    String? profileImageBase64,
+    List<String>? successStories,
+    List<String>? servicesOffered,
+    List<String>? languagesSpoken,
+    String? postedByUserId,
+    String? postedByName,
+    String? postedByEmail,
+    String? postedByProfileImageBase64,
+    double? latitude,
+    double? longitude,
+    bool? isVerified,
+    bool? isActive,
+    bool? isDeleted,
+    double? rating,
+    int? totalReviews,
+    int? totalLikes,
+    List<String>? likedByUsers,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Map<String, dynamic>? additionalInfo,
+    List<String>? certifications,
+    String? website,
+    String? socialMediaLinks,
+    List<String>? serviceAreas,
+  }) {
+    return AdmissionsGuidance(
+      id: id ?? this.id,
+      category: category ?? this.category,
+      consultantName: consultantName ?? this.consultantName,
+      organizationName: organizationName ?? this.organizationName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      state: state ?? this.state,
+      city: city ?? this.city,
+      specializations: specializations ?? this.specializations,
+      countries: countries ?? this.countries,
+      description: description ?? this.description,
+      consultationFee: consultationFee ?? this.consultationFee,
+      experience: experience ?? this.experience,
+      qualifications: qualifications ?? this.qualifications,
+      profileImageBase64: profileImageBase64 ?? this.profileImageBase64,
+      successStories: successStories ?? this.successStories,
+      servicesOffered: servicesOffered ?? this.servicesOffered,
+      languagesSpoken: languagesSpoken ?? this.languagesSpoken,
+      postedByUserId: postedByUserId ?? this.postedByUserId,
+      postedByName: postedByName ?? this.postedByName,
+      postedByEmail: postedByEmail ?? this.postedByEmail,
+      postedByProfileImageBase64: postedByProfileImageBase64 ?? this.postedByProfileImageBase64,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isVerified: isVerified ?? this.isVerified,
+      isActive: isActive ?? this.isActive,
+      isDeleted: isDeleted ?? this.isDeleted,
+      rating: rating ?? this.rating,
+      totalReviews: totalReviews ?? this.totalReviews,
+      totalLikes: totalLikes ?? this.totalLikes,
+      likedByUsers: likedByUsers ?? this.likedByUsers,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      additionalInfo: additionalInfo ?? this.additionalInfo,
+      certifications: certifications ?? this.certifications,
+      website: website ?? this.website,
+      socialMediaLinks: socialMediaLinks ?? this.socialMediaLinks,
+      serviceAreas: serviceAreas ?? this.serviceAreas,
+    );
+  }
 }
 
-// ====================== BANGLA LANGUAGE & CULTURE CLASSES MODEL ======================
+// ====================== BANGLA CLASS MODEL ======================
 class BanglaClass {
   String? id;
   EducationCategory category;
@@ -847,28 +998,26 @@ class BanglaClass {
   String address;
   String state;
   String city;
-  List<String> classTypes; // e.g., Beginner, Intermediate, Advanced, Kids, Adults
+  List<String> classTypes;
   List<TeachingMethod> teachingMethods;
   String description;
   double classFee;
   String? schedule;
-  int classDuration; // in minutes
+  int classDuration;
   int maxStudents;
   String? qualifications;
   String? profileImageBase64;
   List<String>? galleryImagesBase64;
   List<String> languagesSpoken;
 
-          // Add these fields to store user information directly
-  String? postedByUserId; // Keep the user ID for reference
-  String? postedByName; // Store user's full name
-  String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image
+  String? postedByUserId;
+  String? postedByName;
+  String? postedByEmail;
+  String? postedByProfileImageBase64;
 
-      final double? latitude;
+  final double? latitude;
   final double? longitude;
   
-  // Status fields
   bool isVerified;
   bool isActive;
   bool isDeleted;
@@ -878,18 +1027,16 @@ class BanglaClass {
   List<String> likedByUsers;
   int enrolledStudents;
   
-  // Timestamps
   String createdBy;
   DateTime createdAt;
   DateTime updatedAt;
   
-  // Additional info
   Map<String, dynamic>? additionalInfo;
   List<String>? certifications;
   String? website;
   String? socialMediaLinks;
   List<String> serviceAreas;
-  List<String> culturalActivities; // e.g., Poetry, Music, Dance, Festivals
+  List<String> culturalActivities;
   
   BanglaClass({
     this.id,
@@ -912,15 +1059,12 @@ class BanglaClass {
     this.profileImageBase64,
     this.galleryImagesBase64,
     this.languagesSpoken = const ['English', 'Bengali'],
-
-                    this.postedByUserId,
+    this.postedByUserId,
     this.postedByName,
     this.postedByEmail,
     this.postedByProfileImageBase64,
-
-        this.latitude,
+    this.latitude,
     this.longitude,
-
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -963,15 +1107,12 @@ class BanglaClass {
       'profileImageBase64': profileImageBase64 ?? '',
       'galleryImagesBase64': galleryImagesBase64 ?? [],
       'languagesSpoken': languagesSpoken,
-
-                              'postedByUserId': postedByUserId ?? '',
+      'postedByUserId': postedByUserId ?? '',
       'postedByName': postedByName ?? '',
       'postedByEmail': postedByEmail ?? '',
       'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
-
-            'latitude': latitude,
+      'latitude': latitude,
       'longitude': longitude,
-
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -1033,15 +1174,12 @@ class BanglaClass {
       profileImageBase64: data['profileImageBase64'],
       galleryImagesBase64: List<String>.from(data['galleryImagesBase64'] ?? []),
       languagesSpoken: List<String>.from(data['languagesSpoken'] ?? []),
-
-                              postedByUserId: data['postedByUserId'] ?? '',
+      postedByUserId: data['postedByUserId'] ?? '',
       postedByName: data['postedByName'] ?? '',
       postedByEmail: data['postedByEmail'] ?? '',
       postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
-
-                  latitude: data['latitude']?.toDouble(),
+      latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
-
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
@@ -1106,7 +1244,6 @@ class BanglaClass {
     return '$spotsLeft spots left';
   }
 
-    // Add this method for cleaning base64 strings
   String cleanBase64String(String base64) {
     String cleaned = base64.trim();
     if (cleaned.contains('base64,')) {
@@ -1119,7 +1256,6 @@ class BanglaClass {
     return cleaned;
   }
 
-  // Add profile image widget method
   Widget getProfileImageWidget({
     double size = 100,
     BoxShape shape = BoxShape.circle,
@@ -1167,9 +1303,101 @@ class BanglaClass {
       ),
     );
   }
+
+  BanglaClass copyWith({
+    String? id,
+    EducationCategory? category,
+    String? instructorName,
+    String? organizationName,
+    String? email,
+    String? phone,
+    String? address,
+    String? state,
+    String? city,
+    List<String>? classTypes,
+    List<TeachingMethod>? teachingMethods,
+    String? description,
+    double? classFee,
+    String? schedule,
+    int? classDuration,
+    int? maxStudents,
+    String? qualifications,
+    String? profileImageBase64,
+    List<String>? galleryImagesBase64,
+    List<String>? languagesSpoken,
+    String? postedByUserId,
+    String? postedByName,
+    String? postedByEmail,
+    String? postedByProfileImageBase64,
+    double? latitude,
+    double? longitude,
+    bool? isVerified,
+    bool? isActive,
+    bool? isDeleted,
+    double? rating,
+    int? totalReviews,
+    int? totalLikes,
+    List<String>? likedByUsers,
+    int? enrolledStudents,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Map<String, dynamic>? additionalInfo,
+    List<String>? certifications,
+    String? website,
+    String? socialMediaLinks,
+    List<String>? serviceAreas,
+    List<String>? culturalActivities,
+  }) {
+    return BanglaClass(
+      id: id ?? this.id,
+      category: category ?? this.category,
+      instructorName: instructorName ?? this.instructorName,
+      organizationName: organizationName ?? this.organizationName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      state: state ?? this.state,
+      city: city ?? this.city,
+      classTypes: classTypes ?? this.classTypes,
+      teachingMethods: teachingMethods ?? this.teachingMethods,
+      description: description ?? this.description,
+      classFee: classFee ?? this.classFee,
+      schedule: schedule ?? this.schedule,
+      classDuration: classDuration ?? this.classDuration,
+      maxStudents: maxStudents ?? this.maxStudents,
+      qualifications: qualifications ?? this.qualifications,
+      profileImageBase64: profileImageBase64 ?? this.profileImageBase64,
+      galleryImagesBase64: galleryImagesBase64 ?? this.galleryImagesBase64,
+      languagesSpoken: languagesSpoken ?? this.languagesSpoken,
+      postedByUserId: postedByUserId ?? this.postedByUserId,
+      postedByName: postedByName ?? this.postedByName,
+      postedByEmail: postedByEmail ?? this.postedByEmail,
+      postedByProfileImageBase64: postedByProfileImageBase64 ?? this.postedByProfileImageBase64,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isVerified: isVerified ?? this.isVerified,
+      isActive: isActive ?? this.isActive,
+      isDeleted: isDeleted ?? this.isDeleted,
+      rating: rating ?? this.rating,
+      totalReviews: totalReviews ?? this.totalReviews,
+      totalLikes: totalLikes ?? this.totalLikes,
+      likedByUsers: likedByUsers ?? this.likedByUsers,
+      enrolledStudents: enrolledStudents ?? this.enrolledStudents,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      additionalInfo: additionalInfo ?? this.additionalInfo,
+      certifications: certifications ?? this.certifications,
+      website: website ?? this.website,
+      socialMediaLinks: socialMediaLinks ?? this.socialMediaLinks,
+      serviceAreas: serviceAreas ?? this.serviceAreas,
+      culturalActivities: culturalActivities ?? this.culturalActivities,
+    );
+  }
 }
 
-// ====================== LOCAL SPORTS CLUB MODEL ======================
+// ====================== SPORTS CLUB MODEL ======================
 class SportsClub {
   String? id;
   EducationCategory category;
@@ -1183,26 +1411,24 @@ class SportsClub {
   String city;
   String venue;
   String description;
-  List<String> ageGroups; // e.g., Kids (5-12), Teens (13-17), Adults (18+)
-  List<String> skillLevels; // e.g., Beginner, Intermediate, Advanced
+  List<String> ageGroups;
+  List<String> skillLevels;
   double membershipFee;
   String? schedule;
   List<String> equipmentProvided;
   String? coachQualifications;
   String? logoImageBase64;
   List<String>? galleryImagesBase64;
-  List<String> amenities; // e.g., Changing rooms, Parking, Equipment rental
+  List<String> amenities;
 
-          // Add these fields to store user information directly
-  String? postedByUserId; // Keep the user ID for reference
-  String? postedByName; // Store user's full name
-  String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image
+  String? postedByUserId;
+  String? postedByName;
+  String? postedByEmail;
+  String? postedByProfileImageBase64;
 
-      final double? latitude;
+  final double? latitude;
   final double? longitude;
   
-  // Status fields
   bool isVerified;
   bool isActive;
   bool isDeleted;
@@ -1213,12 +1439,10 @@ class SportsClub {
   int currentMembers;
   int maxMembers;
   
-  // Timestamps
   String createdBy;
   DateTime createdAt;
   DateTime updatedAt;
   
-  // Additional info
   Map<String, dynamic>? additionalInfo;
   List<String>? achievements;
   String? website;
@@ -1247,15 +1471,12 @@ class SportsClub {
     this.logoImageBase64,
     this.galleryImagesBase64,
     this.amenities = const [],
-
-                    this.postedByUserId,
+    this.postedByUserId,
     this.postedByName,
     this.postedByEmail,
     this.postedByProfileImageBase64,
-
-        this.latitude,
+    this.latitude,
     this.longitude,
-
     this.isVerified = false,
     this.isActive = true,
     this.isDeleted = false,
@@ -1299,14 +1520,12 @@ class SportsClub {
       'logoImageBase64': logoImageBase64 ?? '',
       'galleryImagesBase64': galleryImagesBase64 ?? [],
       'amenities': amenities,
-                              'postedByUserId': postedByUserId ?? '',
+      'postedByUserId': postedByUserId ?? '',
       'postedByName': postedByName ?? '',
       'postedByEmail': postedByEmail ?? '',
       'postedByProfileImageBase64': postedByProfileImageBase64 ?? '',
-
-            'latitude': latitude,
+      'latitude': latitude,
       'longitude': longitude,
-
       'isVerified': isVerified,
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -1374,14 +1593,12 @@ class SportsClub {
       logoImageBase64: data['logoImageBase64'],
       galleryImagesBase64: List<String>.from(data['galleryImagesBase64'] ?? []),
       amenities: List<String>.from(data['amenities'] ?? []),
-                              postedByUserId: data['postedByUserId'] ?? '',
+      postedByUserId: data['postedByUserId'] ?? '',
       postedByName: data['postedByName'] ?? '',
       postedByEmail: data['postedByEmail'] ?? '',
       postedByProfileImageBase64: data['postedByProfileImageBase64'] ?? '',
-
-                  latitude: data['latitude']?.toDouble(),
+      latitude: data['latitude']?.toDouble(),
       longitude: data['longitude']?.toDouble(),
-      
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
@@ -1502,5 +1719,99 @@ class SportsClub {
       cleaned = cleaned.padRight(cleaned.length + (4 - cleaned.length % 4), '=');
     }
     return cleaned;
+  }
+
+  SportsClub copyWith({
+    String? id,
+    EducationCategory? category,
+    String? clubName,
+    SportsType? sportType,
+    String? coachName,
+    String? email,
+    String? phone,
+    String? address,
+    String? state,
+    String? city,
+    String? venue,
+    String? description,
+    List<String>? ageGroups,
+    List<String>? skillLevels,
+    double? membershipFee,
+    String? schedule,
+    List<String>? equipmentProvided,
+    String? coachQualifications,
+    String? logoImageBase64,
+    List<String>? galleryImagesBase64,
+    List<String>? amenities,
+    String? postedByUserId,
+    String? postedByName,
+    String? postedByEmail,
+    String? postedByProfileImageBase64,
+    double? latitude,
+    double? longitude,
+    bool? isVerified,
+    bool? isActive,
+    bool? isDeleted,
+    double? rating,
+    int? totalReviews,
+    int? totalLikes,
+    List<String>? likedByUsers,
+    int? currentMembers,
+    int? maxMembers,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Map<String, dynamic>? additionalInfo,
+    List<String>? achievements,
+    String? website,
+    String? socialMediaLinks,
+    List<String>? tournaments,
+  }) {
+    return SportsClub(
+      id: id ?? this.id,
+      category: category ?? this.category,
+      clubName: clubName ?? this.clubName,
+      sportType: sportType ?? this.sportType,
+      coachName: coachName ?? this.coachName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      state: state ?? this.state,
+      city: city ?? this.city,
+      venue: venue ?? this.venue,
+      description: description ?? this.description,
+      ageGroups: ageGroups ?? this.ageGroups,
+      skillLevels: skillLevels ?? this.skillLevels,
+      membershipFee: membershipFee ?? this.membershipFee,
+      schedule: schedule ?? this.schedule,
+      equipmentProvided: equipmentProvided ?? this.equipmentProvided,
+      coachQualifications: coachQualifications ?? this.coachQualifications,
+      logoImageBase64: logoImageBase64 ?? this.logoImageBase64,
+      galleryImagesBase64: galleryImagesBase64 ?? this.galleryImagesBase64,
+      amenities: amenities ?? this.amenities,
+      postedByUserId: postedByUserId ?? this.postedByUserId,
+      postedByName: postedByName ?? this.postedByName,
+      postedByEmail: postedByEmail ?? this.postedByEmail,
+      postedByProfileImageBase64: postedByProfileImageBase64 ?? this.postedByProfileImageBase64,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isVerified: isVerified ?? this.isVerified,
+      isActive: isActive ?? this.isActive,
+      isDeleted: isDeleted ?? this.isDeleted,
+      rating: rating ?? this.rating,
+      totalReviews: totalReviews ?? this.totalReviews,
+      totalLikes: totalLikes ?? this.totalLikes,
+      likedByUsers: likedByUsers ?? this.likedByUsers,
+      currentMembers: currentMembers ?? this.currentMembers,
+      maxMembers: maxMembers ?? this.maxMembers,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      additionalInfo: additionalInfo ?? this.additionalInfo,
+      achievements: achievements ?? this.achievements,
+      website: website ?? this.website,
+      socialMediaLinks: socialMediaLinks ?? this.socialMediaLinks,
+      tournaments: tournaments ?? this.tournaments,
+    );
   }
 }

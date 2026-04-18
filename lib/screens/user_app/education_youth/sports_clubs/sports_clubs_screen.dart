@@ -1189,7 +1189,7 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
     }
   }
 
-  Widget _buildPremiumClubCard(SportsClub club, int index) {
+/*  Widget _buildPremiumClubCard(SportsClub club, int index) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     final isFull = club.currentMembers >= club.maxMembers;
@@ -1652,6 +1652,1461 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
     );
   }
 
+
+*/
+
+/*Widget _buildPremiumClubCard(SportsClub club, int index) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isTablet = screenWidth >= 600;
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Inspired gradient from app bar - lighter, cleaner version
+  final LinearGradient _cardGradient = LinearGradient(
+    colors: [
+      Color(0xFFFFF5F5), // Very light pink/red
+      Color(0xFFFFF8E1), // Light gold
+      Color(0xFFFCE4EC), // Light rose
+      Color(0xFFE8F5E9), // Light green tint
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  
+  final horizontalMargin = isTablet ? 16.0 : 12.0;
+  
+  Widget cardContent = Container(
+    margin: EdgeInsets.symmetric(
+      horizontal: horizontalMargin,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.12),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+          spreadRadius: -1,
+        ),
+        BoxShadow(
+          color: _primaryRed.withOpacity(0.15),
+          blurRadius: 10,
+          offset: Offset(0, 3),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _cardGradient,
+          border: Border.all(
+            color: _primaryRed.withOpacity(0.15),
+            width: 0.5,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isGuestMode) {
+                _showLoginRequiredDialog(context, 'View Club Details');
+                return;
+              }
+              _showClubDetails(club);
+            },
+            borderRadius: BorderRadius.circular(20),
+            splashColor: _primaryRed.withOpacity(0.1),
+            highlightColor: Colors.transparent,
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 14 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Info Row
+                  Row(
+                    children: [
+                      Container(
+                        width: isTablet ? 44 : 38,
+                        height: isTablet ? 44 : 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [_goldAccent, _orangeAccent],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _goldAccent.withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(1.5),
+                          child: ClipOval(
+                            child: _buildClubPosterImage(club),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: 10),
+                      
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              club.postedByName ?? 'Club Owner',
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 14 : 13,
+                                fontWeight: FontWeight.w700,
+                                color: _textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'added this club',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9,
+                                color: _textSecondary,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Verified Badge
+                      Container(
+                        padding: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [_goldAccent, _orangeAccent],
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: shouldAnimate
+                            ? RotationTransition(
+                                turns: _rotateController,
+                                child: Icon(
+                                  Icons.verified_rounded, 
+                                  color: Colors.white, 
+                                  size: isTablet ? 12 : 10,
+                                ),
+                              )
+                            : Icon(
+                                Icons.verified_rounded, 
+                                color: Colors.white, 
+                                size: isTablet ? 12 : 10,
+                              ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Club Name
+                  Text(
+                    club.clubName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w800,
+                      color: _textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  SizedBox(height: 4),
+                  
+                  // Sport Type
+                  Text(
+                    club.sportType.displayName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 11 : 10,
+                      fontWeight: FontWeight.w600,
+                      color: _primaryRed,
+                    ),
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Age Groups Tags
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: club.ageGroups.take(3).map((ageGroup) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _primaryRed.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _primaryRed.withOpacity(0.25),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          ageGroup,
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 10 : 9,
+                            fontWeight: FontWeight.w600,
+                            color: _primaryRed,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  
+                  if (club.ageGroups.length > 3)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '+${club.ageGroups.length - 3} more',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 10 : 9,
+                          color: _textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Location and Distance Badge ONLY (same row)
+                  Row(
+                    children: [
+                      // Location
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_rounded,
+                            color: _primaryRed,
+                            size: 12,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '${club.city}, ${club.state}',
+                            style: GoogleFonts.poppins(
+                              fontSize: isTablet ? 11 : 10,
+                              fontWeight: FontWeight.w500,
+                              color: _textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      // Spacer
+                      Spacer(),
+                      
+                      // Distance Badge (mandatory)
+                      if (club.latitude != null && club.longitude != null)
+                        DistanceBadge(
+                          latitude: club.latitude!,
+                          longitude: club.longitude!,
+                          isTablet: isTablet,
+                        ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 12),
+                  
+                  // View Details Button
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: Duration(milliseconds: 600),
+                    curve: Curves.elasticOut,
+                    builder: (context, value, child) {
+                      final buttonClampedValue = value.clamp(0.0, 1.0);
+                      return Transform.scale(
+                        scale: 0.97 + (0.03 * buttonClampedValue),
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            vertical: isTablet ? 8 : 7,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_primaryRed, _purpleAccent],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _primaryRed.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'View Details',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: isTablet ? 12 : 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              shouldAnimate
+                                  ? RotationTransition(
+                                      turns: _rotateController,
+                                      child: Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: Colors.white,
+                                        size: isTablet ? 14 : 12,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.arrow_forward_rounded,
+                                      color: Colors.white,
+                                      size: isTablet ? 14 : 12,
+                                    ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  
+  if (shouldAnimate) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.96 + (0.04 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: cardContent,
+          ),
+        );
+      },
+    );
+  }
+  
+  return cardContent;
+}
+
+*/
+
+
+/* Widget _buildPremiumClubCard(SportsClub club, int index) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isTablet = screenWidth >= 600;
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Colorful gradient - 60% intensity of appbar colors
+  // Appbar uses: _primaryRed (0xFFF44336), _purpleAccent (0xFF8E24AA), _tealAccent (0xFF00897B)
+  // 60% intensity means more pastel/softer versions
+  final LinearGradient _cardGradient = LinearGradient(
+    colors: [
+      const Color(0xFFFCE4EC), // Soft pink (60% of red)
+      const Color(0xFFF3E5F5), // Soft purple (60% of purple)
+      const Color(0xFFE0F2F1), // Soft teal (60% of teal)
+      const Color(0xFFFFF3E0), // Soft orange (warm accent)
+      const Color(0xFFE8EAF6), // Soft indigo
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+  );
+  
+  final horizontalMargin = isTablet ? 16.0 : 12.0;
+  
+  Widget cardContent = Container(
+    margin: EdgeInsets.symmetric(
+      horizontal: horizontalMargin,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.12),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+          spreadRadius: -1,
+        ),
+        BoxShadow(
+          color: _primaryRed.withOpacity(0.15),
+          blurRadius: 10,
+          offset: Offset(0, 3),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _cardGradient,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.5),
+            width: 0.5,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isGuestMode) {
+                _showLoginRequiredDialog(context, 'View Club Details');
+                return;
+              }
+              _showClubDetails(club);
+            },
+            borderRadius: BorderRadius.circular(20),
+            splashColor: _primaryRed.withOpacity(0.1),
+            highlightColor: Colors.transparent,
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 14 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Info Row
+                  Row(
+                    children: [
+                      Container(
+                        width: isTablet ? 44 : 38,
+                        height: isTablet ? 44 : 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [_goldAccent, _orangeAccent],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _goldAccent.withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(1.5),
+                          child: ClipOval(
+                            child: _buildClubPosterImage(club),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: 10),
+                      
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              club.postedByName ?? 'Club Owner',
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 14 : 13,
+                                fontWeight: FontWeight.w700,
+                                color: _textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'added this club',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9,
+                                color: _textSecondary,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Verified Badge
+                      Container(
+                        padding: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [_goldAccent, _orangeAccent],
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: shouldAnimate
+                            ? RotationTransition(
+                                turns: _rotateController,
+                                child: Icon(
+                                  Icons.verified_rounded, 
+                                  color: Colors.white, 
+                                  size: isTablet ? 12 : 10,
+                                ),
+                              )
+                            : Icon(
+                                Icons.verified_rounded, 
+                                color: Colors.white, 
+                                size: isTablet ? 12 : 10,
+                              ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Club Name
+                  Text(
+                    club.clubName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w800,
+                      color: _textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  SizedBox(height: 4),
+                  
+                  // Sport Type
+                  Text(
+                    club.sportType.displayName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 11 : 10,
+                      fontWeight: FontWeight.w600,
+                      color: _primaryRed,
+                    ),
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Age Groups Tags
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: club.ageGroups.take(3).map((ageGroup) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _primaryRed.withOpacity(0.25),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          ageGroup,
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 10 : 9,
+                            fontWeight: FontWeight.w600,
+                            color: _primaryRed,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  
+                  if (club.ageGroups.length > 3)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '+${club.ageGroups.length - 3} more',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 10 : 9,
+                          color: _textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Location and Distance Badge ONLY (same row)
+                  Row(
+                    children: [
+                      // Location
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_rounded,
+                            color: _primaryRed,
+                            size: 12,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '${club.city}, ${club.state}',
+                            style: GoogleFonts.poppins(
+                              fontSize: isTablet ? 11 : 10,
+                              fontWeight: FontWeight.w500,
+                              color: _textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      // Spacer
+                      Spacer(),
+                      
+                      // Distance Badge (mandatory)
+                      if (club.latitude != null && club.longitude != null)
+                        DistanceBadge(
+                          latitude: club.latitude!,
+                          longitude: club.longitude!,
+                          isTablet: isTablet,
+                        ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 12),
+                  
+                  // View Details Button
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: Duration(milliseconds: 600),
+                    curve: Curves.elasticOut,
+                    builder: (context, value, child) {
+                      final buttonClampedValue = value.clamp(0.0, 1.0);
+                      return Transform.scale(
+                        scale: 0.97 + (0.03 * buttonClampedValue),
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            vertical: isTablet ? 8 : 7,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_primaryRed, _purpleAccent],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _primaryRed.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'View Details',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: isTablet ? 12 : 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              shouldAnimate
+                                  ? RotationTransition(
+                                      turns: _rotateController,
+                                      child: Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: Colors.white,
+                                        size: isTablet ? 14 : 12,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.arrow_forward_rounded,
+                                      color: Colors.white,
+                                      size: isTablet ? 14 : 12,
+                                    ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  
+  if (shouldAnimate) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.96 + (0.04 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: cardContent,
+          ),
+        );
+      },
+    );
+  }
+  
+  return cardContent;
+}
+
+*/
+
+/* Widget _buildPremiumClubCard(SportsClub club, int index) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isTablet = screenWidth >= 600;
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Dark theme gradient - rich, deep colors
+  final LinearGradient _cardGradient = LinearGradient(
+    colors: [
+      const Color(0xFF2D2D2D), // Dark gray
+      const Color(0xFF1A1A2E), // Deep dark blue
+      const Color(0xFF16213E), // Dark navy
+      const Color(0xFF0F3460), // Deep blue
+      const Color(0xFF1B1B2F), // Dark purple-gray
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+  );
+  
+  final horizontalMargin = isTablet ? 16.0 : 12.0;
+  
+  Widget cardContent = Container(
+    margin: EdgeInsets.symmetric(
+      horizontal: horizontalMargin,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.4),
+          blurRadius: 15,
+          offset: Offset(0, 6),
+          spreadRadius: -1,
+        ),
+        BoxShadow(
+          color: _primaryRed.withOpacity(0.3),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _cardGradient,
+          border: Border.all(
+            color: _primaryRed.withOpacity(0.3),
+            width: 0.8,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isGuestMode) {
+                _showLoginRequiredDialog(context, 'View Club Details');
+                return;
+              }
+              _showClubDetails(club);
+            },
+            borderRadius: BorderRadius.circular(20),
+            splashColor: _primaryRed.withOpacity(0.2),
+            highlightColor: Colors.transparent,
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 14 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Info Row
+                  Row(
+                    children: [
+                      Container(
+                        width: isTablet ? 44 : 38,
+                        height: isTablet ? 44 : 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [_goldAccent, _orangeAccent],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _goldAccent.withOpacity(0.5),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(1.5),
+                          child: ClipOval(
+                            child: _buildClubPosterImage(club),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: 10),
+                      
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              club.postedByName ?? 'Club Owner',
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 14 : 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'added this club',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9,
+                                color: Colors.grey.shade400,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Verified Badge
+                      Container(
+                        padding: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [_goldAccent, _orangeAccent],
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: shouldAnimate
+                            ? RotationTransition(
+                                turns: _rotateController,
+                                child: Icon(
+                                  Icons.verified_rounded, 
+                                  color: Colors.white, 
+                                  size: isTablet ? 12 : 10,
+                                ),
+                              )
+                            : Icon(
+                                Icons.verified_rounded, 
+                                color: Colors.white, 
+                                size: isTablet ? 12 : 10,
+                              ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Club Name
+                  Text(
+                    club.clubName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  SizedBox(height: 4),
+                  
+                  // Sport Type
+                  Text(
+                    club.sportType.displayName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 11 : 10,
+                      fontWeight: FontWeight.w600,
+                      color: _goldAccent,
+                    ),
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Age Groups Tags - Dark theme
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: club.ageGroups.take(3).map((ageGroup) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _goldAccent.withOpacity(0.3),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          ageGroup,
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 10 : 9,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade300,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  
+                  if (club.ageGroups.length > 3)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '+${club.ageGroups.length - 3} more',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 10 : 9,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Location and Distance Badge
+                  Row(
+                    children: [
+                      // Location
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_rounded,
+                            color: _goldAccent,
+                            size: 12,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '${club.city}, ${club.state}',
+                            style: GoogleFonts.poppins(
+                              fontSize: isTablet ? 11 : 10,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      Spacer(),
+                      
+                      // Distance Badge
+                      if (club.latitude != null && club.longitude != null)
+                        DistanceBadge(
+                          latitude: club.latitude!,
+                          longitude: club.longitude!,
+                          isTablet: isTablet,
+                          color: Colors.grey.shade300,
+                        ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 12),
+                  
+                  // View Details Button - Dark theme
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: Duration(milliseconds: 600),
+                    curve: Curves.elasticOut,
+                    builder: (context, value, child) {
+                      final buttonClampedValue = value.clamp(0.0, 1.0);
+                      return Transform.scale(
+                        scale: 0.97 + (0.03 * buttonClampedValue),
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            vertical: isTablet ? 8 : 7,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_primaryRed, _purpleAccent],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _primaryRed.withOpacity(0.5),
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'View Details',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: isTablet ? 12 : 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              shouldAnimate
+                                  ? RotationTransition(
+                                      turns: _rotateController,
+                                      child: Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: Colors.white,
+                                        size: isTablet ? 14 : 12,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.arrow_forward_rounded,
+                                      color: Colors.white,
+                                      size: isTablet ? 14 : 12,
+                                    ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  
+  if (shouldAnimate) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.96 + (0.04 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: cardContent,
+          ),
+        );
+      },
+    );
+  }
+  
+  return cardContent;
+}
+
+*/
+
+Widget _buildPremiumClubCard(SportsClub club, int index) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isTablet = screenWidth >= 600;
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Dark red inspired gradient - rich, deep burgundy/crimson tones
+  final LinearGradient _cardGradient = LinearGradient(
+    colors: [
+      const Color(0xFFD32F2F), // Dark Red (primary inspiration)
+      const Color(0xFFB71C1C), // Deep Red
+      const Color(0xFF880E4F), // Deep Purple-Red
+      const Color(0xFF4A148C), // Dark Purple
+      const Color(0xFF311B92), // Deep Indigo
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+  );
+  
+  final horizontalMargin = isTablet ? 16.0 : 12.0;
+  
+  Widget cardContent = Container(
+    margin: EdgeInsets.symmetric(
+      horizontal: horizontalMargin,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.4),
+          blurRadius: 15,
+          offset: Offset(0, 6),
+          spreadRadius: -1,
+        ),
+        BoxShadow(
+          color: const Color(0xFFD32F2F).withOpacity(0.3),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _cardGradient,
+          border: Border.all(
+            color: const Color(0xFFD32F2F).withOpacity(0.4),
+            width: 0.8,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isGuestMode) {
+                _showLoginRequiredDialog(context, 'View Club Details');
+                return;
+              }
+              _showClubDetails(club);
+            },
+            borderRadius: BorderRadius.circular(20),
+            splashColor: const Color(0xFFD32F2F).withOpacity(0.2),
+            highlightColor: Colors.transparent,
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 14 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Info Row
+                  Row(
+                    children: [
+                      Container(
+                        width: isTablet ? 44 : 38,
+                        height: isTablet ? 44 : 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [_goldAccent, _orangeAccent],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _goldAccent.withOpacity(0.5),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(1.5),
+                          child: ClipOval(
+                            child: _buildClubPosterImage(club),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: 10),
+                      
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              club.postedByName ?? 'Club Owner',
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 14 : 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'added this club',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9,
+                                color: Colors.white.withOpacity(0.7),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Verified Badge
+                      Container(
+                        padding: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [_goldAccent, _orangeAccent],
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: shouldAnimate
+                            ? RotationTransition(
+                                turns: _rotateController,
+                                child: Icon(
+                                  Icons.verified_rounded, 
+                                  color: Colors.white, 
+                                  size: isTablet ? 12 : 10,
+                                ),
+                              )
+                            : Icon(
+                                Icons.verified_rounded, 
+                                color: Colors.white, 
+                                size: isTablet ? 12 : 10,
+                              ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Club Name
+                  Text(
+                    club.clubName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  SizedBox(height: 4),
+                  
+                  // Sport Type
+                  Text(
+                    club.sportType.displayName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 11 : 10,
+                      fontWeight: FontWeight.w600,
+                      color: _goldAccent,
+                    ),
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Age Groups Tags
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: club.ageGroups.take(3).map((ageGroup) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _goldAccent.withOpacity(0.3),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          ageGroup,
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 10 : 9,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  
+                  if (club.ageGroups.length > 3)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '+${club.ageGroups.length - 3} more',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 10 : 9,
+                          color: Colors.white.withOpacity(0.5),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Location and Distance Badge
+                  Row(
+                    children: [
+                      // Location
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_rounded,
+                            color: _goldAccent,
+                            size: 12,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '${club.city}, ${club.state}',
+                            style: GoogleFonts.poppins(
+                              fontSize: isTablet ? 11 : 10,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      Spacer(),
+                      
+                      // Distance Badge
+                      if (club.latitude != null && club.longitude != null)
+                        DistanceBadge(
+                          latitude: club.latitude!,
+                          longitude: club.longitude!,
+                          isTablet: isTablet,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 12),
+                  
+                  // View Details Button - WHITE BACKGROUND
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: Duration(milliseconds: 600),
+                    curve: Curves.elasticOut,
+                    builder: (context, value, child) {
+                      final buttonClampedValue = value.clamp(0.0, 1.0);
+                      return Transform.scale(
+                        scale: 0.97 + (0.03 * buttonClampedValue),
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            vertical: isTablet ? 8 : 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'View Details',
+                                style: GoogleFonts.poppins(
+                                  color: const Color(0xFFD32F2F),
+                                  fontSize: isTablet ? 12 : 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              shouldAnimate
+                                  ? RotationTransition(
+                                      turns: _rotateController,
+                                      child: Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: const Color(0xFFD32F2F),
+                                        size: isTablet ? 14 : 12,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.arrow_forward_rounded,
+                                      color: const Color(0xFFD32F2F),
+                                      size: isTablet ? 14 : 12,
+                                    ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  
+  if (shouldAnimate) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.96 + (0.04 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: cardContent,
+          ),
+        );
+      },
+    );
+  }
+  
+  return cardContent;
+}
+
+
   void _showClubDetails(SportsClub club) {
     HapticFeedback.mediumImpact();
     Navigator.push(
@@ -1726,7 +3181,12 @@ class _SportsClubsScreenState extends State<SportsClubsScreen> with AutomaticKee
   }
 }
 
+
+
+
 // ====================== PREMIUM ADD CLUB DIALOG ======================
+
+
 class PremiumAddClubDialog extends StatefulWidget {
   final VoidCallback? onClubAdded;
   final ScrollController scrollController;
@@ -1749,7 +3209,9 @@ class PremiumAddClubDialog extends StatefulWidget {
   _PremiumAddClubDialogState createState() => _PremiumAddClubDialogState();
 }
 
-class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with TickerProviderStateMixin, WidgetsBindingObserver {
+class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _clubNameController = TextEditingController();
   final TextEditingController _coachNameController = TextEditingController();
@@ -1789,8 +3251,9 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
   late TabController _tabController;
   late AnimationController _animationController;
   
-  // Track app lifecycle
+  // Track app lifecycle and keyboard
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  bool _isKeyboardVisible = false;
 
   // Track validation errors
   String? _validationError;
@@ -1799,15 +3262,54 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
+    _setupKeyboardListeners();
+    
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_handleTabChange);
     _animationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 500),
     );
     _animationController.forward();
+  }
+  
+  void _setupKeyboardListeners() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusManager.instance.addListener(() {
+        final hasFocus = FocusManager.instance.primaryFocus != null;
+        if (mounted && _isKeyboardVisible != hasFocus) {
+          setState(() {
+            _isKeyboardVisible = hasFocus;
+          });
+          if (hasFocus) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (mounted && widget.scrollController.hasClients) {
+                widget.scrollController.animateTo(
+                  widget.scrollController.position.maxScrollExtent,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              }
+            });
+          }
+        }
+      });
+    });
+  }
+  
+  void _handleTabChange() {
+    if (mounted) {
+      setState(() {});
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    }
   }
   
   @override
@@ -1821,7 +3323,6 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
   void dispose() {
     print('🗑️ PremiumAddClubDialog disposing...');
     
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
     
     _clubNameController.dispose();
@@ -1841,6 +3342,8 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
     _equipmentController.dispose();
     _amenityController.dispose();
     _tournamentController.dispose();
+    
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _animationController.dispose();
     
@@ -1850,215 +3353,223 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 600;
     
-    return FadeTransition(
-      opacity: _animationController,
-      child: Column(
-        children: [
-          // Premium Header
-          Container(
-            padding: EdgeInsets.all(isTablet ? 24 : 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [widget.primaryRed, widget.purpleAccent, widget.infoBlue],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-              boxShadow: [
-                BoxShadow(
-                  color: widget.primaryRed.withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(isTablet ? 12 : 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.sports_rounded, color: widget.successGreen, size: isTablet ? 28 : 22),
-                ),
-                SizedBox(width: isTablet ? 16 : 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Add Sports Club',
-                        style: GoogleFonts.poppins(
-                          fontSize: isTablet ? 20 : 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Your club will be visible after admin approval',
-                        style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: isTablet ? 13 : 12),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close_rounded, color: Colors.white),
-                  padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(),
-                  iconSize: isTablet ? 24 : 20,
-                ),
-              ],
-            ),
-          ),
-
-          // Tab Bar
-          Container(
-            margin: EdgeInsets.all(isTablet ? 20 : 16),
-            height: isTablet ? 50 : 45,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
-                gradient: LinearGradient(
-                  colors: [widget.primaryRed, widget.purpleAccent],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-              ),
-              labelColor: Colors.white,
-              unselectedLabelColor: widget.primaryRed,
-              labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: isTablet ? 14 : 12),
-              unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: isTablet ? 13 : 11),
-              tabs: [
-                Tab(text: 'Basic Info'),
-                Tab(text: 'Club Details'),
-                Tab(text: 'Facilities'),
-              ],
-            ),
-          ),
-
-          // Error Message Display
-          if (_validationError != null)
+    return Container(
+      height: screenHeight * 0.9,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: FadeTransition(
+        opacity: _animationController,
+        child: Column(
+          children: [
+            // Premium Header
             Container(
-              margin: EdgeInsets.symmetric(horizontal: isTablet ? 20 : 16, vertical: 8),
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(isTablet ? 24 : 16),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                gradient: LinearGradient(
+                  colors: [widget.primaryRed, widget.purpleAccent, widget.infoBlue],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.primaryRed.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
-                  Icon(Icons.error_rounded, color: Colors.red, size: 20),
-                  SizedBox(width: 10),
+                  Container(
+                    padding: EdgeInsets.all(isTablet ? 12 : 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.sports_rounded, color: widget.successGreen, size: isTablet ? 28 : 22),
+                  ),
+                  SizedBox(width: isTablet ? 16 : 12),
                   Expanded(
-                    child: Text(
-                      _validationError!,
-                      style: GoogleFonts.inter(
-                        color: Colors.red[700],
-                        fontSize: isTablet ? 14 : 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add Sports Club',
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 20 : 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Your club will be visible after admin approval',
+                          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: isTablet ? 13 : 12),
+                        ),
+                      ],
                     ),
                   ),
                   IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _validationError = null;
-                      });
-                    },
-                    icon: Icon(Icons.close_rounded, color: Colors.red, size: 18),
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close_rounded, color: Colors.white),
                     padding: EdgeInsets.zero,
-                    constraints: BoxConstraints(),
+                    constraints: const BoxConstraints(),
+                    iconSize: isTablet ? 24 : 20,
                   ),
                 ],
               ),
             ),
 
-          // Form Content
-          Expanded(
-            child: Form(
-              key: _formKey,
-              child: TabBarView(
+            // Tab Bar
+            Container(
+              margin: EdgeInsets.all(isTablet ? 20 : 16),
+              height: isTablet ? 50 : 45,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: TabBar(
                 controller: _tabController,
-                physics: NeverScrollableScrollPhysics(),
-                children: [
-                  _buildBasicInfoTab(isTablet),
-                  _buildClubDetailsTab(isTablet),
-                  _buildFacilitiesTab(isTablet),
+                indicator: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  gradient: LinearGradient(
+                    colors: [widget.primaryRed, widget.purpleAccent],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                ),
+                labelColor: Colors.white,
+                unselectedLabelColor: widget.primaryRed,
+                labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: isTablet ? 14 : 12),
+                unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: isTablet ? 13 : 11),
+                tabs: const [
+                  Tab(text: 'Basic Info'),
+                  Tab(text: 'Club Details'),
+                  Tab(text: 'Facilities'),
                 ],
               ),
             ),
-          ),
 
-          // Navigation Buttons
-          Container(
-            padding: EdgeInsets.all(isTablet ? 20 : 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 20,
-                  offset: Offset(0, -5),
+            // Error Message Display
+            if (_validationError != null)
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: isTablet ? 20 : 16, vertical: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                if (_tabController.index > 0)
-                  Expanded(
-                    child: _buildNavButton(
-                      label: 'Previous',
+                child: Row(
+                  children: [
+                    Icon(Icons.error_rounded, color: Colors.red, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _validationError!,
+                        style: GoogleFonts.inter(
+                          color: Colors.red[700],
+                          fontSize: isTablet ? 14 : 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    IconButton(
                       onPressed: () {
                         setState(() {
                           _validationError = null;
-                          _tabController.animateTo(_tabController.index - 1);
                         });
                       },
-                      isPrimary: false,
-                      isTablet: isTablet,
+                      icon: Icon(Icons.close_rounded, color: Colors.red, size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                  ),
-                if (_tabController.index > 0) SizedBox(width: isTablet ? 12 : 8),
-                Expanded(
-                  child: _tabController.index < 2
-                      ? _buildNavButton(
-                          label: 'Next',
-                          onPressed: () {
-                            setState(() {
-                              _validationError = null;
-                            });
-                            
-                            if (_tabController.index == 0) {
-                              if (_validateBasicInfo()) {
-                                _tabController.animateTo(_tabController.index + 1);
-                              }
-                            } else if (_tabController.index == 1) {
-                              if (_validateClubDetailsOnly()) {
-                                _tabController.animateTo(_tabController.index + 1);
-                              }
-                            }
-                          },
-                          isPrimary: true,
-                          isTablet: isTablet,
-                        )
-                      : _buildSubmitButton(isTablet),
+                  ],
                 ),
-              ],
+              ),
+
+            // Form Content
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: TabBarView(
+                  controller: _tabController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _buildBasicInfoTab(isTablet),
+                    _buildClubDetailsTab(isTablet),
+                    _buildFacilitiesTab(isTablet),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+
+            // Navigation Buttons
+            Container(
+              padding: EdgeInsets.all(isTablet ? 20 : 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  if (_tabController.index > 0)
+                    Expanded(
+                      child: _buildNavButton(
+                        label: 'Previous',
+                        onPressed: () {
+                          setState(() {
+                            _validationError = null;
+                            _tabController.animateTo(_tabController.index - 1);
+                          });
+                        },
+                        isPrimary: false,
+                        isTablet: isTablet,
+                      ),
+                    ),
+                  if (_tabController.index > 0) SizedBox(width: isTablet ? 12 : 8),
+                  Expanded(
+                    child: _tabController.index < 2
+                        ? _buildNavButton(
+                            label: 'Next',
+                            onPressed: () {
+                              setState(() {
+                                _validationError = null;
+                              });
+                              
+                              if (_tabController.index == 0) {
+                                if (_validateBasicInfo()) {
+                                  _tabController.animateTo(_tabController.index + 1);
+                                }
+                              } else if (_tabController.index == 1) {
+                                if (_validateClubDetailsOnly()) {
+                                  _tabController.animateTo(_tabController.index + 1);
+                                }
+                              }
+                            },
+                            isPrimary: true,
+                            isTablet: isTablet,
+                          )
+                        : _buildSubmitButton(isTablet),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2066,12 +3577,17 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
   Widget _buildBasicInfoTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('Club Information', Icons.sports_rounded, widget.primaryRed, isTablet),
-          SizedBox(height: isTablet ? 20 : 16),
+           SizedBox(height: isTablet ? 20 : 16),
           
           _buildPremiumTextField(
             controller: _clubNameController,
@@ -2080,7 +3596,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumDropdown<SportsType>(
             value: _selectedSportType,
@@ -2100,7 +3616,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
               });
             },
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _emailController,
@@ -2110,7 +3626,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _phoneController,
@@ -2120,11 +3636,11 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           // Location Picker with Map
           _buildLocationPickerField(isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
         ],
       ),
     );
@@ -2186,7 +3702,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
                 size: isTablet ? 22 : 18,
               ),
             ),
-            SizedBox(width: isTablet ? 16 : 12),
+             SizedBox(width: isTablet ? 16 : 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2199,7 +3715,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
                       color: widget.primaryRed,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     _fullAddress ?? 'Tap to select location on map',
                     style: GoogleFonts.inter(
@@ -2210,7 +3726,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (_latitude != null && _longitude != null) ...[
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'Lat: ${_latitude!.toStringAsFixed(4)}, Lng: ${_longitude!.toStringAsFixed(4)}',
                       style: GoogleFonts.inter(
@@ -2237,12 +3753,17 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
   Widget _buildClubDetailsTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('Club Details', Icons.info_rounded, widget.infoBlue, isTablet),
-          SizedBox(height: isTablet ? 20 : 16),
+           SizedBox(height: isTablet ? 20 : 16),
           
           _buildPremiumTextField(
             controller: _venueController,
@@ -2251,7 +3772,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _descriptionController,
@@ -2261,7 +3782,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           Row(
             children: [
@@ -2288,7 +3809,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
               ),
             ],
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _scheduleController,
@@ -2297,10 +3818,10 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             isRequired: false,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildSectionHeader('Coach Information', Icons.person_rounded, widget.successGreen, isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _coachNameController,
@@ -2309,7 +3830,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             isRequired: false,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _coachQualificationsController,
@@ -2326,12 +3847,17 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
   Widget _buildFacilitiesTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('Age Groups', Icons.people_outline_rounded, widget.infoBlue, isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTagInput(
             controller: _ageGroupController,
@@ -2354,10 +3880,10 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             isTablet: isTablet,
           ),
           
-          SizedBox(height: isTablet ? 24 : 20),
+           SizedBox(height: isTablet ? 24 : 20),
           
           _buildSectionHeader('Skill Levels', Icons.star_rounded, widget.successGreen, isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTagInput(
             controller: _skillLevelController,
@@ -2380,10 +3906,10 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             isTablet: isTablet,
           ),
           
-          SizedBox(height: isTablet ? 24 : 20),
+           SizedBox(height: isTablet ? 24 : 20),
           
           _buildSectionHeader('Equipment Provided', Icons.sports_handball_rounded, widget.primaryRed, isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTagInput(
             controller: _equipmentController,
@@ -2406,10 +3932,10 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             isTablet: isTablet,
           ),
           
-          SizedBox(height: isTablet ? 24 : 20),
+           SizedBox(height: isTablet ? 24 : 20),
           
           _buildSectionHeader('Amenities (Optional)', Icons.room_service_rounded, widget.purpleAccent, isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTagInput(
             controller: _amenityController,
@@ -2432,10 +3958,10 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             isTablet: isTablet,
           ),
           
-          SizedBox(height: isTablet ? 24 : 20),
+           SizedBox(height: isTablet ? 24 : 20),
           
-          _buildSectionHeader('Tournaments (Optional)', Icons.emoji_events_rounded, Color(0xFFFFB300), isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+          _buildSectionHeader('Tournaments (Optional)', Icons.emoji_events_rounded, const Color(0xFFFFB300), isTablet),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTagInput(
             controller: _tournamentController,
@@ -2503,6 +4029,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
       style: GoogleFonts.inter(
         fontSize: isTablet ? 16 : 14,
         color: Colors.grey[800],
@@ -2621,6 +4148,8 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             Expanded(
               child: TextField(
                 controller: controller,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => onAdd(),
                 decoration: InputDecoration(
                   hintText: hint,
                   hintStyle: GoogleFonts.inter(color: Colors.grey[400], fontSize: isTablet ? 14 : 12),
@@ -2659,13 +4188,13 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
                 onPressed: onAdd,
                 icon: Icon(Icons.add_rounded, color: Colors.white, size: isTablet ? 22 : 20),
                 padding: EdgeInsets.all(isTablet ? 12 : 10),
-                constraints: BoxConstraints(),
+                constraints: const BoxConstraints(),
               ),
             ),
           ],
         ),
         if (tags.isNotEmpty) ...[
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -2695,11 +4224,11 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     GestureDetector(
                       onTap: () => onRemove(index),
                       child: Container(
-                        padding: EdgeInsets.all(2),
+                        padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           color: Colors.red.withOpacity(0.1),
                           shape: BoxShape.circle,
@@ -2760,7 +4289,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
                   BoxShadow(
                     color: widget.primaryRed.withOpacity(0.3),
                     blurRadius: 10,
-                    offset: Offset(0, 5),
+                    offset: const Offset(0, 5),
                   ),
                 ]
               : null,
@@ -2797,7 +4326,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
             BoxShadow(
               color: widget.successGreen.withOpacity(0.3),
               blurRadius: 15,
-              offset: Offset(0, 8),
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -2805,7 +4334,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: isTablet ? 22 : 20),
-            SizedBox(width: isTablet ? 10 : 8),
+             SizedBox(width: isTablet ? 10 : 8),
             Text(
               'Submit',
               style: GoogleFonts.poppins(
@@ -2993,19 +4522,19 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
     );
 
     print('📝 Creating sports club with createdBy: ${newClub.createdBy} (user ID)');
-    print('📍 Location: ${_latitude}, ${_longitude} in ${_selectedState}');
+    print('📍 Location: $_latitude, $_longitude in $_selectedState');
     print('📝 Club will be hidden until admin verification (isVerified: false)');
 
     // Show loading dialog
-    BuildContext? dialogContext;
+    if (!mounted) return;
+    
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        dialogContext = context;
         return Center(
           child: Container(
-            padding: EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
@@ -3018,7 +4547,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
                   height: 50,
                   child: CircularProgressIndicator(color: widget.primaryRed),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Text('Submitting...', style: GoogleFonts.poppins()),
               ],
             ),
@@ -3027,27 +4556,23 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
       },
     );
 
-    await Future.delayed(Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 100));
     
     final success = await provider.addSportsClub(newClub);
     
-    if (dialogContext != null && Navigator.canPop(dialogContext!)) {
-      Navigator.pop(dialogContext!);
+    if (mounted) {
+      Navigator.pop(context); // Close loading
     }
     
-    if (success) {
-      if (mounted) {
-        Navigator.pop(context); 
-        _showSuccessSnackBar('Sports club added successfully! Pending admin approval. 🏆');
-      }
+    if (success && mounted) {
+      Navigator.pop(context); // Close dialog
+      _showSuccessSnackBar('Sports club added successfully! Pending admin approval. 🏆');
       
       if (widget.onClubAdded != null) {
         widget.onClubAdded!();
       }
-    } else {
-      if (mounted) {
-        setState(() => _validationError = 'Failed to add sports club. Please try again.');
-      }
+    } else if (mounted) {
+      setState(() => _validationError = 'Failed to add sports club. Please try again.');
     }
   }
 
@@ -3059,7 +4584,7 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
         content: Row(
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
@@ -3075,8 +4600,8 @@ class _PremiumAddClubDialogState extends State<PremiumAddClubDialog> with Ticker
         backgroundColor: widget.successGreen,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(12),
-        duration: Duration(seconds: 3),
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 3),
       ),
     );
   }

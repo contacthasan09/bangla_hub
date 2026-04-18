@@ -1132,6 +1132,7 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
     );
   }
 
+
   Widget _buildCompactTag(String text, IconData icon, bool isTablet) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: isTablet ? 8 : 6, vertical: isTablet ? 4 : 3),
@@ -1147,7 +1148,7 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
     );
   }
 
-  Widget _buildPremiumPromotionCard(SmallBusinessPromotion promotion, int index) {
+/*  Widget _buildPremiumPromotionCard(SmallBusinessPromotion promotion, int index) {
     final isOfferActive = promotion.specialOfferDiscount != null && promotion.specialOfferDiscount! > 0;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
@@ -1635,6 +1636,515 @@ class _SmallBusinessPromotionScreenState extends State<SmallBusinessPromotionScr
     );
   }
 
+*/
+
+Widget _buildPremiumPromotionCard(SmallBusinessPromotion promotion, int index) {
+  final isOfferActive = promotion.specialOfferDiscount != null && promotion.specialOfferDiscount! > 0;
+  final isTablet = MediaQuery.of(context).size.width >= 600;
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Same margin as other cards (16 for tablet, 12 for mobile)
+  final horizontalMargin = isTablet ? 16.0 : 12.0;
+  
+  // Premium gradient - Orange to Red to Green (keeping same colors)
+  final LinearGradient _cardGradient = LinearGradient(
+    colors: [
+      Color(0xFFFF9800), // Orange
+      Color(0xFFF57C00), // Dark Orange
+      Color(0xFFE53935), // Red
+      Color(0xFFD32F2F), // Dark Red
+      Color(0xFF43A047), // Green
+      Color(0xFF2E7D32), // Dark Green
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+  );
+  
+  Widget cardContent = Container(
+    margin: EdgeInsets.symmetric(
+      horizontal: horizontalMargin,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.15),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+          spreadRadius: -1,
+        ),
+        BoxShadow(
+          color: Color(0xFFFF9800).withOpacity(0.25),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _cardGradient,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.2),
+            width: 0.5,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isGuestMode) {
+                _showLoginRequiredDialog(context, 'View Promotion Details');
+                return;
+              }
+              _showPromotionDetails(promotion);
+            },
+            borderRadius: BorderRadius.circular(20),
+            splashColor: Colors.white.withOpacity(0.15),
+            highlightColor: Colors.white.withOpacity(0.05),
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 14 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Offer Badge (if active) - Compact
+                  if (isOfferActive)
+                    Container(
+                      margin: EdgeInsets.only(bottom: 8),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFFFD700), Color(0xFFFF8F00)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0xFFFFD700).withOpacity(0.4),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.local_offer_rounded, 
+                            color: Colors.white, 
+                            size: 10,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '${promotion.specialOfferDiscount!.toStringAsFixed(0)}% OFF',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  
+                  // User Info Row - Compact
+                  Row(
+                    children: [
+                      // Avatar
+                      Container(
+                        width: isTablet ? 44 : 38,
+                        height: isTablet ? 44 : 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFFFD700), Color(0xFFFF8F00)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFFFFD700).withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(1.5),
+                          child: ClipOval(
+                            child: _buildPromotionPosterImage(promotion),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: 10),
+                      
+                      // Name and Verified Badge
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              promotion.postedByName ?? 'Business Owner',
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 14 : 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.verified_rounded,
+                                  size: 12,
+                                  color: Color(0xFFFFD700),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Verified Business',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 9,
+                                    color: Color(0xFFFFD700).withOpacity(0.9),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Verified Badge - Compact
+                      if (promotion.isVerified)
+                        Container(
+                          padding: EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFFFFD700), Color(0xFFFF8F00)],
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: shouldAnimate
+                              ? RotationTransition(
+                                  turns: _rotateController,
+                                  child: Icon(
+                                    Icons.verified_rounded, 
+                                    color: Colors.white, 
+                                    size: isTablet ? 12 : 10,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.verified_rounded, 
+                                  color: Colors.white, 
+                                  size: isTablet ? 12 : 10,
+                                ),
+                        ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Distance Badge
+                  if (promotion.latitude != null && promotion.longitude != null)
+                    Consumer<LocationFilterProvider>(
+                      builder: (context, locationProvider, _) {
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 8),
+                          child: DistanceBadge(
+                            latitude: promotion.latitude!,
+                            longitude: promotion.longitude!,
+                            isTablet: isTablet,
+                          ),
+                        );
+                      },
+                    ),
+                  
+                  // Business Name
+                  Text(
+                    promotion.businessName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  SizedBox(height: 6),
+                  
+                  // Owner Name
+                  Text(
+                    promotion.ownerName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 11 : 10,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFFFD700),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Tags Row - Compact
+               /*   Wrap(
+                    
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _buildCompactPromotionTag(promotion.city, Icons.location_on_rounded, isTablet),
+                      _buildCompactPromotionTag('${promotion.productsServices.length} products', Icons.shopping_bag_rounded, isTablet),
+                    ],
+                  ),  */
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    
+                    
+                    children: [
+                      _buildCompactPromotionTag(promotion.city, Icons.location_on_rounded, isTablet),
+                      _buildCompactPromotionTag('${promotion.productsServices.length} products', Icons.shopping_bag_rounded, isTablet),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Stats Row - Compact
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.25),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.remove_red_eye_rounded, 
+                              size: 10,
+                              color: Colors.white
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              '${promotion.totalViews}',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: isTablet ? 10 : 9,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                    /*  Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.25),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.share_rounded, 
+                              size: 10,
+                              color: Colors.white
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              '${promotion.totalShares}',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: isTablet ? 10 : 9,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),  */
+                    ],
+                  ),
+                  
+                  if (promotion.paymentMethods.isNotEmpty) ...[
+                    SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: promotion.paymentMethods.take(3).map((method) {
+                        return Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.25),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Text(
+                            method,
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: isTablet ? 9 : 8,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                  
+                  SizedBox(height: 10),
+                  
+                  // View Details Button - Compact
+                  GestureDetector(
+                    onTap: () {
+                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                      if (authProvider.isGuestMode) {
+                        _showLoginRequiredDialog(context, 'View Promotion Details');
+                        return;
+                      }
+                      _showPromotionDetails(promotion);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        vertical: isTablet ? 8 : 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'View Details',
+                            style: GoogleFonts.poppins(
+                              color: Color(0xFFF57C00),
+                              fontSize: isTablet ? 12 : 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          shouldAnimate
+                              ? RotationTransition(
+                                  turns: _rotateController,
+                                  child: Icon(
+                                    Icons.arrow_forward_rounded,
+                                    color: Color(0xFFF57C00),
+                                    size: isTablet ? 14 : 12,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: Color(0xFFF57C00),
+                                  size: isTablet ? 14 : 12,
+                                ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  
+  if (shouldAnimate) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.96 + (0.04 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: cardContent,
+          ),
+        );
+      },
+    );
+  }
+  
+  return cardContent;
+}
+
+Widget _buildCompactPromotionTag(String text, IconData icon, [bool isTablet = false]) {
+  return Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: isTablet ? 8 : 6,
+      vertical: isTablet ? 4 : 3,
+    ),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: Colors.white.withOpacity(0.25),
+        width: 0.5,
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: isTablet ? 10 : 9, color: Colors.white),
+        SizedBox(width: isTablet ? 4 : 3),
+        Text(
+          text,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: isTablet ? 10 : 9,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    ),
+  );
+}
+
   void _showPromotionDetails(SmallBusinessPromotion promotion) async {
     HapticFeedback.mediumImpact();
     final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
@@ -1744,8 +2254,9 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   late TabController _tabController;
   late AnimationController _animationController;
   
-  // Track app lifecycle
+  // Track app lifecycle and keyboard
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  bool _isKeyboardVisible = false;
   
   // Track completed tabs
   bool _isBasicInfoValid = false;
@@ -1757,10 +2268,13 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
     
     WidgetsBinding.instance.addObserver(this);
     
+    _setupKeyboardListeners();
+    
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_handleTabChange);
     _animationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 500),
     );
     _animationController.forward();
     
@@ -1775,6 +2289,43 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
     
     if (_appLifecycleState == AppLifecycleState.resumed) {
       _startAnimations();
+    }
+  }
+  
+  void _setupKeyboardListeners() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusManager.instance.addListener(() {
+        final hasFocus = FocusManager.instance.primaryFocus != null;
+        if (mounted && _isKeyboardVisible != hasFocus) {
+          setState(() {
+            _isKeyboardVisible = hasFocus;
+          });
+          if (hasFocus) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (mounted && widget.scrollController.hasClients) {
+                widget.scrollController.animateTo(
+                  widget.scrollController.position.maxScrollExtent,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              }
+            });
+          }
+        }
+      });
+    });
+  }
+  
+  void _handleTabChange() {
+    if (mounted) {
+      setState(() {});
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     }
   }
   
@@ -1802,25 +2353,29 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   }
 
   void _validateBasicInfo() {
-    setState(() {
-      _isBasicInfoValid = 
-          _businessNameController.text.isNotEmpty &&
-          _ownerNameController.text.isNotEmpty &&
-          _contactEmailController.text.isNotEmpty &&
-          _contactPhoneController.text.isNotEmpty &&
-          _businessLatitude != null &&
-          _businessLongitude != null &&
-          _businessFullAddress != null &&
-          _businessFullAddress!.isNotEmpty;
-    });
+    if (mounted) {
+      setState(() {
+        _isBasicInfoValid = 
+            _businessNameController.text.isNotEmpty &&
+            _ownerNameController.text.isNotEmpty &&
+            _contactEmailController.text.isNotEmpty &&
+            _contactPhoneController.text.isNotEmpty &&
+            _businessLatitude != null &&
+            _businessLongitude != null &&
+            _businessFullAddress != null &&
+            _businessFullAddress!.isNotEmpty;
+      });
+    }
   }
 
   void _validateDetailsTab() {
-    setState(() {
-      _isDetailsTabValid = 
-          _descriptionController.text.isNotEmpty &&
-          _productsServices.isNotEmpty;
-    });
+    if (mounted) {
+      setState(() {
+        _isDetailsTabValid = 
+            _descriptionController.text.isNotEmpty &&
+            _productsServices.isNotEmpty;
+      });
+    }
   }
 
   bool get _isSubmitEnabled {
@@ -1830,6 +2385,13 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   void _goToPreviousTab() {
     if (_tabController.index > 0) {
       _tabController.animateTo(_tabController.index - 1);
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     }
   }
 
@@ -1840,6 +2402,13 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
         return;
       }
       _tabController.animateTo(_tabController.index + 1);
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     }
   }
 
@@ -1866,6 +2435,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
     _offerValidityController.dispose();
     _paymentMethodController.dispose();
     
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _animationController.dispose();
     
@@ -1989,7 +2559,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   }
 
   // ==================== LOCATION PICKER FROM MAP ====================
-  Widget _buildLocationPickerField(bool isTablet) {
+  Widget _buildLocationPickerField(StateSetter setState, bool isTablet) {
     return GestureDetector(
       onTap: () async {
         final result = await showModalBottomSheet(
@@ -2161,11 +2731,16 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 600;
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
-    return FadeTransition(
-      opacity: _animationController,
+    return Container(
+      height: screenHeight * 0.9,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
       child: Column(
         children: [
           // Premium Header
@@ -2182,7 +2757,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
                 BoxShadow(
                   color: widget.primaryOrange.withOpacity(0.3),
                   blurRadius: 20,
-                  offset: Offset(0, 10),
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
@@ -2210,7 +2785,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
                           letterSpacing: -0.5,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         'Your promotion will be visible after admin approval',
                         style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: isTablet ? 13 : 12),
@@ -2222,7 +2797,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
                   onPressed: () => Navigator.pop(context),
                   icon: Icon(Icons.close_rounded, color: Colors.white),
                   padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(),
+                  constraints: const BoxConstraints(),
                   iconSize: isTablet ? 24 : 20,
                 ),
               ],
@@ -2251,7 +2826,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
               unselectedLabelColor: widget.primaryOrange,
               labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: isTablet ? 14 : 12),
               unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: isTablet ? 13 : 11),
-              tabs: [
+              tabs: const [
                 Tab(text: 'Basic Info'),
                 Tab(text: 'Media'),
                 Tab(text: 'Details'),
@@ -2265,7 +2840,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
               key: _formKey,
               child: TabBarView(
                 controller: _tabController,
-                physics: NeverScrollableScrollPhysics(),
+                physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _buildBasicInfoTab(isTablet),
                   _buildMediaTab(isTablet),
@@ -2284,7 +2859,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
                 BoxShadow(
                   color: Colors.black.withOpacity(0.03),
                   blurRadius: 20,
-                  offset: Offset(0, -5),
+                  offset: const Offset(0, -5),
                 ),
               ],
             ),
@@ -2321,7 +2896,12 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   Widget _buildBasicInfoTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2370,7 +2950,9 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
           SizedBox(height: isTablet ? 16 : 12),
           
           // Location Picker from Map
-          _buildLocationPickerField(isTablet),
+          StatefulBuilder(
+            builder: (context, setState) => _buildLocationPickerField(setState, isTablet),
+          ),
         ],
       ),
     );
@@ -2379,7 +2961,12 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   Widget _buildMediaTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2394,7 +2981,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
           ),
           SizedBox(height: isTablet ? 4 : 2),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: widget.greenAccent.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
@@ -2403,7 +2990,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.info_outline, size: 12, color: widget.greenAccent),
-                SizedBox(width: 4),
+                const SizedBox(width: 4),
                 Text(
                   'Auto-compressed to under 1MB per image',
                   style: TextStyle(
@@ -2419,7 +3006,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
           
           if (_isImageProcessing)
             Container(
-              padding: EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20),
               child: Center(
                 child: Column(
                   children: [
@@ -2427,7 +3014,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
                       color: widget.primaryOrange,
                       strokeWidth: 2,
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'Compressing image...',
                       style: TextStyle(
@@ -2443,7 +3030,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
           if (!_isImageProcessing)
             GridView.builder(
               shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
+              physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: isTablet ? 4 : 3,
                 crossAxisSpacing: 8,
@@ -2493,7 +3080,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               'Max 1MB',
               style: GoogleFonts.inter(
@@ -2556,7 +3143,12 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
   Widget _buildDetailsTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2737,6 +3329,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
       style: GoogleFonts.inter(
         fontSize: isTablet ? 16 : 14,
         color: Colors.grey[800],
@@ -2795,6 +3388,8 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
             Expanded(
               child: TextField(
                 controller: controller,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => onAdd(),
                 decoration: InputDecoration(
                   hintText: hint,
                   hintStyle: GoogleFonts.inter(color: Colors.grey[400], fontSize: isTablet ? 14 : 12),
@@ -2833,7 +3428,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
                 onPressed: onAdd,
                 icon: Icon(Icons.add_rounded, color: Colors.white, size: isTablet ? 22 : 20),
                 padding: EdgeInsets.all(isTablet ? 12 : 10),
-                constraints: BoxConstraints(),
+                constraints: const BoxConstraints(),
               ),
             ),
           ],
@@ -2869,11 +3464,11 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     GestureDetector(
                       onTap: () => onRemove(index),
                       child: Container(
-                        padding: EdgeInsets.all(2),
+                        padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           color: widget.redAccent.withOpacity(0.1),
                           shape: BoxShape.circle,
@@ -2934,7 +3529,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
                   BoxShadow(
                     color: widget.primaryOrange.withOpacity(0.3),
                     blurRadius: 10,
-                    offset: Offset(0, 5),
+                    offset: const Offset(0, 5),
                   ),
                 ]
               : null,
@@ -2971,7 +3566,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
             BoxShadow(
               color: widget.greenAccent.withOpacity(0.3),
               blurRadius: 15,
-              offset: Offset(0, 8),
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -3091,7 +3686,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
       barrierDismissible: false,
       builder: (context) => Center(
         child: Container(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -3104,7 +3699,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
                 height: 50,
                 child: CircularProgressIndicator(color: widget.primaryOrange),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Text('Submitting...', style: GoogleFonts.poppins()),
             ],
           ),
@@ -3141,7 +3736,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
         content: Row(
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
@@ -3157,8 +3752,8 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
         backgroundColor: widget.greenAccent,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(12),
-        duration: Duration(seconds: 3),
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -3170,7 +3765,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
         content: Row(
           children: [
             Icon(Icons.error_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
@@ -3186,7 +3781,7 @@ class _PremiumAddPromotionDialogState extends State<PremiumAddPromotionDialog>
         backgroundColor: widget.redAccent,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(12),
+        margin: const EdgeInsets.all(12),
       ),
     );
   }

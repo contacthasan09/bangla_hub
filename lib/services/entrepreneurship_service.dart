@@ -530,4 +530,141 @@ class EntrepreneurshipService {
             .map((doc) => SmallBusinessPromotion.fromFirestore(doc))
             .toList());
   }
+
+
+  // In entrepreneurship_service.dart
+
+// ====================== DELETE METHODS ======================
+
+// Delete Business Partner (soft delete)
+Future<void> deleteBusinessPartner(String id) async {
+  try {
+    await _firestore
+        .collection(_networkingCollection)
+        .doc(id)
+        .update({
+          'isDeleted': true,
+          'isActive': false,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+    print('✅ Business partner soft deleted: $id');
+  } catch (e) {
+    print('❌ Failed to delete business partner: $e');
+    throw Exception('Failed to delete business partner: $e');
+  }
+}
+
+// Permanently delete Business Partner (hard delete - admin only)
+Future<void> permanentlyDeleteBusinessPartner(String id) async {
+  try {
+    await _firestore
+        .collection(_networkingCollection)
+        .doc(id)
+        .delete();
+    print('✅ Business partner permanently deleted: $id');
+  } catch (e) {
+    print('❌ Failed to permanently delete business partner: $e');
+    throw Exception('Failed to permanently delete business partner: $e');
+  }
+}
+
+// Delete Job Posting (soft delete)
+Future<void> deleteJobPosting(String id) async {
+  try {
+    await _firestore
+        .collection(_jobPostingsCollection)
+        .doc(id)
+        .update({
+          'isDeleted': true,
+          'isActive': false,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+    print('✅ Job posting soft deleted: $id');
+  } catch (e) {
+    print('❌ Failed to delete job posting: $e');
+    throw Exception('Failed to delete job posting: $e');
+  }
+}
+
+// Permanently delete Job Posting (hard delete - admin only)
+Future<void> permanentlyDeleteJobPosting(String id) async {
+  try {
+    await _firestore
+        .collection(_jobPostingsCollection)
+        .doc(id)
+        .delete();
+    print('✅ Job posting permanently deleted: $id');
+  } catch (e) {
+    print('❌ Failed to permanently delete job posting: $e');
+    throw Exception('Failed to permanently delete job posting: $e');
+  }
+}
+
+// Delete Business Promotion (soft delete)
+Future<void> deleteBusinessPromotion(String id) async {
+  try {
+    await _firestore
+        .collection(_businessPromotionCollection)
+        .doc(id)
+        .update({
+          'isDeleted': true,
+          'isActive': false,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+    print('✅ Business promotion soft deleted: $id');
+  } catch (e) {
+    print('❌ Failed to delete business promotion: $e');
+    throw Exception('Failed to delete business promotion: $e');
+  }
+}
+
+// Permanently delete Business Promotion (hard delete - admin only)
+Future<void> permanentlyDeleteBusinessPromotion(String id) async {
+  try {
+    await _firestore
+        .collection(_businessPromotionCollection)
+        .doc(id)
+        .delete();
+    print('✅ Business promotion permanently deleted: $id');
+  } catch (e) {
+    print('❌ Failed to permanently delete business promotion: $e');
+    throw Exception('Failed to permanently delete business promotion: $e');
+  }
+}
+
+// Delete Partner Request (soft delete)
+Future<void> deletePartnerRequest(String id) async {
+  try {
+    await _firestore
+        .collection(_partnerRequestCollection)
+        .doc(id)
+        .update({
+          'isDeleted': true,
+          'isActive': false,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+    print('✅ Partner request soft deleted: $id');
+  } catch (e) {
+    print('❌ Failed to delete partner request: $e');
+    throw Exception('Failed to delete partner request: $e');
+  }
+}
+
+// Permanently delete Partner Request (hard delete - admin only)
+Future<void> permanentlyDeletePartnerRequest(String id) async {
+  try {
+    await _firestore
+        .collection(_partnerRequestCollection)
+        .doc(id)
+        .delete();
+    print('✅ Partner request permanently deleted: $id');
+  } catch (e) {
+    print('❌ Failed to permanently delete partner request: $e');
+    throw Exception('Failed to permanently delete partner request: $e');
+  }
+}
+
+
+
+
 }

@@ -84,6 +84,7 @@ class EntrepreneurshipScreen extends StatelessWidget {
   }
 
   // ✅ FIXED: Proper logout method for drawer with safety
+
   Future<void> _handleLogoutFromDrawer(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     BuildContext? dialogContext;
@@ -134,7 +135,7 @@ class EntrepreneurshipScreen extends StatelessWidget {
     );
 
     try {
-      await authProvider.signOut();
+      await authProvider.signOut(context);
       
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('selected_tab_index');
@@ -172,6 +173,9 @@ class EntrepreneurshipScreen extends StatelessWidget {
       );
     }
   }
+
+
+
 
   @override
   Widget build(BuildContext context) {

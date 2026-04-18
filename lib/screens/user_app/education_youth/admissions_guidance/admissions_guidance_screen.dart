@@ -819,7 +819,7 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
     );
   }
 
-  Widget _buildPremiumGuidanceCard(AdmissionsGuidance service, int index) {
+/*  Widget _buildPremiumGuidanceCard(AdmissionsGuidance service, int index) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
@@ -1366,6 +1366,515 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
     );
   }
 
+*/
+
+Widget _buildPremiumGuidanceCard(AdmissionsGuidance service, int index) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isTablet = screenWidth >= 600;
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Same margin as job card (16 for tablet, 12 for mobile)
+  final horizontalMargin = isTablet ? 16.0 : 12.0;
+  
+  // Premium gradient - Green to Teal with subtle Gold (reduced purple)
+  final LinearGradient _cardGradient = LinearGradient(
+    colors: [
+      Color(0xFF2E7D32), // Dark Green
+      Color(0xFF388E3C), // Medium Green
+      Color(0xFF43A047), // Vibrant Green
+      Color(0xFF4CAF50), // Classic Green
+      Color(0xFF66BB6A), // Light Green
+      Color(0xFF00897B), // Teal
+      Color(0xFF00796B), // Dark Teal
+      Color(0xFFFFB300), // Gold accent
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: [0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.88, 1.0],
+  );
+  
+  Widget cardContent = Container(
+    margin: EdgeInsets.symmetric(
+      horizontal: horizontalMargin,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.15),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+          spreadRadius: -1,
+        ),
+        BoxShadow(
+          color: Color(0xFF2E7D32).withOpacity(0.25),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _cardGradient,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.2),
+            width: 0.5,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isGuestMode) {
+                _showLoginRequiredDialog(context, 'View Guidance Details');
+              } else {
+                _showGuidanceDetails(service);
+              }
+            },
+            borderRadius: BorderRadius.circular(20),
+            splashColor: Colors.white.withOpacity(0.15),
+            highlightColor: Colors.white.withOpacity(0.05),
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 14 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Info Row - Compact
+                  Row(
+                    children: [
+                      Container(
+                        width: isTablet ? 44 : 38,
+                        height: isTablet ? 44 : 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFFFB300), Color(0xFFFF8F00)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFFFFB300).withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(1.5),
+                          child: ClipOval(
+                            child: _buildPosterImage(service),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: 10),
+                      
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              service.postedByName ?? 'Admissions Consultant',
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 14 : 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 5,
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFFFD700),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Admissions Consultant',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 9,
+                                    color: Color(0xFFFFD700),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Verified Badge - Compact
+                      Container(
+                        padding: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFFFB300), Color(0xFFFF8F00)],
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: shouldAnimate
+                            ? RotationTransition(
+                                turns: _rotateController,
+                                child: Icon(
+                                  Icons.verified_rounded, 
+                                  color: Colors.white, 
+                                  size: isTablet ? 12 : 10,
+                                ),
+                              )
+                            : Icon(
+                                Icons.verified_rounded, 
+                                color: Colors.white, 
+                                size: isTablet ? 12 : 10,
+                              ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Consultant Name
+                  Text(
+                    service.consultantName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  SizedBox(height: 4),
+                  
+                  // Organization Name
+                  Text(
+                    service.organizationName ?? 'Independent Consultant',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 11 : 10,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFFFD700),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Specializations Tags - Compact
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: service.specializations.take(3).map((spec) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.25),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          spec,
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 10 : 9,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  
+                  if (service.specializations.length > 3)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '+${service.specializations.length - 3} more',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 10 : 9,
+                          color: Colors.white.withOpacity(0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Location and Fee Row
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.location_on_rounded,
+                              color: Color(0xFFFFD700),
+                              size: 12,
+                            ),
+                            SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '${service.city}, ${service.state}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: isTablet ? 11 : 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Distance Badge
+                      if (service.latitude != null && service.longitude != null)
+                        Padding(
+                          padding: EdgeInsets.only(right: 8),
+                          child: DistanceBadge(
+                            latitude: service.latitude!,
+                            longitude: service.longitude!,
+                            isTablet: isTablet,
+                          ),
+                        ),
+                      
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.25),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.attach_money_rounded,
+                              color: Color(0xFFFFD700),
+                              size: 10,
+                            ),
+                            SizedBox(width: 2),
+                            Text(
+                              service.formattedFee,
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 10 : 9,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Countries - Compact
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: service.countries.take(2).map((country) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.25),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.public_rounded,
+                              color: Color(0xFFFFD700),
+                              size: 10,
+                            ),
+                            SizedBox(width: 3),
+                            Text(
+                              country,
+                              style: GoogleFonts.inter(
+                                fontSize: isTablet ? 10 : 9,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  
+                  if (service.countries.length > 2)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '+${service.countries.length - 2} more',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 10 : 9,
+                          color: Colors.white.withOpacity(0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Rating Row - Compact
+                  Row(
+                    children: [
+                      Icon(Icons.star_rounded, color: Color(0xFFFFD700), size: 12),
+                      SizedBox(width: 4),
+                      Text(
+                        service.rating.toStringAsFixed(1),
+                        style: GoogleFonts.poppins(
+                          fontSize: isTablet ? 11 : 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                    /*  Text(
+                        '(${service.totalReviews} reviews)',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 10 : 9,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ), */
+                    ],
+                  ),
+                  
+                  SizedBox(height: 12),
+                  
+                  // View Details Button - Compact
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: Duration(milliseconds: 600),
+                    curve: Curves.elasticOut,
+                    builder: (context, value, child) {
+                      final buttonClampedValue = value.clamp(0.0, 1.0);
+                      return Transform.scale(
+                        scale: 0.97 + (0.03 * buttonClampedValue),
+                        child: GestureDetector(
+                          onTap: () {
+                            final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                            if (authProvider.isGuestMode) {
+                              _showLoginRequiredDialog(context, 'View Guidance Details');
+                            } else {
+                              _showGuidanceDetails(service);
+                            }
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                              vertical: isTablet ? 8 : 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'View Details',
+                                  style: GoogleFonts.poppins(
+                                    color: Color(0xFF2E7D32),
+                                    fontSize: isTablet ? 12 : 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                SizedBox(width: 6),
+                                shouldAnimate
+                                    ? RotationTransition(
+                                        turns: _rotateController,
+                                        child: Icon(
+                                          Icons.arrow_forward_rounded,
+                                          color: Color(0xFF2E7D32),
+                                          size: isTablet ? 14 : 12,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: Color(0xFF2E7D32),
+                                        size: isTablet ? 14 : 12,
+                                      ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  
+  if (shouldAnimate) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.96 + (0.04 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: cardContent,
+          ),
+        );
+      },
+    );
+  }
+  
+  return cardContent;
+}
+
   void _showGuidanceDetails(AdmissionsGuidance service) {
     HapticFeedback.mediumImpact();
     Navigator.push(
@@ -1415,7 +1924,11 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
   }
 }
 
+
+
+
 // ====================== PREMIUM ADD GUIDANCE DIALOG ======================
+
 class PremiumAddGuidanceDialog extends StatefulWidget {
   final VoidCallback? onGuidanceAdded;
   final ScrollController scrollController;
@@ -1438,7 +1951,9 @@ class PremiumAddGuidanceDialog extends StatefulWidget {
   _PremiumAddGuidanceDialogState createState() => _PremiumAddGuidanceDialogState();
 }
 
-class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> with TickerProviderStateMixin, WidgetsBindingObserver {
+class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _consultantNameController = TextEditingController();
   final TextEditingController _organizationController = TextEditingController();
@@ -1469,23 +1984,63 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
   late TabController _tabController;
   late AnimationController _animationController;
   
-  // Track app lifecycle
+  // Track app lifecycle and keyboard
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  bool _isKeyboardVisible = false;
   final Color _textPrimary = const Color(0xFF1A2B3C);
 
   @override
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
+    _setupKeyboardListeners();
+    
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_handleTabChange);
     _animationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 500),
     );
     _animationController.forward();
+  }
+  
+  void _setupKeyboardListeners() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusManager.instance.addListener(() {
+        final hasFocus = FocusManager.instance.primaryFocus != null;
+        if (mounted && _isKeyboardVisible != hasFocus) {
+          setState(() {
+            _isKeyboardVisible = hasFocus;
+          });
+          if (hasFocus) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (mounted && widget.scrollController.hasClients) {
+                widget.scrollController.animateTo(
+                  widget.scrollController.position.maxScrollExtent,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              }
+            });
+          }
+        }
+      });
+    });
+  }
+  
+  void _handleTabChange() {
+    if (mounted) {
+      setState(() {});
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    }
   }
   
   @override
@@ -1499,7 +2054,6 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
   void dispose() {
     print('🗑️ PremiumAddGuidanceDialog disposing...');
     
-    // ✅ Remove observer
     WidgetsBinding.instance.removeObserver(this);
     
     _consultantNameController.dispose();
@@ -1515,6 +2069,8 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
     _specializationController.dispose();
     _countryController.dispose();
     _serviceController.dispose();
+    
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _animationController.dispose();
     super.dispose();
@@ -1523,10 +2079,15 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 600;
     
-    return FadeTransition(
-      opacity: _animationController,
+    return Container(
+      height: screenHeight * 0.9,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
       child: Column(
         children: [
           // Premium Header
@@ -1543,7 +2104,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
                 BoxShadow(
                   color: widget.primaryGreen.withOpacity(0.3),
                   blurRadius: 20,
-                  offset: Offset(0, 10),
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
@@ -1571,7 +2132,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
                           letterSpacing: -0.5,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         'Your listing will be visible after admin approval',
                         style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: isTablet ? 13 : 12),
@@ -1583,7 +2144,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
                   onPressed: () => Navigator.pop(context),
                   icon: Icon(Icons.close_rounded, color: Colors.white),
                   padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(),
+                  constraints: const BoxConstraints(),
                   iconSize: isTablet ? 24 : 20,
                 ),
               ],
@@ -1612,7 +2173,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
               unselectedLabelColor: widget.primaryGreen,
               labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: isTablet ? 14 : 12),
               unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: isTablet ? 13 : 11),
-              tabs: [
+              tabs: const [
                 Tab(text: 'Basic Info'),
                 Tab(text: 'Specialties'),
                 Tab(text: 'Details'),
@@ -1626,7 +2187,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
               key: _formKey,
               child: TabBarView(
                 controller: _tabController,
-                physics: NeverScrollableScrollPhysics(),
+                physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _buildBasicInfoTab(isTablet),
                   _buildSpecialtiesTab(isTablet),
@@ -1645,7 +2206,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
                 BoxShadow(
                   color: Colors.black.withOpacity(0.03),
                   blurRadius: 20,
-                  offset: Offset(0, -5),
+                  offset: const Offset(0, -5),
                 ),
               ],
             ),
@@ -1696,12 +2257,17 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
   Widget _buildBasicInfoTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('Consultant Information', Icons.person_rounded, widget.primaryGreen, isTablet),
-          SizedBox(height: isTablet ? 20 : 16),
+           SizedBox(height: isTablet ? 20 : 16),
           
           _buildPremiumTextField(
             controller: _consultantNameController,
@@ -1710,7 +2276,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _organizationController,
@@ -1719,7 +2285,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
             isRequired: false,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _emailController,
@@ -1729,7 +2295,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _phoneController,
@@ -1739,11 +2305,11 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           // Location Picker with Map
           _buildLocationPickerField(isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
         ],
       ),
     );
@@ -1818,7 +2384,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
                       color: widget.primaryGreen,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     _fullAddress ?? 'Tap to select location on map',
                     style: GoogleFonts.inter(
@@ -1829,7 +2395,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (_latitude != null && _longitude != null) ...[
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'Lat: ${_latitude!.toStringAsFixed(4)}, Lng: ${_longitude!.toStringAsFixed(4)}',
                       style: GoogleFonts.inter(
@@ -1856,12 +2422,17 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
   Widget _buildSpecialtiesTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('Specializations', Icons.category_rounded, widget.primaryGreen, isTablet),
-          SizedBox(height: isTablet ? 20 : 16),
+           SizedBox(height: isTablet ? 20 : 16),
           
           _buildPremiumTagInput(
             controller: _specializationController,
@@ -1884,10 +2455,10 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
             isTablet: isTablet,
           ),
           
-          SizedBox(height: isTablet ? 24 : 20),
+           SizedBox(height: isTablet ? 24 : 20),
           
           _buildSectionHeader('Countries Served', Icons.public_rounded, widget.infoBlue, isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTagInput(
             controller: _countryController,
@@ -1910,10 +2481,10 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
             isTablet: isTablet,
           ),
           
-          SizedBox(height: isTablet ? 24 : 20),
+           SizedBox(height: isTablet ? 24 : 20),
           
           _buildSectionHeader('Services Offered', Icons.checklist_rounded, widget.purpleAccent, isTablet),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTagInput(
             controller: _serviceController,
@@ -1943,12 +2514,17 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
   Widget _buildDetailsTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('Description', Icons.description_rounded, widget.purpleAccent, isTablet),
-          SizedBox(height: isTablet ? 20 : 16),
+           SizedBox(height: isTablet ? 20 : 16),
           
           _buildPremiumTextField(
             controller: _descriptionController,
@@ -1958,7 +2534,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _consultationFeeController,
@@ -1968,7 +2544,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
             isRequired: true,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _experienceController,
@@ -1977,7 +2553,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
             isRequired: false,
             isTablet: isTablet,
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           
           _buildPremiumTextField(
             controller: _qualificationsController,
@@ -2032,6 +2608,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
       style: GoogleFonts.inter(
         fontSize: isTablet ? 16 : 14,
         color: Colors.grey[800],
@@ -2090,6 +2667,8 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
             Expanded(
               child: TextField(
                 controller: controller,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => onAdd(),
                 decoration: InputDecoration(
                   hintText: hint,
                   hintStyle: GoogleFonts.inter(color: Colors.grey[400], fontSize: isTablet ? 14 : 12),
@@ -2128,13 +2707,13 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
                 onPressed: onAdd,
                 icon: Icon(Icons.add_rounded, color: Colors.white, size: isTablet ? 22 : 20),
                 padding: EdgeInsets.all(isTablet ? 12 : 10),
-                constraints: BoxConstraints(),
+                constraints: const BoxConstraints(),
               ),
             ),
           ],
         ),
         if (tags.isNotEmpty) ...[
-          SizedBox(height: isTablet ? 16 : 12),
+           SizedBox(height: isTablet ? 16 : 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -2164,11 +2743,11 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     GestureDetector(
                       onTap: () => onRemove(index),
                       child: Container(
-                        padding: EdgeInsets.all(2),
+                        padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           color: Colors.red.withOpacity(0.1),
                           shape: BoxShape.circle,
@@ -2229,7 +2808,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
                   BoxShadow(
                     color: widget.primaryGreen.withOpacity(0.3),
                     blurRadius: 10,
-                    offset: Offset(0, 5),
+                    offset: const Offset(0, 5),
                   ),
                 ]
               : null,
@@ -2266,7 +2845,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
             BoxShadow(
               color: widget.successGreen.withOpacity(0.3),
               blurRadius: 15,
-              offset: Offset(0, 8),
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -2274,7 +2853,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: isTablet ? 22 : 20),
-            SizedBox(width: isTablet ? 10 : 8),
+             SizedBox(width: isTablet ? 10 : 8),
             Text(
               'Submit',
               style: GoogleFonts.poppins(
@@ -2416,11 +2995,11 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
       rating: 0.0,
       totalReviews: 0,
       totalLikes: 0,
-      likedByUsers: [],
+      likedByUsers: const [],
     );
 
     print('📝 Creating admissions guidance with createdBy: ${newGuidance.createdBy} (user ID)');
-    print('📍 Location: ${_latitude}, ${_longitude} in ${_selectedState}');
+    print('📍 Location: $_latitude, $_longitude in $_selectedState');
     print('📝 Service will be hidden until admin verification (isVerified: false)');
 
     // Show loading
@@ -2431,7 +3010,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
       barrierDismissible: false,
       builder: (context) => Center(
         child: Container(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -2444,7 +3023,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
                 height: 50,
                 child: CircularProgressIndicator(color: widget.primaryGreen),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Text('Submitting...', style: GoogleFonts.poppins()),
             ],
           ),
@@ -2476,7 +3055,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
         content: Row(
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
@@ -2492,8 +3071,8 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
         backgroundColor: widget.successGreen,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(12),
-        duration: Duration(seconds: 3),
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -2506,7 +3085,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
         content: Row(
           children: [
             Icon(Icons.error_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
@@ -2522,7 +3101,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog> wit
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(12),
+        margin: const EdgeInsets.all(12),
       ),
     );
   }

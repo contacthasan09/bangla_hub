@@ -924,7 +924,8 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
                             label: 'Email',
                             value: service.email,
                             color: widget.primaryGreen,
-                            onTap: () => _launchEmail(service.email),
+                          //  onTap: () => _launchEmail(service.email),
+                          onTap  : (){},
                             isTablet: isTablet,
                             shouldAnimate: shouldAnimate,
                           ),
@@ -934,7 +935,8 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
                             label: 'Phone',
                             value: service.phone,
                             color: widget.successGreen,
-                            onTap: () => _launchPhone(service.phone),
+                          //  onTap: () => _launchPhone(service.phone),
+                          onTap  : (){},
                             isTablet: isTablet,
                             shouldAnimate: shouldAnimate,
                           ),
@@ -992,7 +994,7 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
                       children: [
                         Icon(Icons.star_rounded, color: Colors.amber, size: isTablet ? 40 : 32),
                         SizedBox(width: isTablet ? 16 : 12),
-                        Expanded(
+                    /*    Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1013,7 +1015,7 @@ class _AdmissionsGuidanceDetailsScreenState extends State<AdmissionsGuidanceDeta
                               ),
                             ],
                           ),
-                        ),
+                        ),   */
                       ],
                     ),
                   ),

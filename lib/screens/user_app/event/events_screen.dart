@@ -1,8 +1,10 @@
 // screens/user_app/event/events_screen.dart
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
+import 'package:bangla_hub/main.dart';
 import 'package:bangla_hub/providers/location_filter_provider.dart';
 import 'package:bangla_hub/screens/auth/login_screen.dart';
 import 'package:bangla_hub/screens/auth/signup_screen.dart';
@@ -25,6 +27,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:bangla_hub/providers/event_provider.dart';
 import 'package:bangla_hub/providers/auth_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({Key? key}) : super(key: key);
@@ -61,14 +64,13 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
   final Color _textSecondary = const Color(0xFF4A4A4A);
   final Color _textLight = const Color(0xFF6C757D);
 
-
-   // Date/Time variables - ADD THESE
+  // Date/Time variables
   bool _isMultiDay = false;
-  DateTime? _selectedDate;  // For backward compatibility
-  DateTime? _startDate;     // Start date
-  DateTime? _endDate;       // End date for multi-day
-  TimeOfDay? _startTime;    // Start time - THIS WAS MISSING
-  TimeOfDay? _endTime;      // End time - THIS WAS MISSING
+  DateTime? _selectedDate;
+  DateTime? _startDate;
+  DateTime? _endDate;
+  TimeOfDay? _startTime;
+  TimeOfDay? _endTime;
   
   final LinearGradient _premiumBgGradient = const LinearGradient(
     colors: [Color(0xFF006A4E), Color(0xFF004D38), Color(0xFFF42A41), Color(0xFFD32F2F)],
@@ -105,10 +107,15 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
   final Map<String, List<EventModel>> _categorizedCache = {};
   final Map<String, Widget> _imageCache = {};
   
+  // Cache for filtered events to prevent repeated calculations
+  String? _lastFilterCacheKey;
+  List<EventModel>? _cachedFilteredUpcoming;
+  
   Timer? _debounceTimer;
   Timer? _filterDebounceTimer;
+  Timer? _locationFilterDebounceTimer;
   
-  // ✅ Animation Controllers - All properly declared
+  // Animation Controllers
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
   late final AnimationController _slideController;
@@ -155,8 +162,12 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
   Timer? _autoSlideTimer;
   bool _hasScrolled = false;
 
-  // ✅ Track app lifecycle state
+  // Track app lifecycle state
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+
+  // Store provider reference to avoid context issues in dispose
+  LocationFilterProvider? _locationFilterProvider;
+  bool _isDisposed = false;
 
   final List<EventCategory> _categoryOrder = const [
     EventCategory.all,
@@ -189,7 +200,7 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
     _sliderController = PageController(viewportFraction: 0.9);
     _eventScrollController = ScrollController();
     
-    // ✅ Initialize animations properly
+    // Initialize animations
     _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
     _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut);
     
@@ -212,42 +223,48 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
     _scrollHintOpacity = Tween<double>(begin: 1.0, end: 0.0)
         .animate(CurvedAnimation(parent: _scrollHintController, curve: Curves.easeInOut));
     
-    // ✅ Add WidgetsBindingObserver for lifecycle
     WidgetsBinding.instance.addObserver(this);
-    
     _eventScrollController.addListener(_onScroll);
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startAnimations(); // ✅ Start animations only when visible
+      if (!mounted) return;
+      
+      _startAnimations();
       setState(() => _isInitialized = true);
       
-      // Get user location if not already
       final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
       if (locationProvider.currentUserLocation == null) {
         locationProvider.getUserLocation(showLoading: false);
       }
       
-      // ✅ Add listener to location filter changes
-      locationProvider.addListener(_onLocationFilterChanged);
+      // Store reference and add listener
+      _locationFilterProvider = locationProvider;
+      _locationFilterProvider!.addListener(_onLocationFilterChanged);
     });
   }
 
-  // ✅ Handle location filter changes with debounce
   void _onLocationFilterChanged() {
-    final newState = Provider.of<LocationFilterProvider>(context, listen: false).selectedState;
+    // Check if widget is disposed or not mounted
+    if (_isDisposed || !mounted) {
+      print('📍 EventsScreen: Widget disposed or not mounted, skipping location filter change');
+      return;
+    }
+    
+    final newState = _locationFilterProvider?.selectedState;
     print('📍 EventsScreen: Location filter changed to: $newState');
     
-    // Cancel previous debounce timer
-    _filterDebounceTimer?.cancel();
+    _locationFilterDebounceTimer?.cancel();
     
-    // Show loading indicator
-    if (mounted) {
+    // Clear cache immediately
+    _cachedFilteredUpcoming = null;
+    _lastFilterCacheKey = null;
+    
+    if (mounted && !_isDisposed) {
       setState(() => _isFilterLoading = true);
     }
     
-    // Debounce to prevent too many rebuilds
-    _filterDebounceTimer = Timer(const Duration(milliseconds: 100), () {
-      if (mounted) {
+    _locationFilterDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!_isDisposed && mounted) {
         setState(() {
           _categorizedCache.clear();
           _imageCache.clear();
@@ -260,10 +277,9 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
       }
     });
   }
-
-  // ✅ New method to start animations
+ 
   void _startAnimations() {
-    if (_appLifecycleState == AppLifecycleState.resumed && mounted) {
+    if (_appLifecycleState == AppLifecycleState.resumed && mounted && !_isDisposed) {
       _fadeController.forward();
       _slideController.forward();
       _scaleController.forward();
@@ -274,7 +290,6 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
     }
   }
 
-  // ✅ New method to stop animations
   void _stopAnimations() {
     _fadeController.stop();
     _slideController.stop();
@@ -285,20 +300,19 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
     _autoSlideTimer?.cancel();
   }
 
-  // ✅ Handle app lifecycle changes
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_isDisposed) return;
+    
     setState(() {
       _appLifecycleState = state;
     });
     
     if (state == AppLifecycleState.resumed) {
-      // App is visible - start animations
       _startAnimations();
     } else if (state == AppLifecycleState.paused || 
                state == AppLifecycleState.inactive || 
                state == AppLifecycleState.detached) {
-      // App is not visible - stop animations to save resources
       _stopAnimations();
     }
   }
@@ -308,24 +322,37 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
     super.didChangeDependencies();
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (_isDisposed || !mounted) return;
       
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final eventProvider = Provider.of<EventProvider>(context, listen: false);
       final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
       
-      // Sync with global location filter
+      // Update stored reference if needed
+      if (_locationFilterProvider != locationProvider) {
+        // Remove old listener if exists
+        if (_locationFilterProvider != null) {
+          _locationFilterProvider!.removeListener(_onLocationFilterChanged);
+        }
+        // Store new reference and add listener
+        _locationFilterProvider = locationProvider;
+        _locationFilterProvider!.addListener(_onLocationFilterChanged);
+      }
+      
       if (eventProvider.currentStateFilter != locationProvider.selectedState) {
         print('📍 EventsScreen: Syncing filter from ${eventProvider.currentStateFilter} to ${locationProvider.selectedState}');
         eventProvider.syncWithLocationFilter(locationProvider);
         
-        // Force UI update
-        setState(() {
-          _categorizedCache.clear();
-          _imageCache.clear();
-          _lastFilterState = locationProvider.selectedState;
-          _forceRebuild = !_forceRebuild;
-        });
+        if (mounted && !_isDisposed) {
+          setState(() {
+            _categorizedCache.clear();
+            _imageCache.clear();
+            _cachedFilteredUpcoming = null;
+            _lastFilterCacheKey = null;
+            _lastFilterState = locationProvider.selectedState;
+            _forceRebuild = !_forceRebuild;
+          });
+        }
       }
       
       if (authProvider.user != null) {
@@ -335,23 +362,28 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
   }
 
   void _onFilterChanged() {
-    final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+    if (_isDisposed || !mounted) return;
+    
+    final locationProvider = _locationFilterProvider;
+    if (locationProvider == null) return;
+    
     final currentFilter = locationProvider.selectedState;
     
     if (_lastFilterState != currentFilter) {
       print('📍 Events: Filter changed from $_lastFilterState to $currentFilter - forcing UI update');
       
-      // Also sync with EventProvider if needed
       final eventProvider = Provider.of<EventProvider>(context, listen: false);
       if (eventProvider.currentStateFilter != currentFilter) {
         eventProvider.syncWithLocationFilter(locationProvider);
       }
       
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
+        if (!_isDisposed && mounted) {
           setState(() {
             _categorizedCache.clear();
             _imageCache.clear();
+            _cachedFilteredUpcoming = null;
+            _lastFilterCacheKey = null;
             _currentSliderIndex = 0;
             _lastFilterState = currentFilter;
             _forceRebuild = !_forceRebuild;
@@ -363,7 +395,9 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
   
   void _onScroll() {
     if (!_hasScrolled && _eventScrollController.position.pixels > 50) {
-      setState(() => _hasScrolled = true);
+      if (mounted && !_isDisposed) {
+        setState(() => _hasScrolled = true);
+      }
     }
   }
   
@@ -372,7 +406,7 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
     if (_appLifecycleState != AppLifecycleState.resumed) return;
     
     _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (mounted && _sliderController.hasClients && _appLifecycleState == AppLifecycleState.resumed) {
+      if (!_isDisposed && mounted && _sliderController.hasClients && _appLifecycleState == AppLifecycleState.resumed) {
         final eventProvider = Provider.of<EventProvider>(context, listen: false);
         final filteredEvents = _getFilteredEvents(eventProvider);
         
@@ -390,62 +424,71 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
       }
     });
   }
-  
-  // ✅ FIXED: Properly filter events by location and category with null safety
+
   List<EventModel> _getFilteredEvents(EventProvider eventProvider) {
-    final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+    if (_isDisposed) return [];
     
-    // Start with all upcoming events
+    final locationProvider = _locationFilterProvider;
+    if (locationProvider == null) return [];
+    
+    final cacheKey = '${locationProvider.selectedState}_${_selectedCategory ?? 'all'}_${eventProvider.upcomingEvents.length}';
+    
+    if (_lastFilterCacheKey == cacheKey && _cachedFilteredUpcoming != null) {
+      return _cachedFilteredUpcoming!;
+    }
+    
+    _lastFilterCacheKey = cacheKey;
+    
     List<EventModel> filteredEvents = eventProvider.upcomingEvents;
     
-    // Apply location filter if active - with null safety
     if (locationProvider.isFilterActive && locationProvider.selectedState != null) {
       filteredEvents = filteredEvents.where((event) => 
         event.state != null && event.state == locationProvider.selectedState
       ).toList();
-      print('📍 Filtered events by state (${locationProvider.selectedState}): ${filteredEvents.length}');
+      if (kDebugMode) {
+        print('📍 Filtered events by state (${locationProvider.selectedState}): ${filteredEvents.length}');
+      }
     }
     
-    // Apply category filter if selected
     if (_selectedCategory != null && _selectedCategory != 'all') {
       filteredEvents = filteredEvents.where((event) => 
         event.category != null && event.category == _selectedCategory
       ).toList();
-      print('📁 Filtered events by category (${_selectedCategory}): ${filteredEvents.length}');
+      if (kDebugMode) {
+        print('📁 Filtered events by category (${_selectedCategory}): ${filteredEvents.length}');
+      }
     }
     
-    if (filteredEvents.isEmpty && locationProvider.isFilterActive) {
-      print('📍 Filter active but no events, returning empty list');
-    }
-    
+    _cachedFilteredUpcoming = filteredEvents;
     return filteredEvents;
   }
 
-  // ✅ FIXED: All controllers properly disposed
   @override
   void dispose() {
     print('🗑️ EventsScreen disposing...');
     
-    // ✅ Remove location filter listener
-    try {
-      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
-      locationProvider.removeListener(_onLocationFilterChanged);
-    } catch (e) {
-      // Provider might already be disposed
-    }
+    _isDisposed = true;
     
-    // ✅ Cancel timers
+    // Cancel all timers first
     _debounceTimer?.cancel();
     _autoSlideTimer?.cancel();
     _filterDebounceTimer?.cancel();
+    _locationFilterDebounceTimer?.cancel();
     
-    // ✅ Remove observer
+    // Remove listener using stored reference (no context needed!)
+    if (_locationFilterProvider != null) {
+      try {
+        _locationFilterProvider!.removeListener(_onLocationFilterChanged);
+        print('📍 EventsScreen: Listener removed successfully');
+      } catch (e) {
+        print('⚠️ Could not remove listener: $e');
+      }
+    }
+    
     WidgetsBinding.instance.removeObserver(this);
     
-    // ✅ Stop all animations
     _stopAnimations();
     
-    // ✅ Dispose all animation controllers
     _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
@@ -453,11 +496,9 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
     _rotateController.dispose();
     _scrollHintController.dispose();
     
-    // ✅ Dispose scroll controllers
     _sliderController.dispose();
     _eventScrollController.dispose();
     
-    // ✅ Dispose all TextEditingControllers
     _titleController.dispose();
     _organizerController.dispose();
     _contactPersonController.dispose();
@@ -468,229 +509,14 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
     _ticketTypeController.dispose();
     _ticketPriceController.dispose();
     
-    // ✅ Clear caches
     _imageCache.clear();
     _categorizedCache.clear();
+    _cachedFilteredUpcoming = null;
     
     super.dispose();
   }
 
-
-  // ✅ Improved empty filter state with better background integration
-Widget _buildEmptyFilterState(bool isTablet, String state) {
-  final screenHeight = MediaQuery.of(context).size.height;
-  
-  return Container(
-    height: screenHeight * 0.6, // Take 60% of screen height for proper spacing
-    margin: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16),
-    child: Center(
-      child: SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
-        child: Container(
-          padding: EdgeInsets.all(isTablet ? 24 : 20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.white.withOpacity(0.95),
-                Colors.white.withOpacity(0.9),
-                _lightRed.withOpacity(0.1), // Match your screen's light red
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(isTablet ? 30 : 25),
-            border: Border.all(
-              color: _primaryGreen.withOpacity(0.15),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Icon with gradient background
-              Container(
-                padding: EdgeInsets.all(isTablet ? 18 : 14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_primaryGreen, _primaryRed],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: _primaryGreen.withOpacity(0.3),
-                      blurRadius: 15,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.location_off_rounded,
-                  size: isTablet ? 45 : 38,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(height: isTablet ? 20 : 16),
-              
-              // Title
-              Text(
-                'No Events Found',
-                style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 24 : 20,
-                  fontWeight: FontWeight.w800,
-                  color: _primaryGreen,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: isTablet ? 8 : 6),
-              
-              // Message with state
-              Text(
-                'in $state',
-                style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 18 : 16,
-                  fontWeight: FontWeight.w600,
-                  color: _primaryRed,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: isTablet ? 16 : 12),
-              
-              // Description
-              Text(
-                'There are currently no events scheduled in $state.\nCheck back later or try a different location.',
-                style: GoogleFonts.inter(
-                  fontSize: isTablet ? 14 : 12,
-                  color: _textSecondary,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: isTablet ? 24 : 20),
-              
-              // Action Buttons Row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Clear Filter Button
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      print('📍 Empty state: Clear filter button tapped');
-                      
-                      final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
-                      filterProvider.clearLocationFilter();
-                      
-                      final eventProvider = Provider.of<EventProvider>(context, listen: false);
-                      eventProvider.updateStateFilter(null);
-                      
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          setState(() {
-                            _categorizedCache.clear();
-                            _imageCache.clear();
-                            _currentSliderIndex = 0;
-                            _lastFilterState = null;
-                            _forceRebuild = !_forceRebuild;
-                          });
-                        }
-                      });
-                    },
-                    icon: Icon(Icons.clear_rounded, size: isTablet ? 18 : 16),
-                    label: Text(
-                      'Clear Filter',
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 14 : 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryGreen,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isTablet ? 20 : 16,
-                        vertical: isTablet ? 12 : 10,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      elevation: 3,
-                    ),
-                  ),
-                  
-             
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
-  
-  
-  
-  // ✅ Subtle background decoration
-  Widget _buildBackgroundDecoration(bool isTablet) {
-    return Container(
-      height: 80,
-      child: Stack(
-        children: [
-          // Decorative elements
-          Positioned(
-            left: -20,
-            bottom: 0,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    _primaryGreen.withOpacity(0.03),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            right: -30,
-            top: 0,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    _primaryRed.withOpacity(0.03),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-
   void _showLoginRequiredDialog(BuildContext context, String feature) {
-    final Color _primaryRed = Color(0xFFE03C32);
-    final Color _primaryGreen = Color(0xFF006A4E);
-    final Color _goldAccent = Color(0xFFFFD700);
-    
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -736,342 +562,272 @@ Widget _buildEmptyFilterState(bool isTablet, String state) {
     );
   }
 
-  
-
-
-
-/*  void _showLocationFilterDialog(BuildContext context) {
+  void _showLocationFilterDialog(BuildContext context) {
     final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
+    final screenHeight = MediaQuery.of(context).size.height;
     
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Filter by State', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: _primaryGreen)),
-                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            
-            GestureDetector(
-              onTap: () {
-                print('📍 Events: Clearing filter - All States selected');
-                
-                filterProvider.clearLocationFilter();
-                
-                final eventProvider = Provider.of<EventProvider>(context, listen: false);
-                eventProvider.updateStateFilter(null);
-                
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    setState(() {
-                      _categorizedCache.clear();
-                      _imageCache.clear();
-                      _currentSliderIndex = 0;
-                      _lastFilterState = null;
-                      _forceRebuild = !_forceRebuild;
-                    });
-                  }
-                });
-                
-                Navigator.pop(context);
-                
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Showing events from all states'),
-                    backgroundColor: Color(0xFF006A4E),
-                    behavior: SnackBarBehavior.floating,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+      ),
+      builder: (context) => SafeArea(
+        child: Container(
+          height: screenHeight * 0.8,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Filter by State', 
+                    style: GoogleFonts.poppins(
+                      fontSize: 20, 
+                      fontWeight: FontWeight.w700, 
+                      color: _primaryGreen
+                    ),
                   ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.public, color: _primaryGreen),
-                    const SizedBox(width: 15),
-                    Text('All States', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
-                  ],
-                ),
+                  IconButton(
+                    icon: const Icon(Icons.close), 
+                    onPressed: () => Navigator.pop(context)
+                  ),
+                ],
               ),
-            ),
-            
-            Container(
-              height: 300,
-              child: ListView.builder(
-                itemCount: _usStates.length,
-                itemBuilder: (context, index) {
-                  final state = _usStates[index];
-                  final isSelected = filterProvider.selectedState == state;
+              const SizedBox(height: 10),
+              
+              GestureDetector(
+                onTap: () {
+                  print('📍 Events: Clearing filter - All States selected');
                   
-                  return GestureDetector(
-                    onTap: () {
-                      print('📍 Events: Setting filter to: $state');
-                      
-                      filterProvider.setLocationFilter(state, fromEvents: true);
-                      
-                      final eventProvider = Provider.of<EventProvider>(context, listen: false);
-                      eventProvider.updateStateFilter(state);
-                      
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          setState(() {
-                            _categorizedCache.clear();
-                            _imageCache.clear();
-                            _currentSliderIndex = 0;
-                            _lastFilterState = state;
-                            _forceRebuild = !_forceRebuild;
-                          });
-                        }
+                  filterProvider.clearLocationFilter();
+                  
+                  final eventProvider = Provider.of<EventProvider>(context, listen: false);
+                  eventProvider.updateStateFilter(null);
+                  
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      setState(() {
+                        _categorizedCache.clear();
+                        _imageCache.clear();
+                        _cachedFilteredUpcoming = null;
+                        _currentSliderIndex = 0;
+                        _lastFilterState = null;
+                        _forceRebuild = !_forceRebuild;
                       });
-                      
-                      Navigator.pop(context);
-                      
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Showing events in $state'),
-                          backgroundColor: _primaryGreen,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected ? _primaryGreen.withOpacity(0.1) : null,
-                        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.location_on, color: isSelected ? _primaryGreen : Colors.grey),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Text(
-                              state,
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: isSelected ? _primaryGreen : Colors.black87,
-                              ),
-                            ),
-                          ),
-                          if (isSelected) Icon(Icons.check_circle, color: _primaryGreen),
-                        ],
-                      ),
+                    }
+                  });
+                  
+                  Navigator.pop(context);
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Showing events from all states'),
+                      backgroundColor: Color(0xFF006A4E),
+                      behavior: SnackBarBehavior.floating,
                     ),
                   );
                 },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.public, color: _primaryGreen),
+                      const SizedBox(width: 15),
+                      Text('All States', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+              
+              const SizedBox(height: 10),
+              
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _usStates.length,
+                  itemBuilder: (context, index) {
+                    final state = _usStates[index];
+                    final isSelected = filterProvider.selectedState == state;
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        print('📍 Events: Setting filter to: $state');
+                        
+                        filterProvider.setLocationFilter(state, fromEvents: true);
+                        
+                        final eventProvider = Provider.of<EventProvider>(context, listen: false);
+                        eventProvider.updateStateFilter(state);
+                        
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            setState(() {
+                              _categorizedCache.clear();
+                              _imageCache.clear();
+                              _cachedFilteredUpcoming = null;
+                              _currentSliderIndex = 0;
+                              _lastFilterState = state;
+                              _forceRebuild = !_forceRebuild;
+                            });
+                          }
+                        });
+                        
+                        Navigator.pop(context);
+                        
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Showing events in $state'),
+                            backgroundColor: _primaryGreen,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? _primaryGreen.withOpacity(0.1) : null,
+                          border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.location_on, color: isSelected ? _primaryGreen : Colors.grey),
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: Text(
+                                state,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected ? _primaryGreen : Colors.black87,
+                                ),
+                              ),
+                            ),
+                            if (isSelected) Icon(Icons.check_circle, color: _primaryGreen),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-*/
-
-void _showLocationFilterDialog(BuildContext context) {
-  final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
-  final screenHeight = MediaQuery.of(context).size.height;
-  
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true, // ✅ Add this to allow bottom sheet to be scrollable
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20))
-    ),
-    builder: (context) => SafeArea( // ✅ Wrap with SafeArea for notched phones
-      child: Container(
-        height: screenHeight * 0.8, // ✅ Limit height to 80% of screen
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Filter by State', 
-                  style: GoogleFonts.poppins(
-                    fontSize: 20, 
-                    fontWeight: FontWeight.w700, 
-                    color: _primaryGreen
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close), 
-                  onPressed: () => Navigator.pop(context)
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            
-            GestureDetector(
-              onTap: () {
-                print('📍 Events: Clearing filter - All States selected');
-                
-                filterProvider.clearLocationFilter();
-                
-                final eventProvider = Provider.of<EventProvider>(context, listen: false);
-                eventProvider.updateStateFilter(null);
-                
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    setState(() {
-                      _categorizedCache.clear();
-                      _imageCache.clear();
-                      _currentSliderIndex = 0;
-                      _lastFilterState = null;
-                      _forceRebuild = !_forceRebuild;
-                    });
-                  }
-                });
-                
-                Navigator.pop(context);
-                
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Showing events from all states'),
-                    backgroundColor: Color(0xFF006A4E),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.public, color: _primaryGreen),
-                    const SizedBox(width: 15),
-                    Text('All States', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 10),
-            
-            // ✅ Replace fixed height Container with Expanded
-            Expanded(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _usStates.length,
-                itemBuilder: (context, index) {
-                  final state = _usStates[index];
-                  final isSelected = filterProvider.selectedState == state;
-                  
-                  return GestureDetector(
-                    onTap: () {
-                      print('📍 Events: Setting filter to: $state');
-                      
-                      filterProvider.setLocationFilter(state, fromEvents: true);
-                      
-                      final eventProvider = Provider.of<EventProvider>(context, listen: false);
-                      eventProvider.updateStateFilter(state);
-                      
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          setState(() {
-                            _categorizedCache.clear();
-                            _imageCache.clear();
-                            _currentSliderIndex = 0;
-                            _lastFilterState = state;
-                            _forceRebuild = !_forceRebuild;
-                          });
-                        }
-                      });
-                      
-                      Navigator.pop(context);
-                      
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Showing events in $state'),
-                          backgroundColor: _primaryGreen,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected ? _primaryGreen.withOpacity(0.1) : null,
-                        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.location_on, color: isSelected ? _primaryGreen : Colors.grey),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Text(
-                              state,
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: isSelected ? _primaryGreen : Colors.black87,
-                              ),
-                            ),
-                          ),
-                          if (isSelected) Icon(Icons.check_circle, color: _primaryGreen),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
+void _debugCheckEvents(EventProvider eventProvider) {
+  if (!kDebugMode) return;
+  print('🔍 DEBUG: Checking events in provider');
+  print('📊 Upcoming events count: ${eventProvider.upcomingEvents.length}');
+  if (eventProvider.upcomingEvents.isNotEmpty) {
+    eventProvider.upcomingEvents.take(3).forEach((event) {
+      print('  - Event: ${event.title}');
+      print('    State: ${event.state ?? "Not set"}');
+    });
+  } else {
+    print('⚠️ No upcoming events found');
+  }
 }
 
+  Future<void> _performPremiumLogout(BuildContext context) async {
+    BuildContext? dialogContext;
+    
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          dialogContext = context;
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: EdgeInsets.all(30),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_primaryGreen, _primaryRed],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(
+                    color: _goldAccent,
+                    strokeWidth: 3,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Logging out...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
 
-  void _debugCheckEvents(EventProvider eventProvider) {
-    print('🔍 DEBUG: Checking events in provider');
-    print('📊 Upcoming events count: ${eventProvider.upcomingEvents.length}');
-    if (eventProvider.upcomingEvents.isNotEmpty) {
-      eventProvider.upcomingEvents.take(5).forEach((event) {
-        print('  - Event: ${event.title}');
-        print('    State: ${event.state ?? "Not set"}');
-        print('    Has location: ${event.latitude != null && event.longitude != null}');
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.signOut(context);
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('selected_tab_index');
+      print('📊 Cleared saved tab index on logout');
+
+      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.of(dialogContext!, rootNavigator: true).pop();
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
       });
-    } else {
-      print('⚠️ No upcoming events found');
+    } catch (e) {
+      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.of(dialogContext!, rootNavigator: true).pop();
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Logout failed: $e'),
+              backgroundColor: _primaryRed,
+            ),
+          );
+        }
+      });
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-
-        return LocationGuard(
-            required: true, // Events require location
-            showBackButton: false,
+    return LocationGuard(
+      required: true,
+      showBackButton: false,
       child: _buildMainContent(context),
     );
   }
 
-
-
-     Widget _buildMainContent(BuildContext context) {
- 
+  Widget _buildMainContent(BuildContext context) {
     _onFilterChanged();
     
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1123,6 +879,7 @@ void _showLocationFilterDialog(BuildContext context) {
                   setState(() {
                     _categorizedCache.clear();
                     _imageCache.clear();
+                    _cachedFilteredUpcoming = null;
                   });
                   
                   final eventProvider = Provider.of<EventProvider>(context, listen: false);
@@ -1150,6 +907,7 @@ void _showLocationFilterDialog(BuildContext context) {
                                   setState(() {
                                     _categorizedCache.clear();
                                     _imageCache.clear();
+                                    _cachedFilteredUpcoming = null;
                                     _currentSliderIndex = 0;
                                     _lastFilterState = null;
                                     _forceRebuild = !_forceRebuild;
@@ -1167,7 +925,6 @@ void _showLocationFilterDialog(BuildContext context) {
                       ),
                     ),
                     
-                    // Show loading indicator during filter changes
                     if (_isFilterLoading)
                       SliverToBoxAdapter(
                         child: Container(
@@ -1190,7 +947,6 @@ void _showLocationFilterDialog(BuildContext context) {
                             _debugCheckEvents(eventProvider);
                           }
                           
-                          // Force rebuild when locationProvider changes by using its value in the key
                           return _buildPremiumBodyContent(
                             Key('events_content_${locationProvider.selectedState ?? 'all'}_${_selectedCategory ?? 'all'}_${locationProvider.isFilterActive}_$_forceRebuild'),
                             isSmallScreen, 
@@ -1242,210 +998,6 @@ void _showLocationFilterDialog(BuildContext context) {
     );
   }
 
- 
-
-
-/* Widget _buildMainContent(BuildContext context) {
-  _onFilterChanged();
-  
-  final screenWidth = MediaQuery.of(context).size.width;
-  final screenHeight = MediaQuery.of(context).size.height;
-  final isTablet = screenWidth >= 600;
-  final isSmallScreen = screenHeight < 700;
-  
-  // Get auth state to conditionally show drawer
-  final authProvider = Provider.of<AuthProvider>(context);
-  final bool isLoggedIn = authProvider.isLoggedIn && authProvider.user != null;
-  
-  return AnnotatedRegion<SystemUiOverlayStyle>(
-    value: SystemUiOverlayStyle.light.copyWith(
-      statusBarColor: Colors.transparent, 
-      statusBarIconBrightness: Brightness.light
-    ),
-    child: Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBodyBehindAppBar: true,
-      drawer: isLoggedIn ? _buildDrawer(context, isTablet) : null, // Only show drawer if logged in
-      floatingActionButton: Consumer<AuthProvider>(
-        builder: (context, authProvider, _) {
-          return authProvider.user != null ? _buildPremiumFloatingActionButton(isTablet) : const SizedBox.shrink();
-        },
-      ),
-      body: Container(
-        decoration: BoxDecoration(gradient: _premiumBgGradient),
-        child: Stack(
-          children: [
-            ...List.generate(30, (index) => _buildAnimatedParticle(index, screenWidth, screenHeight)),
-            Positioned.fill(
-              child: AnimatedOpacity(
-                opacity: 0.3,
-                duration: const Duration(seconds: 2),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      colors: [Colors.white.withOpacity(0.1), Colors.transparent, _primaryRed.withOpacity(0.1), Colors.transparent],
-                      stops: const [0.0, 0.3, 0.7, 1.0],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            ...List.generate(8, (index) => _buildFloatingBubble(index, screenWidth, screenHeight)),
-            RefreshIndicator(
-              color: _goldAccent,
-              backgroundColor: Colors.white,
-              strokeWidth: 3,
-              displacement: 40,
-              onRefresh: () async {
-                HapticFeedback.mediumImpact();
-                setState(() {
-                  _categorizedCache.clear();
-                  _imageCache.clear();
-                });
-                
-                final eventProvider = Provider.of<EventProvider>(context, listen: false);
-                final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
-                eventProvider.syncWithLocationFilter(locationProvider);
-              },
-              child: CustomScrollView(
-                controller: _eventScrollController,
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  // Add a SliverAppBar with drawer button for logged-in users
-                  if (isLoggedIn)
-                    SliverAppBar(
-                      expandedHeight: 0,
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      leading: IconButton(
-                        icon: Icon(
-                          Icons.menu_rounded,
-                          color: Colors.white,
-                          size: isTablet ? 28 : 24,
-                        ),
-                        onPressed: () {
-                          Scaffold.of(context).openDrawer();
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      flexibleSpace: Container(),
-                    ),
-                  
-                  Consumer<AuthProvider>(
-                    builder: (context, authProvider, _) => _buildPremiumAppBar(isTablet, authProvider),
-                  ),
-                  
-                  SliverToBoxAdapter(
-                    child: Consumer<LocationFilterProvider>(
-                      builder: (context, locationProvider, _) {
-                        return GlobalLocationFilterBar(
-                          isTablet: isTablet,
-                          onClearTap: () {
-                            print('📍 Events: Global filter bar clear button tapped');
-                            
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted) {
-                                setState(() {
-                                  _categorizedCache.clear();
-                                  _imageCache.clear();
-                                  _currentSliderIndex = 0;
-                                  _lastFilterState = null;
-                                  _forceRebuild = !_forceRebuild;
-                                });
-                              }
-                            });
-                            
-                            locationProvider.clearLocationFilter();
-                            
-                            final eventProvider = Provider.of<EventProvider>(context, listen: false);
-                            eventProvider.updateStateFilter(null);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                  
-                  // Show loading indicator during filter changes
-                  if (_isFilterLoading)
-                    SliverToBoxAdapter(
-                      child: Container(
-                        height: 50,
-                        margin: EdgeInsets.symmetric(vertical: 16),
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: _goldAccent,
-                            strokeWidth: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-                  
-                  SliverToBoxAdapter(
-                    child: Consumer3<EventProvider, LocationFilterProvider, AuthProvider>(
-                      builder: (context, eventProvider, locationProvider, authProvider, _) {
-                        if (locationProvider.isFilterActive) {
-                          print('📍 Active filter: ${locationProvider.selectedState}');
-                          _debugCheckEvents(eventProvider);
-                        }
-                        
-                        // Force rebuild when locationProvider changes by using its value in the key
-                        return _buildPremiumBodyContent(
-                          Key('events_content_${locationProvider.selectedState ?? 'all'}_${_selectedCategory ?? 'all'}_${locationProvider.isFilterActive}_$_forceRebuild'),
-                          isSmallScreen, 
-                          isTablet, 
-                          eventProvider, 
-                          locationProvider, 
-                          authProvider
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (!_hasScrolled && _isInitialized && !_isFilterLoading)
-              Positioned(
-                bottom: 100,
-                left: 0,
-                right: 0,
-                child: FadeTransition(
-                  opacity: _scrollHintOpacity,
-                  child: SlideTransition(
-                    position: _scrollHintAnimation,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 20, vertical: isTablet ? 16 : 12),
-                      decoration: BoxDecoration(
-                        gradient: _glassMorphismGradient,
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.white.withOpacity(0.3)),
-                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 20)],
-                      ),
-                      margin: EdgeInsets.symmetric(horizontal: isTablet ? 100 : 50),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.swipe_vertical_rounded, color: Colors.white),
-                          const SizedBox(width: 8),
-                          Text('Scroll for more events', style: GoogleFonts.poppins(color: Colors.white, fontSize: isTablet ? 16 : 14, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-  
-*/  
-
-
-
-  
   Widget _buildDrawer(BuildContext context, bool isTablet) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
@@ -1472,7 +1024,8 @@ void _showLocationFilterDialog(BuildContext context) {
                 if (authProvider.user != null)
                   _buildDrawerItem(icon: Icons.logout_rounded, title: 'Logout', onTap: () async {
                     Navigator.pop(context);
-                    await authProvider.signOut();
+                  //  await authProvider.signOut(context);
+                await  _performPremiumLogout(context);
                   }, isTablet: isTablet),
               ],
             ),
@@ -1548,504 +1101,261 @@ void _showLocationFilterDialog(BuildContext context) {
     );
   }
 
-
-
-
-
-/*Widget _buildPremiumAppBar(bool isTablet, AuthProvider authProvider) {
-  return SliverToBoxAdapter(
-    child: Container(
-      padding: EdgeInsets.fromLTRB(isTablet ? 32 : 24, MediaQuery.of(context).padding.top + (isTablet ? 30 : 20), isTablet ? 32 : 24, isTablet ? 20 : 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05), Colors.transparent], begin: Alignment.topCenter, end: Alignment.bottomCenter),
-        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Welcome Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFF42A41), Color(0xFF006A4E), Color(0xFFFFD966)]).createShader(bounds),
-                  child: Text(
-                    authProvider.user != null ? 'Hello, ${authProvider.user!.firstName}!' : authProvider.isGuestMode ? 'Hello, Guest!' : 'Hello to BanglaHub!',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w800,
-                     //  fontSize: isTablet ? 22 : 18,
-                     fontSize: isTablet ? 18 : 15,
-                        height: 1.2, color: Colors.white, letterSpacing: -0.5, shadows: const [Shadow(color: Color(0xFF004D38), blurRadius: 15, offset: Offset(0, 3))]),
-                  ),
-                ),
-              ),
-              if (authProvider.isGuestMode)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 3))]),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: const [Icon(Icons.person_outline, color: Colors.white, size: 16), SizedBox(width: 4), Text('Guest', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))]),
-                ),
-            ],
-          ),
-          
-          const SizedBox(height: 2),
-          
-          // Subtitle
-          Text('Welcome to BanglaHub', style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-           //  fontSize: isTablet ? 18 : 16,
-             fontSize: isTablet ? 15 : 13, 
-             color: Colors.white.withOpacity(0.95), letterSpacing: 0.5, shadows: const [Shadow(color: Colors.black26, blurRadius: 5)])),
-          
-        //  const SizedBox(height: 16),
-          const SizedBox(height: 12),
-          
-          // Events Title and Location Filter Row
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Events Title
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFF42A41), Color(0xFF006A4E), Color(0xFFFFD966)]).createShader(bounds),
-                child: Text(
-                  'Events', 
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w900, 
-                  //  fontSize: isTablet ? 40 : 32, 
-                  fontSize: isTablet ? 32 : 24, 
-                    height: 1.1, 
-                    color: Colors.white, 
-                    letterSpacing: -2, 
-                    shadows: const [
-                      Shadow(color: Color(0xFF004D38), blurRadius: 20, offset: Offset(0, 5)), 
-                      Shadow(color: Color(0xFFF42A41), blurRadius: 15, offset: Offset(0, 2))
+  Widget _buildPremiumAppBar(bool isTablet, AuthProvider authProvider) {
+    final bool isLoggedIn = authProvider.isLoggedIn && authProvider.user != null;
+    final String userName = authProvider.user?.firstName ?? authProvider.user?.email?.split('@').first ?? 'User';
+    
+    return SliverToBoxAdapter(
+      child: Container(
+        padding: EdgeInsets.fromLTRB(isTablet ? 32 : 24, MediaQuery.of(context).padding.top + (isTablet ? 30 : 20), isTablet ? 32 : 24, isTablet ? 20 : 16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05), Colors.transparent], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+          borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (isLoggedIn)
+                        IconButton(
+                          icon: Icon(Icons.menu_rounded, color: Colors.white, size: isTablet ? 28 : 24),
+                          onPressed: () {
+                            try {
+                              final ScaffoldState? scaffoldState = Scaffold.maybeOf(context);
+                              if (scaffoldState != null && scaffoldState.hasDrawer) {
+                                scaffoldState.openDrawer();
+                              } else {
+                                Scaffold.of(context).openDrawer();
+                              }
+                            } catch (e) {
+                              print('Could not open drawer: $e');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Menu is available'),
+                                  duration: Duration(milliseconds: 800),
+                                  backgroundColor: _primaryGreen,
+                                ),
+                              );
+                            }
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      Expanded(
+                        child: ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [Color(0xFFFFD700), Color(0xFFF42A41), Color(0xFF006A4E), Color(0xFFFFD966)]
+                          ).createShader(bounds),
+                          child: Text(
+                            isLoggedIn ? 'Hello, $userName!' : (authProvider.isGuestMode ? 'Hello, Guest!' : 'Hello to BanglaHub!'),
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w800,
+                              fontSize: isTablet ? 18 : 15,
+                              height: 1.2, 
+                              color: Colors.white, 
+                              letterSpacing: -0.5, 
+                              shadows: const [
+                                Shadow(color: Color(0xFF004D38), blurRadius: 15, offset: Offset(0, 3))
+                              ],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-              
-              // Location Filter Button - Impressive text when active
-              Consumer<LocationFilterProvider>(
-
-                builder: (context, filterProvider, child) {
-                  final hasFilter = filterProvider.isFilterActive;
-                  final selectedState = filterProvider.selectedState ?? '';
-                  
-                  return GestureDetector(
-                    onTap: () => _showLocationFilterDialog(context),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 10, vertical: isTablet ? 8 : 6),
-                      decoration: BoxDecoration(
-                        gradient: hasFilter
-                            ? const LinearGradient(
-                                colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : LinearGradient(
-                                colors: [
-                                  Colors.white.withOpacity(0.2),
-                                  Colors.white.withOpacity(0.1),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                        borderRadius: BorderRadius.circular(25),
-                        border: Border.all(
-                          color: hasFilter 
-                              ? const Color(0xFFFFD700).withOpacity(0.6)
-                              : _goldAccent.withOpacity(0.4),
-                          width: 1,
-                        ),
-                        boxShadow: hasFilter
-                            ? [
-                                BoxShadow(
-                                  color: const Color(0xFFFFD700).withOpacity(0.25),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            hasFilter ? Icons.edit_location_rounded : Icons.location_on_rounded,
-                            size: isTablet ? 16 : 14,
-                            color: hasFilter ? const Color(0xFFFFD700) : _goldAccent,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            hasFilter ? "Change Location" : "Select Location",
-                            style: GoogleFonts.poppins(
-                              fontSize: isTablet ? 12 : 11,
-                              fontWeight: hasFilter ? FontWeight.w600 : FontWeight.w500,
-                              color: Colors.white,
-                            ),
-                          ),
-                          if (!hasFilter) ...[
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.arrow_drop_down_rounded,
-                              size: isTablet ? 18 : 16,
-                              color: _goldAccent,
-                            ),
-                          ],
-                          if (hasFilter) ...[
-                            const SizedBox(width: 4),
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFFFD700),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                if (authProvider.isGuestMode)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.orange, 
+                      borderRadius: BorderRadius.circular(20), 
+                      boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 3))]
                     ),
-                  );
-                },
-              ),
-            
-            
-            ],
-          ),
-          
-        //  const SizedBox(height: 20),
-           const SizedBox(height: 14),
-          
-          // Browse Events Container
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 1200),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: Transform.translate(offset: Offset(0, 15 * (1 - value)), child: child),
-              );
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: isTablet ? 18 : 14, vertical: isTablet ? 10 : 8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [_primaryGreen.withOpacity(0.2), _primaryRed.withOpacity(0.1)]),
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(color: _goldAccent.withOpacity(0.3), width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.auto_awesome_rounded, color: _goldAccent, size: isTablet ? 22 : 20),
-                  SizedBox(width: isTablet ? 10 : 8),
-                  Text(
-                    authProvider.isGuestMode ? 'Browse events as guest' : 'Discover and manage events seamlessly', 
-                    style: GoogleFonts.inter(
-                      color: Colors.white.withOpacity(0.95), 
-                      fontSize: isTablet ? 13 : 11, 
-                      fontWeight: FontWeight.w600, 
-                      shadows: const [Shadow(color: Colors.black26, blurRadius: 3)]
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min, 
+                      children: const [
+                        Icon(Icons.person_outline, color: Colors.white, size: 16), 
+                        SizedBox(width: 4), 
+                        Text('Guest', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))
+                      ],
                     ),
-                  ),
-                ],
+                  )
+                else if (!isLoggedIn)
+                  const SizedBox(width: 40)
+                else
+                  const SizedBox(width: 40),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Welcome to BanglaHub', 
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: isTablet ? 15 : 13, 
+                color: Colors.white.withOpacity(0.95), 
+                letterSpacing: 0.5, 
+                shadows: const [Shadow(color: Colors.black26, blurRadius: 5)]
               ),
             ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-*/
-
-Widget _buildPremiumAppBar(bool isTablet, AuthProvider authProvider) {
-  final bool isLoggedIn = authProvider.isLoggedIn && authProvider.user != null;
-  final String userName = authProvider.user?.firstName ?? authProvider.user?.email?.split('@').first ?? 'User';
-  
-  return SliverToBoxAdapter(
-    child: Container(
-      padding: EdgeInsets.fromLTRB(isTablet ? 32 : 24, MediaQuery.of(context).padding.top + (isTablet ? 30 : 20), isTablet ? 32 : 24, isTablet ? 20 : 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05), Colors.transparent], begin: Alignment.topCenter, end: Alignment.bottomCenter),
-        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Welcome Row with Drawer Button and Username together
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Left side - Drawer button and Welcome text
-              Expanded(
-                child: Row(
-                  children: [
-                    // Drawer button for logged-in users
-                    if (isLoggedIn)
-                      IconButton(
-                        icon: Icon(
-                          Icons.menu_rounded,
-                          color: Colors.white,
-                          size: isTablet ? 28 : 24,
-                        ),
-                        onPressed: () {
-                          try {
-                            final ScaffoldState? scaffoldState = Scaffold.maybeOf(context);
-                            if (scaffoldState != null && scaffoldState.hasDrawer) {
-                              scaffoldState.openDrawer();
-                            } else {
-                              // Fallback: Try to find scaffold in the widget tree
-                              Scaffold.of(context).openDrawer();
-                            }
-                          } catch (e) {
-                            print('Could not open drawer: $e');
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Menu is available'),
-                                duration: Duration(milliseconds: 800),
-                                backgroundColor: _primaryGreen,
-                              ),
-                            );
-                          }
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Color(0xFFFFD700), Color(0xFFF42A41), Color(0xFF006A4E), Color(0xFFFFD966)]
+                  ).createShader(bounds),
+                  child: Text(
+                    'Events', 
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w900, 
+                      fontSize: isTablet ? 32 : 24, 
+                      height: 1.1, 
+                      color: Colors.white, 
+                      letterSpacing: -2, 
+                      shadows: const [
+                        Shadow(color: Color(0xFF004D38), blurRadius: 20, offset: Offset(0, 5)), 
+                        Shadow(color: Color(0xFFF42A41), blurRadius: 15, offset: Offset(0, 2))
+                      ],
+                    ),
+                  ),
+                ),
+                Consumer<LocationFilterProvider>(
+                  builder: (context, filterProvider, child) {
+                    final hasFilter = filterProvider.isFilterActive;
+                    final selectedState = filterProvider.selectedState ?? '';
                     
-                    // Welcome text with username
-                    Expanded(
-                      child: ShaderMask(
-                        shaderCallback: (bounds) => const LinearGradient(
-                          colors: [Color(0xFFFFD700), Color(0xFFF42A41), Color(0xFF006A4E), Color(0xFFFFD966)]
-                        ).createShader(bounds),
-                        child: Text(
-                          isLoggedIn ? 'Hello, $userName!' : (authProvider.isGuestMode ? 'Hello, Guest!' : 'Hello to BanglaHub!'),
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w800,
-                            fontSize: isTablet ? 18 : 15,
-                            height: 1.2, 
-                            color: Colors.white, 
-                            letterSpacing: -0.5, 
-                            shadows: const [
-                              Shadow(color: Color(0xFF004D38), blurRadius: 15, offset: Offset(0, 3))
-                            ],
+                    return GestureDetector(
+                      onTap: () => _showLocationFilterDialog(context),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 10, vertical: isTablet ? 8 : 6),
+                        decoration: BoxDecoration(
+                          gradient: hasFilter
+                              ? const LinearGradient(
+                                  colors: [Color(0xFF006A4E), Color(0xFF004D38)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : LinearGradient(
+                                  colors: [
+                                    Colors.white.withOpacity(0.2),
+                                    Colors.white.withOpacity(0.1),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                          borderRadius: BorderRadius.circular(25),
+                          border: Border.all(
+                            color: hasFilter 
+                                ? const Color(0xFFFFD700).withOpacity(0.6)
+                                : _goldAccent.withOpacity(0.4),
+                            width: 1,
                           ),
-                          overflow: TextOverflow.ellipsis,
+                          boxShadow: hasFilter
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xFFFFD700).withOpacity(0.25),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
                         ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              hasFilter ? Icons.edit_location_rounded : Icons.location_on_rounded,
+                              size: isTablet ? 16 : 14,
+                              color: hasFilter ? const Color(0xFFFFD700) : _goldAccent,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              hasFilter ? "Change Location" : "Select Location",
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 12 : 11,
+                                fontWeight: hasFilter ? FontWeight.w600 : FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
+                            if (!hasFilter) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_drop_down_rounded,
+                                size: isTablet ? 18 : 16,
+                                color: _goldAccent,
+                              ),
+                            ],
+                            if (hasFilter) ...[
+                              const SizedBox(width: 4),
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFFD700),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 1200),
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.translate(offset: Offset(0, 15 * (1 - value)), child: child),
+                );
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: isTablet ? 18 : 14, vertical: isTablet ? 10 : 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [_primaryGreen.withOpacity(0.2), _primaryRed.withOpacity(0.1)]),
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(color: _goldAccent.withOpacity(0.3), width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.auto_awesome_rounded, color: _goldAccent, size: isTablet ? 22 : 20),
+                    SizedBox(width: isTablet ? 10 : 8),
+                    Text(
+                      authProvider.isGuestMode ? 'Browse events as guest' : 'Discover and manage events seamlessly', 
+                      style: GoogleFonts.inter(
+                        color: Colors.white.withOpacity(0.95), 
+                        fontSize: isTablet ? 13 : 11, 
+                        fontWeight: FontWeight.w600, 
+                        shadows: const [Shadow(color: Colors.black26, blurRadius: 3)]
                       ),
                     ),
                   ],
                 ),
               ),
-              
-              // Right side - Guest badge or placeholder
-              if (authProvider.isGuestMode)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.orange, 
-                    borderRadius: BorderRadius.circular(20), 
-                    boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 3))]
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min, 
-                    children: const [
-                      Icon(Icons.person_outline, color: Colors.white, size: 16), 
-                      SizedBox(width: 4), 
-                      Text('Guest', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))
-                    ],
-                  ),
-                )
-              else if (!isLoggedIn)
-                const SizedBox(width: 40) // Balance for non-logged in non-guest users
-              else
-                const SizedBox(width: 40), // Balance for logged-in users
-            ],
-          ),
-          
-          const SizedBox(height: 2),
-          
-          // Subtitle
-          Text(
-            'Welcome to BanglaHub', 
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-              fontSize: isTablet ? 15 : 13, 
-              color: Colors.white.withOpacity(0.95), 
-              letterSpacing: 0.5, 
-              shadows: const [Shadow(color: Colors.black26, blurRadius: 5)]
             ),
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // Events Title and Location Filter Row
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Events Title
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [Color(0xFFFFD700), Color(0xFFF42A41), Color(0xFF006A4E), Color(0xFFFFD966)]
-                ).createShader(bounds),
-                child: Text(
-                  'Events', 
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w900, 
-                    fontSize: isTablet ? 32 : 24, 
-                    height: 1.1, 
-                    color: Colors.white, 
-                    letterSpacing: -2, 
-                    shadows: const [
-                      Shadow(color: Color(0xFF004D38), blurRadius: 20, offset: Offset(0, 5)), 
-                      Shadow(color: Color(0xFFF42A41), blurRadius: 15, offset: Offset(0, 2))
-                    ],
-                  ),
-                ),
-              ),
-              
-              // Location Filter Button
-              Consumer<LocationFilterProvider>(
-                builder: (context, filterProvider, child) {
-                  final hasFilter = filterProvider.isFilterActive;
-                  final selectedState = filterProvider.selectedState ?? '';
-                  
-                  return GestureDetector(
-                    onTap: () => _showLocationFilterDialog(context),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 10, vertical: isTablet ? 8 : 6),
-                      decoration: BoxDecoration(
-                        gradient: hasFilter
-                            ? const LinearGradient(
-                                colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : LinearGradient(
-                                colors: [
-                                  Colors.white.withOpacity(0.2),
-                                  Colors.white.withOpacity(0.1),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                        borderRadius: BorderRadius.circular(25),
-                        border: Border.all(
-                          color: hasFilter 
-                              ? const Color(0xFFFFD700).withOpacity(0.6)
-                              : _goldAccent.withOpacity(0.4),
-                          width: 1,
-                        ),
-                        boxShadow: hasFilter
-                            ? [
-                                BoxShadow(
-                                  color: const Color(0xFFFFD700).withOpacity(0.25),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            hasFilter ? Icons.edit_location_rounded : Icons.location_on_rounded,
-                            size: isTablet ? 16 : 14,
-                            color: hasFilter ? const Color(0xFFFFD700) : _goldAccent,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            hasFilter ? "Change Location" : "Select Location",
-                            style: GoogleFonts.poppins(
-                              fontSize: isTablet ? 12 : 11,
-                              fontWeight: hasFilter ? FontWeight.w600 : FontWeight.w500,
-                              color: Colors.white,
-                            ),
-                          ),
-                          if (!hasFilter) ...[
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.arrow_drop_down_rounded,
-                              size: isTablet ? 18 : 16,
-                              color: _goldAccent,
-                            ),
-                          ],
-                          if (hasFilter) ...[
-                            const SizedBox(width: 4),
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFFFD700),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 14),
-          
-          // Browse Events Container
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 1200),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: Transform.translate(offset: Offset(0, 15 * (1 - value)), child: child),
-              );
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: isTablet ? 18 : 14, vertical: isTablet ? 10 : 8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [_primaryGreen.withOpacity(0.2), _primaryRed.withOpacity(0.1)]),
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(color: _goldAccent.withOpacity(0.3), width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.auto_awesome_rounded, color: _goldAccent, size: isTablet ? 22 : 20),
-                  SizedBox(width: isTablet ? 10 : 8),
-                  Text(
-                    authProvider.isGuestMode ? 'Browse events as guest' : 'Discover and manage events seamlessly', 
-                    style: GoogleFonts.inter(
-                      color: Colors.white.withOpacity(0.95), 
-                      fontSize: isTablet ? 13 : 11, 
-                      fontWeight: FontWeight.w600, 
-                      shadows: const [Shadow(color: Colors.black26, blurRadius: 3)]
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
-
-
-
+    );
+  }
 
   Widget _buildPremiumFloatingActionButton(bool isTablet) {
-    // Only animate if app is visible
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
     Widget button = Container(
@@ -2068,7 +1378,6 @@ Widget _buildPremiumAppBar(bool isTablet, AuthProvider authProvider) {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Only rotate if app is visible
                 shouldAnimate
                     ? RotationTransition(turns: _rotateAnimation, child: const Icon(Icons.add_circle_rounded, color: Colors.white))
                     : const Icon(Icons.add_circle_rounded, color: Colors.white),
@@ -2081,7 +1390,6 @@ Widget _buildPremiumAppBar(bool isTablet, AuthProvider authProvider) {
       ),
     );
     
-    // Only apply scale animation if app is visible
     return shouldAnimate
         ? ScaleTransition(scale: _pulseAnimation, child: button)
         : button;
@@ -2114,272 +1422,159 @@ Widget _buildPremiumAppBar(bool isTablet, AuthProvider authProvider) {
     );
   }
 
+  Widget _buildContent(
+    bool isSmallScreen, 
+    bool isTablet, 
+    EventProvider eventProvider,
+    LocationFilterProvider locationProvider,
+    AuthProvider authProvider,
+  ) {
+    if (!eventProvider.isInitialized && eventProvider.isLoading) {
+      return _buildLoadingState(isTablet, isSmallScreen);
+    }
 
-/*  Widget _buildContent(
-  bool isSmallScreen, 
-  bool isTablet, 
-  EventProvider eventProvider,
-  LocationFilterProvider locationProvider,
-  AuthProvider authProvider,
-) {
-  if (!eventProvider.isInitialized && eventProvider.isLoading) {
-    return _buildLoadingState(isTablet, isSmallScreen);
-  }
+    if (eventProvider.error != null && eventProvider.upcomingEvents.isEmpty && eventProvider.pastEvents.isEmpty) {
+      return _buildErrorState(isTablet, isSmallScreen, eventProvider.error!);
+    }
 
-  if (eventProvider.error != null && eventProvider.upcomingEvents.isEmpty && eventProvider.pastEvents.isEmpty) {
-    return _buildErrorState(isTablet, isSmallScreen, eventProvider.error!);
-  }
+    final filteredUpcoming = _getFilteredEvents(eventProvider);
+    
+    List<EventModel> filteredPast;
+    
+    if (locationProvider.isFilterActive && locationProvider.selectedState != null && locationProvider.selectedState!.isNotEmpty) {
+      filteredPast = eventProvider.pastEvents.where((event) => 
+        event.state != null && event.state == locationProvider.selectedState
+      ).toList();
+    } else {
+      filteredPast = eventProvider.pastEvents;
+    }
 
-  // Get filtered events for the current state
-  final filteredUpcoming = _getFilteredEvents(eventProvider);
-  
-  // Filter past events by location if needed - with null safety
-  final filteredPast = locationProvider.isFilterActive && locationProvider.selectedState != null
-      ? eventProvider.pastEvents.where((event) => 
-          event.state != null && event.state == locationProvider.selectedState
-        ).toList()
-      : eventProvider.pastEvents;
-
-  // If filter is active and there are no events, show empty state (NON-SCROLLABLE)
-  if (locationProvider.isFilterActive && 
-      filteredUpcoming.isEmpty && 
-      filteredPast.isEmpty && 
-      locationProvider.selectedState != null) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.7,
-      child: Center(
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(), // Disable scrolling
-          child: _buildEmptyFilterState(isTablet, locationProvider.selectedState!),
-        ),
-      ),
-    );
-  }
-
-  // If no filter is active but there are no events at all, show empty carousel (NON-SCROLLABLE)
-  if (!locationProvider.isFilterActive && 
-      eventProvider.upcomingEvents.isEmpty && 
-      eventProvider.pastEvents.isEmpty) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.7,
-      child: Center(
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(), // Disable scrolling
-          child: _buildEmptyCarouselState(isTablet, isSmallScreen, authProvider, locationProvider),
-        ),
-      ),
-    );
-  }
-
-  final carouselEvents = filteredUpcoming.isNotEmpty 
-      ? (_showAllUpcomingEvents ? filteredUpcoming : filteredUpcoming.take(5).toList())
-      : [];
-      
-  final upcomingEventsToShow = filteredUpcoming.isNotEmpty
-      ? (_showAllUpcomingEvents ? filteredUpcoming : filteredUpcoming.take(5).toList())
-      : [];
-      
-  final pastEventsToShow = filteredPast.isNotEmpty
-      ? (_showAllPastEvents ? filteredPast : filteredPast.take(3).toList())
-      : [];
-  
-  // Regular scrollable content when events exist
-  return SingleChildScrollView(
-    physics: const BouncingScrollPhysics(),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-      //  SizedBox(height: isTablet ? 36 : 26),
-        SizedBox(height: isTablet ? 20 : 15),
+    final bool hasUpcomingEvents = filteredUpcoming.isNotEmpty;
+    final bool hasPastEvents = filteredPast.isNotEmpty;
+    
+    final carouselEvents = hasUpcomingEvents 
+        ? (_showAllUpcomingEvents ? filteredUpcoming : filteredUpcoming.take(5).toList())
+        : [];
         
-        // Upcoming Events Header
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF006A4E), Color(0xFF004D38)]),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: _primaryGreen.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
-                    ),
-                    child: Icon(Icons.event_available_rounded, color: Colors.white, size: isTablet ? 20 : 18),
-                  ),
-                  const SizedBox(width: 12),
-                
-
-                  ShaderMask(
-  shaderCallback: (bounds) => const LinearGradient(
-    colors: [Color(0xFFFFD700), Color(0xFFF42A41)] // 2 colors: Gold and Red
-  ).createShader(bounds),
-  child: Text(
-    'Upcoming Events',
-    style: GoogleFonts.poppins(
-      fontSize: isTablet ? 18 : 16,
-      fontWeight: FontWeight.w700,
-      color: Colors.white,
-    ),
-  ),
-)
-
-
-                ],
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 12, vertical: isTablet ? 8 : 6),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF006A4E), Color(0xFF004D38)]),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: _primaryGreen.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))],
-                ),
-                child: Text('${filteredUpcoming.length} events', style: GoogleFonts.poppins(
-                //  fontSize: isTablet ? 14 : 12,
-                   fontSize: isTablet ? 12 : 10,
-                   fontWeight: FontWeight.w600, color: Colors.white)),
-              ),
-            ],
-          ),
-        ),
+    final upcomingEventsToShow = hasUpcomingEvents
+        ? (_showAllUpcomingEvents ? filteredUpcoming : filteredUpcoming.take(5).toList())
+        : [];
         
-      //  SizedBox(height: isTablet ? 20 : 17),
-      SizedBox(height: isTablet ? 12 : 10),
-        
-        // Events Carousel
-        if (carouselEvents.isNotEmpty)
-          SizedBox(
-            height: isTablet ? 380 : 320,
-            child: PageView.builder(
-              controller: _sliderController,
-              itemCount: carouselEvents.length,
-              onPageChanged: (index) => setState(() => _currentSliderIndex = index),
-              itemBuilder: (context, index) => GestureDetector(
-                onTap: () {
-                  if (authProvider.isGuestMode) {
-                    _showLoginRequiredDialog(context, 'view event details');
-                    return;
-                  }
-                  HapticFeedback.mediumImpact();
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailsScreen(event: carouselEvents[index])));
-                },
-                child: _buildPremiumEventCard(carouselEvents[index], isSmallScreen, isTablet, index == _currentSliderIndex),
-              ),
-            ),
-          )
-        else if (!locationProvider.isFilterActive && filteredUpcoming.isEmpty)
-          _buildEmptyCarouselState(isTablet, isSmallScreen, authProvider, locationProvider),
-        
-        if (carouselEvents.isNotEmpty) ...[
-        //  SizedBox(height: isTablet ? 16 : 12),
-           SizedBox(height: isTablet ? 12 : 10),
-          Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(carouselEvents.length, (index) {
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: _currentSliderIndex == index ? (isTablet ? 24 : 20) : (isTablet ? 10 : 8),
-                  height: isTablet ? 6 : 4,
-                  margin: EdgeInsets.symmetric(horizontal: isTablet ? 4 : 3),
-                  decoration: BoxDecoration(
-                    gradient: _currentSliderIndex == index 
-                        ? const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]) 
-                        : LinearGradient(colors: [Colors.grey[300]!, Colors.grey[400]!]),
-                    borderRadius: BorderRadius.circular(isTablet ? 4 : 3),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ],
-        
-     //   SizedBox(height: isTablet ? 25 : 20),
-      SizedBox(height: isTablet ? 15 : 10),
-        
-        // Categories Header
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [_primaryRed, _coralRed]),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [BoxShadow(color: _primaryRed.withOpacity(0.2), blurRadius: 6, offset: const Offset(0, 3))],
-                ),
-                child: Icon(Icons.category_rounded, color: Colors.white, size: isTablet ? 20 : 18),
-              ),
-             // const SizedBox(width: 10),
-               const SizedBox(width: 7),
-            
-
-
-ShaderMask(
-  shaderCallback: (bounds) => const LinearGradient(
-    colors: [Color(0xFF006A4E), Color(0xFF004D38)] // Dark Green to Darker Green
-  ).createShader(bounds),
-  child: Text(
-    'Browse Categories',
-    style: GoogleFonts.poppins(
-      fontSize: isTablet ? 18 : 16,
-      fontWeight: FontWeight.w600,
-      color: Colors.white,
-    ),
-  ),
-)
-
-
-
-            ],
-          ),
-        ),
-        
-        SizedBox(height: isTablet ? 17 : 13),
-        
-        // Categories List
-        SizedBox(
-          height: isTablet ? 70 : 60,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16),
-            itemCount: _categoryOrder.length,
-            itemBuilder: (context, index) => _buildPremiumCategoryCard(_categoryOrder[index], isSmallScreen, isTablet),
-          ),
-        ),
-        
-        SizedBox(height: isTablet ? 30 : 24),
-        
-        // View All Toggle Button
-        if (filteredUpcoming.isNotEmpty)
+    final pastEventsToShow = hasPastEvents
+        ? (_showAllPastEvents ? filteredPast : filteredPast.take(3).toList())
+        : [];
+    
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(height: isTablet ? 20 : 15),
+          
+          // Upcoming Events Header
           Padding(
             padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
-            child: _buildViewToggleButton(isTablet),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFF006A4E), Color(0xFF004D38)]),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [BoxShadow(color: _primaryGreen.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+                      ),
+                      child: Icon(Icons.event_available_rounded, color: Colors.white, size: isTablet ? 20 : 18),
+                    ),
+                    const SizedBox(width: 12),
+                    ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [Color(0xFFFFD700), Color(0xFFF42A41)]
+                      ).createShader(bounds),
+                      child: Text(
+                        'Upcoming Events',
+                        style: GoogleFonts.poppins(
+                          fontSize: isTablet ? 18 : 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    )
+                  ],
+                ),
+                if (hasUpcomingEvents)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 12, vertical: isTablet ? 8 : 6),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFF006A4E), Color(0xFF004D38)]),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: _primaryGreen.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))],
+                    ),
+                    child: Text('${filteredUpcoming.length} events', style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 12 : 10,
+                      fontWeight: FontWeight.w600, color: Colors.white)),
+                  ),
+              ],
+            ),
           ),
-        
-        SizedBox(height: isTablet ? 20 : 16),
-        
-        // Upcoming Events List
-        if (upcomingEventsToShow.isNotEmpty)
-          ...upcomingEventsToShow.map((event) => GestureDetector(
-            onTap: () {
-              if (authProvider.isGuestMode) {
-                _showLoginRequiredDialog(context, 'view event details');
-                return;
-              }
-              HapticFeedback.lightImpact();
-              Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailsScreen(event: event)));
-            },
-            child: _buildPremiumEventListItem(event, isSmallScreen, isTablet, isPast: false),
-          )).toList(),
-        
-        // Past Events Section
-        if (filteredPast.isNotEmpty) ...[
-          SizedBox(height: isTablet ? 40 : 30),
           
+          SizedBox(height: isTablet ? 12 : 10),
+          
+          // Events Carousel
+          if (hasUpcomingEvents)
+            SizedBox(
+              height: isTablet ? 380 : 320,
+              child: PageView.builder(
+                controller: _sliderController,
+                itemCount: carouselEvents.length,
+                onPageChanged: (index) => setState(() => _currentSliderIndex = index),
+                itemBuilder: (context, index) => RepaintBoundary(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (authProvider.isGuestMode) {
+                        _showLoginRequiredDialog(context, 'view event details');
+                        return;
+                      }
+                      HapticFeedback.mediumImpact();
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailsScreen(event: carouselEvents[index])));
+                    },
+                    child: _buildPremiumEventCard(carouselEvents[index], isSmallScreen, isTablet, index == _currentSliderIndex),
+                  ),
+                ),
+              ),
+            )
+          else
+            _buildEmptyUpcomingCarousel(isTablet, isSmallScreen, authProvider, locationProvider),
+          
+          // Carousel indicators
+          if (hasUpcomingEvents && carouselEvents.isNotEmpty) ...[
+            SizedBox(height: isTablet ? 12 : 10),
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(carouselEvents.length, (index) {
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: _currentSliderIndex == index ? (isTablet ? 24 : 20) : (isTablet ? 10 : 8),
+                    height: isTablet ? 6 : 4,
+                    margin: EdgeInsets.symmetric(horizontal: isTablet ? 4 : 3),
+                    decoration: BoxDecoration(
+                      gradient: _currentSliderIndex == index 
+                          ? const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]) 
+                          : LinearGradient(colors: [Colors.grey[300]!, Colors.grey[400]!]),
+                      borderRadius: BorderRadius.circular(isTablet ? 4 : 3),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
+          
+          SizedBox(height: isTablet ? 15 : 10),
+          
+          // Categories Header
           Padding(
             padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
             child: Row(
@@ -2387,322 +1582,77 @@ ShaderMask(
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [_coralRed, _primaryRed]),
+                    gradient: LinearGradient(colors: [_primaryRed, _coralRed]),
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: [BoxShadow(color: _coralRed.withOpacity(0.2), blurRadius: 6, offset: const Offset(0, 3))],
+                    boxShadow: [BoxShadow(color: _primaryRed.withOpacity(0.2), blurRadius: 6, offset: const Offset(0, 3))],
                   ),
-                  child: Icon(Icons.history_rounded, color: Colors.white, size: isTablet ? 20 : 18),
+                  child: Icon(Icons.category_rounded, color: Colors.white, size: isTablet ? 20 : 18),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 7),
                 ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFFFF6B6B)]).createShader(bounds),
-                  child: Text('Past Events', style: GoogleFonts.poppins(
-                  //  fontSize: isTablet ? 25 : 23,
-                     fontSize: isTablet ? 18 : 16,
-                     fontWeight: FontWeight.w600, color: Colors.white)),
-                ),
-                const Spacer(),
-                _buildPastEventsToggleButton(isTablet),
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Color(0xFF006A4E), Color(0xFF004D38)]
+                  ).createShader(bounds),
+                  child: Text(
+                    'Browse Categories',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 18 : 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                )
               ],
             ),
           ),
           
+          SizedBox(height: isTablet ? 17 : 13),
+          
+          // Categories List
+          SizedBox(
+            height: isTablet ? 70 : 60,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16),
+              itemCount: _categoryOrder.length,
+              itemBuilder: (context, index) => RepaintBoundary(
+                child: _buildPremiumCategoryCard(_categoryOrder[index], isSmallScreen, isTablet),
+              ),
+            ),
+          ),
+          
+          SizedBox(height: isTablet ? 30 : 24),
+          
+          // View All Toggle Button
+          if (hasUpcomingEvents)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
+              child: _buildViewToggleButton(isTablet),
+            ),
+          
           SizedBox(height: isTablet ? 20 : 16),
           
-          // Past Events List
-          ...pastEventsToShow.map((event) => GestureDetector(
-            onTap: () {
-              if (authProvider.isGuestMode) {
-                _showLoginRequiredDialog(context, 'view event details');
-                return;
-              }
-              HapticFeedback.lightImpact();
-              Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailsScreen(event: event)));
-            },
-            child: _buildPremiumEventListItem(event, isSmallScreen, isTablet, isPast: true),
-          )).toList(),
-        ],
-        
-        SizedBox(height: isTablet ? 50 : 40),
-        
-        // Footer
-        _buildPremiumFooter(isTablet),
-        
-        SizedBox(height: isTablet ? 30 : 20),
-      ],
-    ),
-  );
-}
-
-*/
-
-Widget _buildContent(
-  bool isSmallScreen, 
-  bool isTablet, 
-  EventProvider eventProvider,
-  LocationFilterProvider locationProvider,
-  AuthProvider authProvider,
-) {
-  if (!eventProvider.isInitialized && eventProvider.isLoading) {
-    return _buildLoadingState(isTablet, isSmallScreen);
-  }
-
-  if (eventProvider.error != null && eventProvider.upcomingEvents.isEmpty && eventProvider.pastEvents.isEmpty) {
-    return _buildErrorState(isTablet, isSmallScreen, eventProvider.error!);
-  }
-
-  // Get filtered events for the current state
-  final filteredUpcoming = _getFilteredEvents(eventProvider);
-  
-  // CORRECTED: Filter past events by state - only apply filter if state exists in event
-  List<EventModel> filteredPast;
-  
-  if (locationProvider.isFilterActive && locationProvider.selectedState != null && locationProvider.selectedState!.isNotEmpty) {
-    // Only filter past events that have a state field matching the selected state
-    // Events without state will NOT be shown when filter is active
-    filteredPast = eventProvider.pastEvents.where((event) => 
-      event.state != null && event.state == locationProvider.selectedState
-    ).toList();
-    
-    print('📍 Filtering past events by state: ${locationProvider.selectedState}');
-    print('📊 Past events with state in this location: ${filteredPast.length}');
-  } else {
-    // No active filter - show ALL past events
-    filteredPast = eventProvider.pastEvents;
-    print('📍 No filter active, showing all ${filteredPast.length} past events');
-  }
-
-  // Debug prints
-  print('📊 Past events total in provider: ${eventProvider.pastEvents.length}');
-  print('📊 Past events with state field: ${eventProvider.pastEvents.where((e) => e.state != null).length}');
-  print('📊 Filtered past events count: ${filteredPast.length}');
-  
-  if (filteredPast.isNotEmpty) {
-    print('📋 Sample past event: ${filteredPast.first.title}, State: ${filteredPast.first.state ?? "No state"}');
-  }
-
-  // If filter is active and there are no events, show empty state
-  if (locationProvider.isFilterActive && 
-      filteredUpcoming.isEmpty && 
-      filteredPast.isEmpty && 
-      locationProvider.selectedState != null) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.7,
-      child: Center(
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          child: _buildEmptyFilterState(isTablet, locationProvider.selectedState!),
-        ),
-      ),
-    );
-  }
-
-  // If no filter is active but there are no events at all, show empty carousel
-  if (!locationProvider.isFilterActive && 
-      eventProvider.upcomingEvents.isEmpty && 
-      eventProvider.pastEvents.isEmpty) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.7,
-      child: Center(
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          child: _buildEmptyCarouselState(isTablet, isSmallScreen, authProvider, locationProvider),
-        ),
-      ),
-    );
-  }
-
-  final carouselEvents = filteredUpcoming.isNotEmpty 
-      ? (_showAllUpcomingEvents ? filteredUpcoming : filteredUpcoming.take(5).toList())
-      : [];
-      
-  final upcomingEventsToShow = filteredUpcoming.isNotEmpty
-      ? (_showAllUpcomingEvents ? filteredUpcoming : filteredUpcoming.take(5).toList())
-      : [];
-      
-  final pastEventsToShow = filteredPast.isNotEmpty
-      ? (_showAllPastEvents ? filteredPast : filteredPast.take(3).toList())
-      : [];
-  
-  // Regular scrollable content when events exist
-  return SingleChildScrollView(
-    physics: const BouncingScrollPhysics(),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: isTablet ? 20 : 15),
-        
-        // Upcoming Events Header
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF006A4E), Color(0xFF004D38)]),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: _primaryGreen.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
-                    ),
-                    child: Icon(Icons.event_available_rounded, color: Colors.white, size: isTablet ? 20 : 18),
-                  ),
-                  const SizedBox(width: 12),
-                  ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [Color(0xFFFFD700), Color(0xFFF42A41)]
-                    ).createShader(bounds),
-                    child: Text(
-                      'Upcoming Events',
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 18 : 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  )
-                ],
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 12, vertical: isTablet ? 8 : 6),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF006A4E), Color(0xFF004D38)]),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: _primaryGreen.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))],
-                ),
-                child: Text('${filteredUpcoming.length} events', style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 12 : 10,
-                  fontWeight: FontWeight.w600, color: Colors.white)),
-              ),
-            ],
-          ),
-        ),
-        
-        SizedBox(height: isTablet ? 12 : 10),
-        
-        // Events Carousel
-        if (carouselEvents.isNotEmpty)
-          SizedBox(
-            height: isTablet ? 380 : 320,
-            child: PageView.builder(
-              controller: _sliderController,
-              itemCount: carouselEvents.length,
-              onPageChanged: (index) => setState(() => _currentSliderIndex = index),
-              itemBuilder: (context, index) => GestureDetector(
+          // Upcoming Events List
+          if (hasUpcomingEvents && upcomingEventsToShow.isNotEmpty)
+            ...upcomingEventsToShow.map((event) => RepaintBoundary(
+              child: GestureDetector(
                 onTap: () {
                   if (authProvider.isGuestMode) {
                     _showLoginRequiredDialog(context, 'view event details');
                     return;
                   }
-                  HapticFeedback.mediumImpact();
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailsScreen(event: carouselEvents[index])));
+                  HapticFeedback.lightImpact();
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailsScreen(event: event)));
                 },
-                child: _buildPremiumEventCard(carouselEvents[index], isSmallScreen, isTablet, index == _currentSliderIndex),
+                child: _buildPremiumEventListItem(event, isSmallScreen, isTablet, isPast: false),
               ),
-            ),
-          )
-        else if (!locationProvider.isFilterActive && filteredUpcoming.isEmpty)
-          _buildEmptyCarouselState(isTablet, isSmallScreen, authProvider, locationProvider),
-        
-        if (carouselEvents.isNotEmpty) ...[
-          SizedBox(height: isTablet ? 12 : 10),
-          Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(carouselEvents.length, (index) {
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: _currentSliderIndex == index ? (isTablet ? 24 : 20) : (isTablet ? 10 : 8),
-                  height: isTablet ? 6 : 4,
-                  margin: EdgeInsets.symmetric(horizontal: isTablet ? 4 : 3),
-                  decoration: BoxDecoration(
-                    gradient: _currentSliderIndex == index 
-                        ? const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]) 
-                        : LinearGradient(colors: [Colors.grey[300]!, Colors.grey[400]!]),
-                    borderRadius: BorderRadius.circular(isTablet ? 4 : 3),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ],
-        
-        SizedBox(height: isTablet ? 15 : 10),
-        
-        // Categories Header
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [_primaryRed, _coralRed]),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [BoxShadow(color: _primaryRed.withOpacity(0.2), blurRadius: 6, offset: const Offset(0, 3))],
-                ),
-                child: Icon(Icons.category_rounded, color: Colors.white, size: isTablet ? 20 : 18),
-              ),
-              const SizedBox(width: 7),
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [Color(0xFF006A4E), Color(0xFF004D38)]
-                ).createShader(bounds),
-                child: Text(
-                  'Browse Categories',
-                  style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 18 : 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              )
-            ],
-          ),
-        ),
-        
-        SizedBox(height: isTablet ? 17 : 13),
-        
-        // Categories List
-        SizedBox(
-          height: isTablet ? 70 : 60,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16),
-            itemCount: _categoryOrder.length,
-            itemBuilder: (context, index) => _buildPremiumCategoryCard(_categoryOrder[index], isSmallScreen, isTablet),
-          ),
-        ),
-        
-        SizedBox(height: isTablet ? 30 : 24),
-        
-        // View All Toggle Button
-        if (filteredUpcoming.isNotEmpty)
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24),
-            child: _buildViewToggleButton(isTablet),
-          ),
-        
-        SizedBox(height: isTablet ? 20 : 16),
-        
-        // Upcoming Events List
-        if (upcomingEventsToShow.isNotEmpty)
-          ...upcomingEventsToShow.map((event) => GestureDetector(
-            onTap: () {
-              if (authProvider.isGuestMode) {
-                _showLoginRequiredDialog(context, 'view event details');
-                return;
-              }
-              HapticFeedback.lightImpact();
-              Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailsScreen(event: event)));
-            },
-            child: _buildPremiumEventListItem(event, isSmallScreen, isTablet, isPast: false),
-          )).toList(),
-        
-        // Past Events Section
-        if (filteredPast.isNotEmpty) ...[
+            )).toList(),
+          
+          // Empty upcoming events message
+          if (!hasUpcomingEvents)
+            _buildEmptyUpcomingMessage(isTablet, locationProvider),
+          
+          // Past Events Section
           SizedBox(height: isTablet ? 40 : 30),
           
           Padding(
@@ -2727,7 +1677,7 @@ Widget _buildContent(
                     color: Colors.white)),
                 ),
                 const Spacer(),
-                if (filteredPast.length > 3)
+                if (hasPastEvents && filteredPast.length > 3)
                   _buildPastEventsToggleButton(isTablet),
               ],
             ),
@@ -2736,29 +1686,364 @@ Widget _buildContent(
           SizedBox(height: isTablet ? 20 : 16),
           
           // Past Events List
-          ...pastEventsToShow.map((event) => GestureDetector(
-            onTap: () {
-              if (authProvider.isGuestMode) {
-                _showLoginRequiredDialog(context, 'view event details');
-                return;
-              }
-              HapticFeedback.lightImpact();
-              Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailsScreen(event: event)));
-            },
-            child: _buildPremiumEventListItem(event, isSmallScreen, isTablet, isPast: true),
-          )).toList(),
+          if (hasPastEvents && pastEventsToShow.isNotEmpty)
+            ...pastEventsToShow.map((event) => RepaintBoundary(
+              child: GestureDetector(
+                onTap: () {
+                  if (authProvider.isGuestMode) {
+                    _showLoginRequiredDialog(context, 'view event details');
+                    return;
+                  }
+                  HapticFeedback.lightImpact();
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => EventDetailsScreen(event: event)));
+                },
+                child: _buildPremiumEventListItem(event, isSmallScreen, isTablet, isPast: true),
+              ),
+            )).toList()
+          else
+            _buildEmptyPastCard(isTablet, locationProvider),
+          
+          SizedBox(height: isTablet ? 50 : 40),
+          
+          // Footer
+          _buildPremiumFooter(isTablet),
+          
+          SizedBox(height: isTablet ? 30 : 20),
         ],
-        
-        SizedBox(height: isTablet ? 50 : 40),
-        
-        // Footer
-        _buildPremiumFooter(isTablet),
-        
-        SizedBox(height: isTablet ? 30 : 20),
+      ),
+    );
+  }
+
+  // Empty past events card
+
+Widget _buildEmptyPastCard(bool isTablet, LocationFilterProvider locationProvider) {
+  final String stateName = locationProvider.selectedState ?? '';
+  final bool isFilterActive = locationProvider.isFilterActive;
+  
+  return Container(
+    margin: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24, vertical: isTablet ? 12 : 8),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Colors.white.withOpacity(0.98), Colors.white, _lightRed.withOpacity(0.2)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(isTablet ? 35 : 30),
+      boxShadow: [
+        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 25, offset: const Offset(0, 12)),
+        BoxShadow(color: _primaryRed.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 5)),
       ],
+      border: Border.all(color: Colors.grey.shade300.withOpacity(0.3), width: 1.5),
+    ),
+    child: Padding(
+      padding: EdgeInsets.all(isTablet ? 24 : 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: isTablet ? 120 : 100,
+            height: isTablet ? 120 : 100,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+              gradient: LinearGradient(
+                colors: [Colors.grey.shade300, Colors.grey.shade200],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 8))],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+              child: Center(
+                child: Icon(
+                  Icons.event_busy_rounded,
+                  size: isTablet ? 50 : 40,
+                  color: Colors.grey.shade400,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: isTablet ? 24 : 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 12, vertical: isTablet ? 8 : 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [Colors.grey[400]!, Colors.grey[500]!]),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.category_rounded, color: Colors.white, size: isTablet ? 16 : 14),
+                          const SizedBox(width: 6),
+                          Text('No Events', style: GoogleFonts.inter(fontSize: isTablet ? 14 : 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: isTablet ? 16 : 12),
+                Text(
+                  isFilterActive ? 'No Past Events in $stateName' : 'No Past Events Yet',
+                  style: GoogleFonts.poppins(
+                    fontSize: isTablet ? 22 : 18,
+                    fontWeight: FontWeight.w800,
+                    color: _darkGreen.withOpacity(0.7),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: isTablet ? 12 : 8),
+                Row(
+                  children: [
+                    Icon(Icons.business_rounded, size: isTablet ? 18 : 16, color: _primaryRed.withOpacity(0.5)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isFilterActive ? 'No events found in $stateName' : 'Check back later for past events',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 16 : 14,
+                          color: _textLight,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: isTablet ? 12 : 8),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today_rounded, size: isTablet ? 18 : 16, color: _coralRed.withOpacity(0.5)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'No past events recorded',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 13 : 11,
+                          color: _textLight,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.location_on_rounded, size: isTablet ? 18 : 16, color: _mintGreen.withOpacity(0.5)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isFilterActive ? stateName : 'Location not available',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 15 : 13,
+                          color: _textLight,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     ),
   );
 } 
+  
+  // Empty carousel widget
+  Widget _buildEmptyUpcomingCarousel(bool isTablet, bool isSmallScreen, AuthProvider authProvider, LocationFilterProvider locationProvider) {
+    final String stateName = locationProvider.selectedState ?? '';
+    final bool isFilterActive = locationProvider.isFilterActive;
+    
+    return Container(
+      height: isTablet ? 380 : 320,
+      margin: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.white.withOpacity(0.95), Colors.white.withOpacity(0.9)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(isTablet ? 35 : 30),
+          border: Border.all(color: Colors.grey.shade300.withOpacity(0.3), width: 1.5),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 30, offset: Offset(0, 15))],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(isTablet ? 35 : 30),
+          child: Stack(
+            children: [
+              Image.network(
+                'https://images.unsplash.com/photo-1531058020387-3be344556be6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1170&q=80',
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]),
+                  ),
+                  child: Center(
+                    child: Icon(Icons.event_busy_rounded, size: isTablet ? 60 : 50, color: Colors.white70),
+                  ),
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.3), Colors.black.withOpacity(0.7), Colors.black.withOpacity(0.9)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.0, 0.3, 0.7, 1.0],
+                  ),
+                ),
+              ),
+              Center(
+                child: Padding(
+                  padding: EdgeInsets.all(isTablet ? 30 : 20),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: isTablet ? 90 : 70,
+                        height: isTablet ? 90 : 70,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]),
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: _primaryRed.withOpacity(0.3), blurRadius: 20, spreadRadius: 3)],
+                        ),
+                        child: Center(
+                          child: Icon(Icons.event_busy_rounded, size: isTablet ? 45 : 35, color: Colors.white),
+                        ),
+                      ),
+                      SizedBox(height: isTablet ? 20 : 16),
+                      Text(
+                        isFilterActive ? 'No Upcoming Events in $stateName' : 'No Upcoming Events',
+                        style: GoogleFonts.poppins(
+                          fontSize: isTablet ? 22 : 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: isTablet ? 12 : 8),
+                      Text(
+                        isFilterActive 
+                            ? 'Check back later for events in your area'
+                            : 'Be the first to create an event in your community!',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 16 : 14,
+                          color: Colors.white.withOpacity(0.9),
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (!isFilterActive) ...[
+                        SizedBox(height: isTablet ? 20 : 16),
+                        Consumer<AuthProvider>(
+                          builder: (context, authProvider, _) => GestureDetector(
+                            onTap: () {
+                              if (authProvider.user != null) {
+                                _showPremiumAddEventDialog(context, isTablet);
+                              } else {
+                                _showLoginRequiredDialog(context, 'create an event');
+                              }
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: isTablet ? 30 : 24, vertical: isTablet ? 14 : 12),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]),
+                                borderRadius: BorderRadius.circular(25),
+                                boxShadow: [BoxShadow(color: _primaryRed.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.add_circle_rounded, color: Colors.white),
+                                  const SizedBox(width: 6),
+                                  Text('Create Event', style: GoogleFonts.poppins(fontSize: isTablet ? 16 : 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Empty upcoming events message
+  Widget _buildEmptyUpcomingMessage(bool isTablet, LocationFilterProvider locationProvider) {
+    final String stateName = locationProvider.selectedState ?? '';
+    
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24, vertical: isTablet ? 12 : 8),
+      padding: EdgeInsets.all(isTablet ? 40 : 30),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.white.withOpacity(0.98), Colors.white, _lightGreen.withOpacity(0.2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(isTablet ? 35 : 30),
+        border: Border.all(color: Colors.grey.shade300.withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.event_busy_rounded,
+            size: isTablet ? 60 : 50,
+            color: _primaryGreen.withOpacity(0.5),
+          ),
+          SizedBox(height: isTablet ? 16 : 12),
+          Text(
+            locationProvider.isFilterActive 
+                ? 'No Upcoming Events in $stateName' 
+                : 'No Upcoming Events',
+            style: GoogleFonts.poppins(
+              fontSize: isTablet ? 20 : 18,
+              fontWeight: FontWeight.w700,
+              color: _primaryGreen,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: isTablet ? 8 : 6),
+          Text(
+            locationProvider.isFilterActive
+                ? 'There are currently no upcoming events scheduled in $stateName.\nCheck back later or try a different location.'
+                : 'Be the first to create an event and bring the community together!',
+            style: GoogleFonts.inter(
+              fontSize: isTablet ? 14 : 12,
+              color: _textLight,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildViewToggleButton(bool isTablet) {
     return GestureDetector(
       onTap: () {
@@ -2814,122 +2099,7 @@ Widget _buildContent(
     );
   }
 
-  Widget _buildEmptyCarouselState(bool isTablet, bool isSmallScreen, AuthProvider authProvider, LocationFilterProvider locationProvider) {
-    String message;
-    if (locationProvider.isFilterActive) {
-      message = 'No events in ${locationProvider.selectedState}';
-    } else {
-      message = _selectedCategory != null && _selectedCategory != 'all' 
-          ? 'No events in ${EventCategoryExtension.fromString(_selectedCategory!).displayName} category'
-          : 'Be the first to create an event!';
-    }
-    
-    return Container(
-      height: isTablet ? 340 : 280,
-      margin: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.white.withOpacity(0.95), Colors.white.withOpacity(0.9)]),
-        borderRadius: BorderRadius.circular(isTablet ? 30 : 25),
-        border: Border.all(color: Colors.grey.shade300.withOpacity(0.3), width: 1.5),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 30, offset: Offset(0, 15))],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(isTablet ? 30 : 25),
-        child: Stack(
-          children: [
-            Image.network(
-              'https://images.unsplash.com/photo-1531058020387-3be344556be6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1170&q=80',
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (context, error, stackTrace) => Container(
-                decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)])),
-                child: Center(child: Icon(Icons.event_busy_rounded, size: isTablet ? 60 : 50, color: Colors.white70)),
-              ),
-            ),
-            Container(decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.black.withOpacity(0.3), Colors.black.withOpacity(0.7)], begin: Alignment.topCenter, end: Alignment.bottomCenter))),
-            Center(
-              child: Padding(
-                padding: EdgeInsets.all(isTablet ? 30 : 20),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Only rotate if app is visible
-                    _appLifecycleState == AppLifecycleState.resumed
-                        ? RotationTransition(
-                            turns: _rotateAnimation,
-                            child: Container(
-                              width: isTablet ? 90 : 70,
-                              height: isTablet ? 90 : 70,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]),
-                                shape: BoxShape.circle,
-                                boxShadow: [BoxShadow(color: _primaryRed.withOpacity(0.3), blurRadius: 20, spreadRadius: 3)],
-                              ),
-                              child: Center(child: Icon(Icons.event_busy_rounded, size: isTablet ? 45 : 35, color: Colors.white)),
-                            ),
-                          )
-                        : Container(
-                            width: isTablet ? 90 : 70,
-                            height: isTablet ? 90 : 70,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]),
-                              shape: BoxShape.circle,
-                              boxShadow: [BoxShadow(color: _primaryRed.withOpacity(0.3), blurRadius: 20, spreadRadius: 3)],
-                            ),
-                            child: Center(child: Icon(Icons.event_busy_rounded, size: isTablet ? 45 : 35, color: Colors.white)),
-                          ),
-                    SizedBox(height: isTablet ? 20 : 16),
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]).createShader(bounds),
-                      child: Text('No Upcoming Events', style: GoogleFonts.poppins(fontSize: isTablet ? 22 : 18, fontWeight: FontWeight.w800, color: Colors.white)),
-                    ),
-                    SizedBox(height: isTablet ? 12 : 8),
-                    Text(
-                      message,
-                      style: GoogleFonts.inter(fontSize: isTablet ? 16 : 14, color: Colors.white, fontWeight: FontWeight.w600),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: isTablet ? 20 : 16),
-                    if (!locationProvider.isFilterActive)
-                      Consumer<AuthProvider>(
-                        builder: (context, authProvider, _) => GestureDetector(
-                          onTap: () {
-                            if (authProvider.user != null) {
-                              _showPremiumAddEventDialog(context, isTablet);
-                            } else {
-                              _showLoginRequiredDialog(context, 'create an event');
-                            }
-                          },
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: isTablet ? 30 : 24, vertical: isTablet ? 14 : 12),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]),
-                              borderRadius: BorderRadius.circular(25),
-                              boxShadow: [BoxShadow(color: _primaryRed.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.add_circle_rounded, color: Colors.white),
-                                const SizedBox(width: 6),
-                                Text('Create Event', style: GoogleFonts.poppins(fontSize: isTablet ? 16 : 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-/*  Widget _buildPremiumEventCard(EventModel event, bool isSmallScreen, bool isTablet, bool isActive) {
+  Widget _buildPremiumEventCard(EventModel event, bool isSmallScreen, bool isTablet, bool isActive) {
     final categoryGradient = _getCategoryGradient(event.category);
     
     return AnimatedContainer(
@@ -2945,10 +2115,51 @@ Widget _buildContent(
         borderRadius: BorderRadius.circular(isTablet ? 35 : 30),
         child: Stack(
           children: [
-            Container(width: double.infinity, height: double.infinity, child: _buildCachedEventImage(event, isTablet)),
-            Container(decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.black.withOpacity(0.3), Colors.black.withOpacity(0.7), Colors.black.withOpacity(0.9)], begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: const [0.0, 0.3, 0.7, 1.0]))),
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              child: _buildCachedEventImage(event, isTablet, thumbnail: false),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.3), Colors.black.withOpacity(0.7), Colors.black.withOpacity(0.9)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.0, 0.3, 0.7, 1.0],
+                ),
+              ),
+            ),
             
-            // Distance Badge
+            if (event.isMultiDay)
+              Positioned(
+                top: 16,
+                left: 16,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: isTablet ? 12 : 10, vertical: isTablet ? 6 : 5),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 8)],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.date_range_rounded, color: Colors.white, size: isTablet ? 16 : 14),
+                      SizedBox(width: 4),
+                      Text(
+                        'Multi-Day',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 12 : 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            
             if (event.latitude != null && event.longitude != null)
               Positioned(
                 top: 16,
@@ -2972,7 +2183,6 @@ Widget _buildContent(
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Category Button
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: isTablet ? 10 : 8),
                           decoration: BoxDecoration(
@@ -2990,7 +2200,6 @@ Widget _buildContent(
                           ),
                         ),
                         
-                        // Featured Button
                         if (isActive && _appLifecycleState == AppLifecycleState.resumed)
                           TweenAnimationBuilder<double>(
                             tween: Tween(begin: 0.8, end: 1.2),
@@ -3031,7 +2240,17 @@ Widget _buildContent(
                     SizedBox(height: isTablet ? 24 : 18),
                     ShaderMask(
                       shaderCallback: (bounds) => const LinearGradient(colors: [Colors.white, Colors.white]).createShader(bounds),
-                      child: Text(event.title, style: GoogleFonts.poppins(fontSize: isTablet ? 28 : 22, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        event.title,
+                        style: GoogleFonts.poppins(
+                          fontSize: isTablet ? 28 : 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     SizedBox(height: isTablet ? 16 : 12),
                     Container(
@@ -3058,8 +2277,21 @@ Widget _buildContent(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Date & Time', style: GoogleFonts.inter(fontSize: isTablet ? 12 : 10, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w600, letterSpacing: 0.5)),
-                                    Text(event.formattedDate, style: GoogleFonts.poppins(fontSize: isTablet ? 16 : 14, fontWeight: FontWeight.w700, color: Colors.white, shadows: const [Shadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))])),
+                                    Text(
+                                      event.isMultiDay ? 'Event Period' : 'Date & Time',
+                                      style: GoogleFonts.inter(fontSize: isTablet ? 12 : 10, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w600, letterSpacing: 0.5),
+                                    ),
+                                    Text(
+                                      event.compactFormattedDateTime,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: isTablet ? 14 : 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                        shadows: const [Shadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -3083,7 +2315,17 @@ Widget _buildContent(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text('Location', style: GoogleFonts.inter(fontSize: isTablet ? 12 : 10, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w600, letterSpacing: 0.5)),
-                                    Text(event.location, style: GoogleFonts.poppins(fontSize: isTablet ? 16 : 14, fontWeight: FontWeight.w700, color: Colors.white, shadows: const [Shadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))]), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    Text(
+                                      event.location,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: isTablet ? 16 : 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                        shadows: const [Shadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -3098,7 +2340,11 @@ Widget _buildContent(
                       children: [
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 10, vertical: isTablet ? 10 : 8),
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white24)),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white24),
+                          ),
                           child: Row(
                             children: [
                               Icon(Icons.favorite_rounded, color: _goldAccent, size: isTablet ? 18 : 16),
@@ -3113,7 +2359,10 @@ Widget _buildContent(
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]),
                             shape: BoxShape.circle,
-                            boxShadow: [BoxShadow(color: _primaryRed.withOpacity(0.35), blurRadius: 12, offset: const Offset(0, 5)), BoxShadow(color: _primaryGreen.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))],
+                            boxShadow: [
+                              BoxShadow(color: _primaryRed.withOpacity(0.35), blurRadius: 12, offset: const Offset(0, 5)),
+                              BoxShadow(color: _primaryGreen.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2)),
+                            ],
                           ),
                           child: Center(child: Icon(Icons.arrow_forward_rounded, color: Colors.white, size: isTablet ? 24 : 20)),
                         ),
@@ -3129,350 +2378,62 @@ Widget _buildContent(
     );
   }
 
-*/
-Widget _buildPremiumEventCard(EventModel event, bool isSmallScreen, bool isTablet, bool isActive) {
-  final categoryGradient = _getCategoryGradient(event.category);
-  
-  return AnimatedContainer(
-    duration: const Duration(milliseconds: 300),
-    margin: EdgeInsets.symmetric(horizontal: isTablet ? 12 : 6, vertical: isTablet ? 10 : 6),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(isTablet ? 35 : 30),
-      boxShadow: isActive
-          ? const [BoxShadow(color: Color(0xFFF42A41), blurRadius: 30, offset: Offset(0, 15), spreadRadius: 3), BoxShadow(color: Color(0xFF006A4E), blurRadius: 20, offset: Offset(0, 8))]
-          : [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 12))],
-    ),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(isTablet ? 35 : 30),
-      child: Stack(
-        children: [
-          // Background image with Cloudinary optimization
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            child: _buildCachedEventImage(event, isTablet, thumbnail: false),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.transparent, Colors.black.withOpacity(0.3), Colors.black.withOpacity(0.7), Colors.black.withOpacity(0.9)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: const [0.0, 0.3, 0.7, 1.0],
+  Widget _buildCachedEventImage(EventModel event, bool isTablet, {bool thumbnail = false}) {
+    final cacheKey = event.id + (thumbnail ? '_thumb' : '') + (isTablet ? '_tablet' : '');
+    
+    if (_imageCache.containsKey(cacheKey)) {
+      return _imageCache[cacheKey]!;
+    }
+    
+    Widget imageWidget;
+    
+    if (event.bannerImageUrl != null && event.bannerImageUrl!.isNotEmpty) {
+      try {
+        final imageUrl = thumbnail 
+            ? (event.bannerImageUrl!.contains('cloudinary.com') 
+                ? event.thumbnailUrl 
+                : event.bannerImageUrl!)
+            : (isTablet 
+                ? (event.bannerImageUrl!.contains('cloudinary.com') 
+                    ? event.cardUrl 
+                    : event.bannerImageUrl!)
+                : (event.bannerImageUrl!.contains('cloudinary.com') 
+                    ? event.thumbnailUrl 
+                    : event.bannerImageUrl!));
+        
+        imageWidget = Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: _primaryGreen,
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                    : null,
               ),
-            ),
-          ),
-          
-          // Multi-Day Badge
-          if (event.isMultiDay)
-            Positioned(
-              top: 16,
-              left: 16,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: isTablet ? 12 : 10, vertical: isTablet ? 6 : 5),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 8)],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.date_range_rounded, color: Colors.white, size: isTablet ? 16 : 14),
-                    SizedBox(width: 4),
-                    Text(
-                      'Multi-Day',
-                      style: GoogleFonts.inter(
-                        fontSize: isTablet ? 12 : 10,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          
-          // Distance Badge
-          if (event.latitude != null && event.longitude != null)
-            Positioned(
-              top: 16,
-              right: 16,
-              child: DistanceBadge(
-                latitude: event.latitude!,
-                longitude: event.longitude!,
-                isTablet: isTablet,
-              ),
-            ),
-          
-          // Event info overlay
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: EdgeInsets.all(isTablet ? 24 : 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: isTablet ? 10 : 8),
-                        decoration: BoxDecoration(
-                          gradient: categoryGradient,
-                          borderRadius: BorderRadius.circular(25),
-                          boxShadow: [BoxShadow(color: _primaryRed.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(EventCategoryExtension.fromString(event.category).iconData, color: Colors.white, size: isTablet ? 18 : 16),
-                            const SizedBox(width: 6),
-                            Text(event.categoryText, style: GoogleFonts.inter(fontSize: isTablet ? 14 : 12, fontWeight: FontWeight.w700, color: Colors.white)),
-                          ],
-                        ),
-                      ),
-                      
-                      if (isActive && _appLifecycleState == AppLifecycleState.resumed)
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0.8, end: 1.2),
-                          duration: const Duration(milliseconds: 800),
-                          curve: Curves.easeInOut,
-                          builder: (context, value, child) {
-                            final clampedValue = value.clamp(0.8, 1.2);
-                            return Transform.scale(
-                              scale: clampedValue,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 12, vertical: isTablet ? 10 : 8),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFD966)]),
-                                  borderRadius: BorderRadius.circular(25),
-                                  boxShadow: [BoxShadow(color: Color(0xFFFFD700).withOpacity(0.3), blurRadius: 12, offset: Offset(0, 4))],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.star_rounded, color: Colors.white, size: 16),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'FEATURED', 
-                                      style: GoogleFonts.inter(
-                                        fontSize: isTablet ? 12 : 12, 
-                                        fontWeight: FontWeight.w700, 
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                  SizedBox(height: isTablet ? 24 : 18),
-                  ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(colors: [Colors.white, Colors.white]).createShader(bounds),
-                    child: Text(
-                      event.title,
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 28 : 22,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        height: 1.2,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  SizedBox(height: isTablet ? 16 : 12),
-                  Container(
-                    padding: EdgeInsets.all(isTablet ? 18 : 14),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFFFF4D4D), Color(0xFF00B36B), Color(0xFF00E676)], begin: Alignment.topLeft, end: Alignment.bottomRight, stops: [0.0, 0.5, 1.0]),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(isTablet ? 10 : 8),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(colors: [Color(0xFF006A4E), Color(0xFF004D38)]),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [BoxShadow(color: _primaryGreen.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 3))],
-                              ),
-                              child: Icon(Icons.calendar_today_rounded, color: Colors.white, size: isTablet ? 20 : 18),
-                            ),
-                            SizedBox(width: isTablet ? 16 : 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    event.isMultiDay ? 'Event Period' : 'Date & Time',
-                                    style: GoogleFonts.inter(fontSize: isTablet ? 12 : 10, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w600, letterSpacing: 0.5),
-                                  ),
-                                  Text(
-                                    event.compactFormattedDateTime,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: isTablet ? 14 : 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                      shadows: const [Shadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: isTablet ? 12 : 8),
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(isTablet ? 10 : 8),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(colors: [_primaryRed, _coralRed]),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [BoxShadow(color: _primaryRed.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 3))],
-                              ),
-                              child: Icon(Icons.location_on_rounded, color: Colors.white, size: isTablet ? 20 : 18),
-                            ),
-                            SizedBox(width: isTablet ? 16 : 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Location', style: GoogleFonts.inter(fontSize: isTablet ? 12 : 10, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w600, letterSpacing: 0.5)),
-                                  Text(
-                                    event.location,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: isTablet ? 16 : 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                      shadows: const [Shadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: isTablet ? 18 : 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 10, vertical: isTablet ? 10 : 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.favorite_rounded, color: _goldAccent, size: isTablet ? 18 : 16),
-                            SizedBox(width: isTablet ? 6 : 4),
-                            Text('${event.totalInterested} interested', style: GoogleFonts.inter(fontSize: isTablet ? 16 : 14, fontWeight: FontWeight.w700, color: _goldAccent)),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: isTablet ? 55 : 45,
-                        height: isTablet ? 55 : 45,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [Color(0xFFF42A41), Color(0xFF006A4E)]),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(color: _primaryRed.withOpacity(0.35), blurRadius: 12, offset: const Offset(0, 5)),
-                            BoxShadow(color: _primaryGreen.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2)),
-                          ],
-                        ),
-                        child: Center(child: Icon(Icons.arrow_forward_rounded, color: Colors.white, size: isTablet ? 24 : 20)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-
-Widget _buildCachedEventImage(EventModel event, bool isTablet, {bool thumbnail = false}) {
-  final cacheKey = event.id + (thumbnail ? '_thumb' : '');
-  
-  if (_imageCache.containsKey(cacheKey)) {
-    return _imageCache[cacheKey]!;
-  }
-  
-  Widget imageWidget;
-  
-  // Check if event has banner image
-  if (event.bannerImageUrl != null && event.bannerImageUrl!.isNotEmpty) {
-    try {
-      // Use Cloudinary optimized URLs if available
-      final imageUrl = thumbnail 
-          ? (event.bannerImageUrl!.contains('cloudinary.com') 
-              ? event.thumbnailUrl 
-              : event.bannerImageUrl!)
-          : (isTablet 
-              ? (event.bannerImageUrl!.contains('cloudinary.com') 
-                  ? event.cardUrl 
-                  : event.bannerImageUrl!)
-              : (event.bannerImageUrl!.contains('cloudinary.com') 
-                  ? event.thumbnailUrl 
-                  : event.bannerImageUrl!));
-      
-      imageWidget = Image.network(
-        imageUrl,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: _primaryGreen,
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                  : null,
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          print('❌ Error loading image: $error');
-          return _buildDefaultEventImage(isTablet);
-        },
-      );
-    } catch (e) {
-      print('❌ Error building image widget: $e');
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            print('❌ Error loading image: $error');
+            return _buildDefaultEventImage(isTablet);
+          },
+        );
+      } catch (e) {
+        print('❌ Error building image widget: $e');
+        imageWidget = _buildDefaultEventImage(isTablet);
+      }
+    } else {
       imageWidget = _buildDefaultEventImage(isTablet);
     }
-  } else {
-    imageWidget = _buildDefaultEventImage(isTablet);
+    
+    _imageCache[cacheKey] = imageWidget;
+    return imageWidget;
   }
-  
-  _imageCache[cacheKey] = imageWidget;
-  return imageWidget;
-}
-
 
   LinearGradient _getCategoryGradient(String category) {
     switch (category) {
@@ -3509,6 +2470,7 @@ Widget _buildCachedEventImage(EventModel event, bool isTablet, {bool thumbnail =
           _showAllUpcomingEvents = false;
           _currentSliderIndex = 0;
           _categorizedCache.clear();
+          _cachedFilteredUpcoming = null;
         });
         HapticFeedback.lightImpact();
       },
@@ -3549,233 +2511,228 @@ Widget _buildCachedEventImage(EventModel event, bool isTablet, {bool thumbnail =
     );
   }
 
-// Updated event list item with Cloudinary thumbnail
-Widget _buildPremiumEventListItem(EventModel event, bool isSmallScreen, bool isTablet, {required bool isPast}) {
-  final cardGradient = isPast 
-      ? LinearGradient(colors: [_lightRed.withOpacity(0.3), Colors.white.withOpacity(0.95)])
-      : LinearGradient(colors: [Colors.white.withOpacity(0.98), Colors.white, _lightGreen.withOpacity(0.2), _creamWhite.withOpacity(0.1)]);
-  
-  return Container(
-    margin: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24, vertical: isTablet ? 12 : 8),
-    decoration: BoxDecoration(
-      gradient: cardGradient,
-      borderRadius: BorderRadius.circular(isTablet ? 35 : 30),
-      boxShadow: [
-        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 25, offset: const Offset(0, 12)),
-        BoxShadow(color: isPast ? _primaryRed.withOpacity(0.1) : _primaryGreen.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 5)),
-      ],
-      border: Border.all(color: isPast ? Colors.grey.shade300.withOpacity(0.3) : Colors.grey.shade300.withOpacity(0.2), width: 1.5),
-    ),
-    child: Padding(
-      padding: EdgeInsets.all(isTablet ? 24 : 20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Event Image with Cloudinary thumbnail
-          Stack(
-            children: [
-              Container(
-                width: isTablet ? 120 : 100,
-                height: isTablet ? 120 : 100,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 8))],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
-                  child: _buildCachedEventImage(event, isTablet, thumbnail: true),
-                ),
-              ),
-              // Multi-Day Badge on Image
-              if (event.isMultiDay)
-                Positioned(
-                  top: 4,
-                  left: 4,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.date_range_rounded, color: Colors.white, size: 10),
-                        SizedBox(width: 2),
-                        Text(
-                          'Multi-Day',
-                          style: GoogleFonts.inter(
-                            fontSize: 8,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
+  Widget _buildPremiumEventListItem(EventModel event, bool isSmallScreen, bool isTablet, {required bool isPast}) {
+    final cardGradient = isPast 
+        ? LinearGradient(colors: [_lightRed.withOpacity(0.3), Colors.white.withOpacity(0.95)])
+        : LinearGradient(colors: [Colors.white.withOpacity(0.98), Colors.white, _lightGreen.withOpacity(0.2), _creamWhite.withOpacity(0.1)]);
+    
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 24, vertical: isTablet ? 12 : 8),
+      decoration: BoxDecoration(
+        gradient: cardGradient,
+        borderRadius: BorderRadius.circular(isTablet ? 35 : 30),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 25, offset: const Offset(0, 12)),
+          BoxShadow(color: isPast ? _primaryRed.withOpacity(0.1) : _primaryGreen.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 5)),
+        ],
+        border: Border.all(color: isPast ? Colors.grey.shade300.withOpacity(0.3) : Colors.grey.shade300.withOpacity(0.2), width: 1.5),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(isTablet ? 24 : 20),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                Container(
+                  width: isTablet ? 120 : 100,
+                  height: isTablet ? 120 : 100,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 8))],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+                    child: _buildCachedEventImage(event, isTablet, thumbnail: true),
                   ),
                 ),
-            ],
-          ),
-          SizedBox(width: isTablet ? 24 : 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 12, vertical: isTablet ? 8 : 6),
+                if (event.isMultiDay)
+                  Positioned(
+                    top: 4,
+                    left: 4,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
-                        gradient: isPast ? LinearGradient(colors: [Colors.grey[400]!, Colors.grey[500]!]) : _getCategoryGradient(event.category),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: (isPast ? Colors.grey : _primaryRed).withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))],
+                        gradient: const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(EventCategoryExtension.fromString(event.category).iconData, color: Colors.white, size: isTablet ? 16 : 14),
-                          const SizedBox(width: 6),
-                          Text(event.categoryText, style: GoogleFonts.inter(fontSize: isTablet ? 14 : 12, fontWeight: FontWeight.w600, color: Colors.white)),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    if (!isPast) _buildPremiumInterestButton(event, isTablet),
-                  ],
-                ),
-                SizedBox(height: isTablet ? 16 : 12),
-                Text(
-                  event.title,
-                  style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 22 : 18,
-                    fontWeight: FontWeight.w800,
-                    color: isPast ? _darkGreen.withOpacity(0.7) : _darkGreen,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: isTablet ? 12 : 8),
-                Row(
-                  children: [
-                    Icon(Icons.business_rounded, size: isTablet ? 18 : 16, color: isPast ? _primaryRed : _primaryGreen),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        event.organizer,
-                        style: GoogleFonts.inter(
-                          fontSize: isTablet ? 16 : 14,
-                          color: isPast ? _textLight : _textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: isTablet ? 12 : 8),
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today_rounded, size: isTablet ? 18 : 16, color: isPast ? _coralRed.withOpacity(0.7) : _coralRed),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (event.isMultiDay)
-                            Text(
-                              event.formattedDateRange,
-                              style: GoogleFonts.inter(
-                                fontSize: isTablet ? 13 : 11,
-                                color: isPast ? _textLight : _textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                          Icon(Icons.date_range_rounded, color: Colors.white, size: 10),
+                          SizedBox(width: 2),
                           Text(
-                            event.isMultiDay && event.startTime != null && event.endTime != null
-                                ? '${_formatTimeForDisplay(event.startTime!)} - ${_formatTimeForDisplay(event.endTime!)}'
-                                : event.formattedDate,
+                            'Multi-Day',
                             style: GoogleFonts.inter(
-                              fontSize: isTablet ? 13 : 11,
-                              color: isPast ? _textLight : _textSecondary,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.location_on_rounded, size: isTablet ? 18 : 16, color: isPast ? _mintGreen.withOpacity(0.7) : _mintGreen),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        event.location,
-                        style: GoogleFonts.inter(
-                          fontSize: isTablet ? 15 : 13,
-                          color: isPast ? _textLight : _textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                
-                // Distance Badge for List Item
-                Consumer<LocationFilterProvider>(
-                  builder: (context, locationProvider, _) {
-                    if (event.latitude == null || event.longitude == null) {
-                      return const SizedBox.shrink();
-                    }
-                    return Padding(
-                      padding: EdgeInsets.only(top: isTablet ? 12 : 8),
-                      child: DistanceBadge(
-                        latitude: event.latitude!,
-                        longitude: event.longitude!,
-                        isTablet: isTablet,
-                      ),
-                    );
-                  },
-                ),
-                
-                if (!isPast) ...[
-                  const SizedBox(height: 8),
+                  ),
+              ],
+            ),
+            SizedBox(width: isTablet ? 24 : 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
                     children: [
-                      Icon(Icons.favorite_rounded, size: isTablet ? 16 : 14, color: _goldAccent),
-                      const SizedBox(width: 4),
-                      Text(
-                        event.interestedCountText,
-                        style: GoogleFonts.inter(
-                          fontSize: isTablet ? 14 : 12,
-                          color: _goldAccent,
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 12, vertical: isTablet ? 8 : 6),
+                        decoration: BoxDecoration(
+                          gradient: isPast ? LinearGradient(colors: [Colors.grey[400]!, Colors.grey[500]!]) : _getCategoryGradient(event.category),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [BoxShadow(color: (isPast ? Colors.grey : _primaryRed).withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(EventCategoryExtension.fromString(event.category).iconData, color: Colors.white, size: isTablet ? 16 : 14),
+                            const SizedBox(width: 6),
+                            Text(event.categoryText, style: GoogleFonts.inter(fontSize: isTablet ? 14 : 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      if (!isPast) _buildPremiumInterestButton(event, isTablet),
+                    ],
+                  ),
+                  SizedBox(height: isTablet ? 16 : 12),
+                  Text(
+                    event.title,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 22 : 18,
+                      fontWeight: FontWeight.w800,
+                      color: isPast ? _darkGreen.withOpacity(0.7) : _darkGreen,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: isTablet ? 12 : 8),
+                  Row(
+                    children: [
+                      Icon(Icons.business_rounded, size: isTablet ? 18 : 16, color: isPast ? _primaryRed : _primaryGreen),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          event.organizer,
+                          style: GoogleFonts.inter(
+                            fontSize: isTablet ? 16 : 14,
+                            color: isPast ? _textLight : _textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
+                  SizedBox(height: isTablet ? 12 : 8),
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today_rounded, size: isTablet ? 18 : 16, color: isPast ? _coralRed.withOpacity(0.7) : _coralRed),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (event.isMultiDay)
+                              Text(
+                                event.formattedDateRange,
+                                style: GoogleFonts.inter(
+                                  fontSize: isTablet ? 13 : 11,
+                                  color: isPast ? _textLight : _textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            Text(
+                              event.isMultiDay && event.startTime != null && event.endTime != null
+                                  ? '${_formatTimeForDisplay(event.startTime!)} - ${_formatTimeForDisplay(event.endTime!)}'
+                                  : event.formattedDate,
+                              style: GoogleFonts.inter(
+                                fontSize: isTablet ? 13 : 11,
+                                color: isPast ? _textLight : _textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on_rounded, size: isTablet ? 18 : 16, color: isPast ? _mintGreen.withOpacity(0.7) : _mintGreen),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          event.location,
+                          style: GoogleFonts.inter(
+                            fontSize: isTablet ? 15 : 13,
+                            color: isPast ? _textLight : _textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  Consumer<LocationFilterProvider>(
+                    builder: (context, locationProvider, _) {
+                      if (event.latitude == null || event.longitude == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: EdgeInsets.only(top: isTablet ? 12 : 8),
+                        child: DistanceBadge(
+                          latitude: event.latitude!,
+                          longitude: event.longitude!,
+                          isTablet: isTablet,
+                        ),
+                      );
+                    },
+                  ),
+                  
+                  if (!isPast) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.favorite_rounded, size: isTablet ? 16 : 14, color: _goldAccent),
+                        const SizedBox(width: 4),
+                        Text(
+                          event.interestedCountText,
+                          style: GoogleFonts.inter(
+                            fontSize: isTablet ? 14 : 12,
+                            color: _goldAccent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-// Helper method to format TimeOfDay for display
-String _formatTimeForDisplay(TimeOfDay time) {
-  final hour = time.hourOfPeriod;
-  final minute = time.minute.toString().padLeft(2, '0');
-  final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-  return '$hour:$minute $period';
-}
+  String _formatTimeForDisplay(TimeOfDay time) {
+    final hour = time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
+  }
 
   Widget _buildPremiumInterestButton(EventModel event, bool isTablet) {
     return Consumer2<AuthProvider, EventProvider>(
@@ -3893,7 +2850,6 @@ String _formatTimeForDisplay(TimeOfDay time) {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Only rotate if app is visible
               _appLifecycleState == AppLifecycleState.resumed
                   ? RotationTransition(turns: _rotateAnimation, child: const Icon(Icons.event_available_rounded, color: Colors.white))
                   : const Icon(Icons.event_available_rounded, color: Colors.white),
@@ -4076,1035 +3032,36 @@ String _formatTimeForDisplay(TimeOfDay time) {
     );
   }
 
-// Add Event Dialog with Tabbed Interface (Premium)
-void _showPremiumAddEventDialog(BuildContext context, bool isTablet) {
-  HapticFeedback.mediumImpact();
-  
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-    ),
-    builder: (context) => DraggableScrollableSheet(
-      initialChildSize: 0.95,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scrollController) {
-        return PremiumAddEventDialog(
-          scrollController: scrollController,
-        //  onEventAdded: _loadData,
-          primaryGreen: _primaryGreen,
-          secondaryGold: _goldAccent,
-          accentRed: _primaryRed,
-          lightGreen: _lightGreen,
-          rotateAnimation: _rotateAnimation,
-          appLifecycleState: _appLifecycleState,
-        );
-      },
-    ),
-  );
-}
-
-
-Widget _buildPremiumDialogTextField({
-  required TextEditingController controller,
-  required String label,
-  required bool isRequired,
-  required IconData icon,
-  required LinearGradient gradient,
-  TextInputType keyboardType = TextInputType.text,
-  required bool isTablet,
-}) {
-  final isSmallScreen = !isTablet;
-  
-  return Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          Colors.white.withOpacity(0.95),
-          Colors.white.withOpacity(0.9),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(
-        color: Colors.grey.shade300.withOpacity(0.3),
-        width: 1.5,
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: gradient.colors.first.withOpacity(0.15),
-          blurRadius: 12,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    ),
-    child: TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: GoogleFonts.inter(
-        fontSize: isTablet ? 15 : 13,
-        color: _textPrimary,
-        fontWeight: FontWeight.w600,
-      ),
-      decoration: InputDecoration(
-        labelText: isRequired ? '$label *' : label,
-        labelStyle: GoogleFonts.poppins(
-          fontSize: isTablet ? 13 : 12,
-          color: gradient.colors.first,
-          fontWeight: FontWeight.w600,
-        ),
-        prefixIcon: Container(
-          margin: EdgeInsets.all(isTablet ? 10 : 8),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            gradient: gradient,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: gradient.colors.first.withOpacity(0.25),
-                blurRadius: 6,
-              ),
-            ],
-          ),
-          child: Icon(icon, color: Colors.white, size: isTablet ? 20 : 18),
-        ),
-        border: InputBorder.none,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: isTablet ? 20 : 16,
-          vertical: isTablet ? 12 : 10,
-        ),
-      ),
-    ),
-  );
-}
-
-
-  Widget _buildLocationFieldWithMap(bool isTablet, StateSetter setState) {
-    return GestureDetector(
-      onTap: () async {
-        final result = await showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => OSMLocationPicker(
-            initialLatitude: _eventLatitude,
-            initialLongitude: _eventLongitude,
-            initialAddress: _locationController.text,
-            initialState: _eventState,
-            initialCity: _eventCity,
-            onLocationSelected: (lat, lng, address, state, city) {
-              setState(() {
-                _eventLatitude = lat;
-                _eventLongitude = lng;
-                _eventState = state;
-                _eventCity = city;
-                _locationController.text = address;
-              });
-            },
-          ),
-        );
-      },
-      child: Container(
-        padding: EdgeInsets.all(isTablet ? 24 : 20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.white.withOpacity(0.95),
-              Colors.white.withOpacity(0.9),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(
-            color: _eventLatitude != null ? _emeraldGreen : Colors.grey.shade300.withOpacity(0.3),
-            width: _eventLatitude != null ? 2 : 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: _primaryGreen.withOpacity(0.15),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(Icons.location_on, color: Colors.white),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Location *',
-                        style: GoogleFonts.poppins(
-                          fontSize: isTablet ? 16 : 14,
-                          fontWeight: FontWeight.w600,
-                          color: _primaryGreen,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _locationController.text.isEmpty
-                            ? 'Tap to select location on map'
-                            : _locationController.text,
-                        style: GoogleFonts.inter(
-                          fontSize: isTablet ? 14 : 12,
-                          color: _locationController.text.isEmpty
-                              ? _textLight
-                              : _textPrimary,
-                          fontWeight: _locationController.text.isEmpty
-                              ? FontWeight.w500
-                              : FontWeight.w600,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: _primaryGreen,
-                  size: isTablet ? 16 : 14,
-                ),
-              ],
-            ),
-            if (_eventLatitude != null && _eventLongitude != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _lightGreen.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.my_location,
-                      color: _primaryGreen,
-                      size: isTablet ? 18 : 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Coordinates: ${_eventLatitude!.toStringAsFixed(4)}, ${_eventLongitude!.toStringAsFixed(4)}',
-                      style: GoogleFonts.inter(
-                        fontSize: isTablet ? 12 : 11,
-                        color: _primaryGreen,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_eventState != null) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: _lightRed.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.location_city,
-                        color: _primaryRed,
-                        size: isTablet ? 18 : 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${_eventCity != null ? '$_eventCity, ' : ''}$_eventState',
-                        style: GoogleFonts.inter(
-                          fontSize: isTablet ? 12 : 11,
-                          color: _primaryRed,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _selectEventDate(BuildContext context, StateSetter setState) async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().add(const Duration(days: 7)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: ColorScheme.dark(
-              primary: _emeraldGreen,
-              onPrimary: Colors.white,
-              surface: _darkGreen,
-              onSurface: Colors.white,
-            ),
-            dialogBackgroundColor: _darkGreen,
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: _goldAccent,
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
+  void _showPremiumAddEventDialog(BuildContext context, bool isTablet) {
+    HapticFeedback.mediumImpact();
     
-    if (pickedDate != null) {
-      final TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: const TimeOfDay(hour: 18, minute: 0),
-        builder: (context, child) {
-          return Theme(
-            data: ThemeData.dark().copyWith(
-              colorScheme: ColorScheme.dark(
-                primary: _emeraldGreen,
-                onPrimary: Colors.white,
-                surface: _darkGreen,
-                onSurface: Colors.white,
-              ),
-              dialogBackgroundColor: _darkGreen,
-              textButtonTheme: TextButtonThemeData(
-                style: TextButton.styleFrom(
-                  foregroundColor: _goldAccent,
-                ),
-              ),
-            ),
-            child: child!,
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.95,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) {
+          return PremiumAddEventDialog(
+            scrollController: scrollController,
+            primaryGreen: _primaryGreen,
+            secondaryGold: _goldAccent,
+            accentRed: _primaryRed,
+            lightGreen: _lightGreen,
+            rotateAnimation: _rotateAnimation,
+            appLifecycleState: _appLifecycleState,
           );
         },
-      );
-      
-      if (pickedTime != null) {
-        setState(() {
-          _selectedDate = DateTime(
-            pickedDate.year,
-            pickedDate.month,
-            pickedDate.day,
-            pickedTime.hour,
-            pickedTime.minute,
-          );
-        });
-      }
-    }
-  }
-
-  Future<void> _pickImage(StateSetter setState) async {
-    final ImagePicker picker = ImagePicker();
-    try {
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        setState(() {
-          _selectedImage = image;
-          _isImageLoading = true;
-        });
-        
-        final bytes = await File(image.path).readAsBytes();
-        final base64String = base64Encode(bytes);
-        
-        final mimeType = _getMimeType(image.path);
-        final dataUrl = 'data:$mimeType;base64,$base64String';
-        
-        setState(() {
-          _base64Image = dataUrl;
-          _isImageLoading = false;
-        });
-        
-        print('✅ Image converted to base64, length: ${dataUrl.length}');
-      }
-    } catch (e) {
-      setState(() {
-        _isImageLoading = false;
-      });
-      print('❌ Error picking image: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error picking image: $e'),
-          backgroundColor: _primaryRed,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  String _getMimeType(String filePath) {
-    final extension = filePath.split('.').last.toLowerCase();
-    switch (extension) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'gif':
-        return 'image/gif';
-      case 'bmp':
-        return 'image/bmp';
-      default:
-        return 'image/jpeg';
-    }
-  }
-Future<void> _createEvent(BuildContext context, StateSetter setState) async {
-    // Validation
-    if (_titleController.text.isEmpty) {
-      _showSnackBar('Enter event title', isError: true);
-      return;
-    }
-    
-    if (_organizerController.text.isEmpty) {
-      _showSnackBar('Enter organizer name', isError: true);
-      return;
-    }
-    
-    if (_contactPersonController.text.isEmpty) {
-      _showSnackBar('Enter contact person', isError: true);
-      return;
-    }
-    
-    if (_contactEmailController.text.isEmpty) {
-      _showSnackBar('Enter contact email', isError: true);
-      return;
-    }
-    
-    if (_contactPhoneController.text.isEmpty) {
-      _showSnackBar('Enter contact phone', isError: true);
-      return;
-    }
-    
-    if (_selectedDate == null) {
-      _showSnackBar('Select event date', isError: true);
-      return;
-    }
-    
-    if (_eventLatitude == null || _eventLongitude == null || _locationController.text.isEmpty) {
-      _showSnackBar('Select location on map', isError: true);
-      return;
-    }
-    
-    if (_descriptionController.text.isEmpty) {
-      _showSnackBar('Enter event description', isError: true);
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-    });
-
-    try {
-      final eventProvider = Provider.of<EventProvider>(context, listen: false);
-      final authProvider = context.read<AuthProvider>();
-      final currentUser = authProvider.user;
-      
-      if (currentUser == null) {
-        throw Exception('User not authenticated');
-      }
-
-      // Upload image to Cloudinary if selected
-      String? bannerImageUrl;
-      if (_selectedImage != null) {
-        print('📸 Uploading event banner to Cloudinary...');
-        
-        // Generate event ID first for Cloudinary folder
-        final eventId = DateTime.now().millisecondsSinceEpoch.toString();
-        
-        final imageFile = File(_selectedImage!.path);
-        bannerImageUrl = await CloudinaryService.uploadEventBanner(imageFile, eventId);
-        
-        if (bannerImageUrl == null) {
-          _showSnackBar('Failed to upload banner image. Please try again.', isError: true);
-          setState(() {
-            _isSaving = false;
-          });
-          return;
-        }
-        
-        print('✅ Banner uploaded to Cloudinary: $bannerImageUrl');
-      }
-
-      // Create event date/time combining date and time
-      DateTime eventDateTime = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-        _startTime?.hour ?? 0,
-        _startTime?.minute ?? 0,
-      );
-      
-      DateTime? endDateTime;
-      if (_isMultiDay && _endDate != null) {
-        endDateTime = DateTime(
-          _endDate!.year,
-          _endDate!.month,
-          _endDate!.day,
-          _endTime?.hour ?? 23,
-          _endTime?.minute ?? 59,
-        );
-      }
-
-      await eventProvider.createEvent(
-        title: _titleController.text,
-        organizer: _organizerController.text,
-        contactPerson: _contactPersonController.text,
-        contactEmail: _contactEmailController.text,
-        contactPhone: _contactPhoneController.text,
-        startDate: eventDateTime,  // Use startDate instead of eventDate
-        endDate: endDateTime,       // Add endDate for multi-day events
-        startTime: _startTime,      // Add start time
-        endTime: _endTime,          // Add end time
-        location: _locationController.text,
-        description: _descriptionController.text,
-        category: _selectedEventCategory,
-        bannerImageUrl: bannerImageUrl,  // Use Cloudinary URL instead of base64
-        isFree: _isFree,
-        ticketPrices: _ticketPrices.isEmpty ? null : _ticketPrices,
-        paymentInfo: null,
-        createdBy: currentUser.id,
-        latitude: _eventLatitude,
-        longitude: _eventLongitude,
-        state: _eventState,
-        city: _eventCity,
-      );
-
-      _clearForm();
-      
-      if (mounted) {
-        Navigator.pop(context);
-        _showSuccessDialog(context, isTablet: MediaQuery.of(context).size.width >= 600);
-      }
-    } catch (e) {
-      print('❌ Error creating event: $e');
-      _showSnackBar('Error: ${e.toString()}', isError: true);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
-    }
-  }
-
-/*  void _showSuccessDialog(BuildContext context, {required bool isTablet}) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.all(isTablet ? 40 : 20),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.elasticOut,
-            builder: (context, scale, child) {
-              return Transform.scale(
-                scale: scale,
-                child: child,
-              );
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.white, _mintCream, _peachBlossom],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(60),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0xFF2ECC71),
-                    blurRadius: 40,
-                    offset: Offset(0, 20),
-                    spreadRadius: 3,
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(isTablet ? 50 : 40),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Success Animation
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: 1),
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.elasticOut,
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: 0.85 + (0.15 * value),
-                          child: Container(
-                            padding: EdgeInsets.all(isTablet ? 28 : 24),
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color(0xFF2ECC71),
-                                  blurRadius: 30,
-                                  spreadRadius: 3,
-                                ),
-                              ],
-                            ),
-                            child: _appLifecycleState == AppLifecycleState.resumed
-                                ? RotationTransition(
-                                    turns: _rotateAnimation,
-                                    child: const Icon(
-                                      Icons.check_circle_rounded,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.check_circle_rounded,
-                                    color: Colors.white,
-                                  ),
-                          ),
-                        );
-                      },
-                    ),
-                    SizedBox(height: isTablet ? 40 : 30),
-                    
-                    // Welcome Text
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds),
-                      child: Text(
-                        'Success! 🎉',
-                        style: GoogleFonts.poppins(
-                          fontSize: isTablet ? 40 : 34,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: isTablet ? 20 : 16),
-                    
-                    // Success Message
-                    Text(
-                      'Your event has been created!',
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 22 : 20,
-                        fontWeight: FontWeight.w700,
-                        color: _primaryGreen,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: isTablet ? 24 : 20),
-                    
-                    // Admin Contact Card
-                    Container(
-                      padding: EdgeInsets.all(isTablet ? 24 : 20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_primaryGreen.withOpacity(0.1), _primaryRed.withOpacity(0.1)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(35),
-                        border: Border.all(
-                          color: _primaryGreen.withOpacity(0.25),
-                          width: 2,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Color(0xFFF42A41), Color(0xFF006A4E)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.admin_panel_settings_rounded,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(height: isTablet ? 16 : 12),
-                          Text(
-                            'Admin Approval Pending',
-                            style: GoogleFonts.poppins(
-                              fontSize: isTablet ? 20 : 18,
-                              fontWeight: FontWeight.w700,
-                              color: _primaryGreen,
-                            ),
-                          ),
-                          SizedBox(height: isTablet ? 6 : 4),
-                          Text(
-                            'Your event will appear after review',
-                            style: GoogleFonts.inter(
-                              fontSize: isTablet ? 16 : 14,
-                              color: _textLight,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: isTablet ? 40 : 30),
-                    
-                    // Close Button
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(
-                          vertical: isTablet ? 20 : 18,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(35),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Awesome!',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: isTablet ? 24 : 22,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-*/
-
-
-void _showSuccessDialog(BuildContext context, {required bool isTablet}) {
-  showDialog(
-    context: context,
-    builder: (context) {
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.all(isTablet ? 24 : 16),
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.elasticOut,
-          builder: (context, scale, child) {
-            return Transform.scale(
-              scale: 0.9 + (0.1 * scale),
-              child: child,
-            );
-          },
-          child: Container(
-            width: isTablet ? 400 : 320,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.white, _mintCream, _peachBlossom],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0xFF2ECC71),
-                  blurRadius: 25,
-                  offset: Offset(0, 12),
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(isTablet ? 30 : 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Success Animation - Smaller
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.elasticOut,
-                    builder: (context, value, child) {
-                      return Transform.scale(
-                        scale: 0.9 + (0.1 * value),
-                        child: Container(
-                          padding: EdgeInsets.all(isTablet ? 18 : 14),
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color(0xFF2ECC71),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: _appLifecycleState == AppLifecycleState.resumed
-                              ? RotationTransition(
-                                  turns: _rotateAnimation,
-                                  child: const Icon(
-                                    Icons.check_circle_rounded,
-                                    color: Colors.white,
-                                    size: 32,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.check_circle_rounded,
-                                  color: Colors.white,
-                                  size: 32,
-                                ),
-                        ),
-                      );
-                    },
-                  ),
-                  SizedBox(height: isTablet ? 20 : 16),
-                  
-                  // Success Text - Smaller
-                  ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ).createShader(bounds),
-                    child: Text(
-                      'Success!',
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 28 : 24,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: isTablet ? 8 : 6),
-                  
-                  // Success Message - Smaller
-                  Text(
-                    'Event Created!',
-                    style: GoogleFonts.poppins(
-                      fontSize: isTablet ? 18 : 16,
-                      fontWeight: FontWeight.w600,
-                      color: _primaryGreen,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: isTablet ? 16 : 12),
-                  
-                  // Admin Card - Compact
-                  Container(
-                    padding: EdgeInsets.all(isTablet ? 16 : 12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryGreen.withOpacity(0.1), _primaryRed.withOpacity(0.1)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: _primaryGreen.withOpacity(0.25),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFFF42A41), Color(0xFF006A4E)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.admin_panel_settings_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                        SizedBox(width: isTablet ? 12 : 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Pending Approval',
-                                style: GoogleFonts.poppins(
-                                  fontSize: isTablet ? 14 : 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: _primaryGreen,
-                                ),
-                              ),
-                              Text(
-                                'Review by admin',
-                                style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 11 : 10,
-                                  color: _textLight,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: isTablet ? 20 : 16),
-                  
-                  // Close Button - Compact
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(
-                        vertical: isTablet ? 12 : 10,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Great!',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: isTablet ? 16 : 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    },
-  );
-}
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: isError
-                ? LinearGradient(colors: [_primaryRed, _coralRed])
-                : const LinearGradient(colors: [Color(0xFF006A4E), Color(0xFF004D38)]),
-            borderRadius: BorderRadius.circular(25),
-            boxShadow: [
-              BoxShadow(
-                color: (isError ? _primaryRed : _primaryGreen).withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(
-                isError ? Icons.error_rounded : Icons.check_circle_rounded,
-                color: Colors.white,
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 2),
       ),
     );
   }
-
-  void _clearForm() {
-    _titleController.clear();
-    _organizerController.clear();
-    _contactPersonController.clear();
-    _contactEmailController.clear();
-    _contactPhoneController.clear();
-    _locationController.clear();
-    _descriptionController.clear();
-    _ticketTypeController.clear();
-    _ticketPriceController.clear();
-    _selectedDate = null;
-    _selectedImage = null;
-    _base64Image = null;
-    _isFree = true;
-    _ticketPrices.clear();
-    _selectedEventCategory = 'social';
-    _eventLatitude = null;
-    _eventLongitude = null;
-    _eventState = null;
-    _eventCity = null;
-  }
 }
-
 
 // ====================== PREMIUM ADD EVENT DIALOG ======================
 class PremiumAddEventDialog extends StatefulWidget {
@@ -5140,6 +3097,8 @@ class _PremiumAddEventDialogState extends State<PremiumAddEventDialog>
   
   // Track app lifecycle
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+
+  static const Color _primaryGreen = Color(0xFF006A4E);
   
   // Controllers
   final TextEditingController _titleController = TextEditingController();
@@ -5607,7 +3566,7 @@ class _PremiumAddEventDialogState extends State<PremiumAddEventDialog>
     );
   }
 
-  Widget _buildPremiumSubmitButton() {
+/*  Widget _buildPremiumSubmitButton() {
     final screenWidth = MediaQuery.of(context).size.width;
     
     return Container(
@@ -5650,6 +3609,54 @@ class _PremiumAddEventDialogState extends State<PremiumAddEventDialog>
     );
   }
 
+*/
+
+Widget _buildPremiumSubmitButton() {
+  final screenWidth = MediaQuery.of(context).size.width;
+  
+  return Container(
+    height: screenWidth > 600 ? 50 : 44,
+    decoration: BoxDecoration(
+      gradient: _isSubmitEnabled
+          ? LinearGradient(
+              colors: [_primaryGreen, _primaryGreen.withOpacity(0.8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            )
+          : null,
+      color: _isSubmitEnabled ? null : Colors.grey[300],
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: _isSubmitEnabled
+          ? [
+              BoxShadow(
+                color: _primaryGreen.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ]
+          : null,
+    ),
+    child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _isSubmitEnabled ? _submitForm : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Center(
+          child: Text(
+            'Submit',
+            style: GoogleFonts.poppins(
+              color: _isSubmitEnabled ? Colors.white : Colors.grey[600],
+              fontWeight: FontWeight.w700,
+              fontSize: screenWidth > 600 ? 15 : 13,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+
   Widget _buildBasicInfoTab() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
@@ -5681,15 +3688,16 @@ class _PremiumAddEventDialogState extends State<PremiumAddEventDialog>
           ),
           SizedBox(height: 12),
           _buildTextField(
-            controller: _contactEmailController,
+            controller: _contactEmailController ,
             label: 'Contact Email *',
             icon: Icons.email_rounded,
             keyboardType: TextInputType.emailAddress,
           ),
           SizedBox(height: 12),
           _buildTextField(
+            
             controller: _contactPhoneController,
-            label: 'Contact Phone *',
+            label: 'Enter a valid US number *',
             icon: Icons.phone_rounded,
             keyboardType: TextInputType.phone,
           ),

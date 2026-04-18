@@ -1,4 +1,3 @@
-// lib/screens/user_app/job_sites/others_job_sites_screen.dart
 
 import 'dart:async';
 import 'dart:convert';
@@ -144,405 +143,6 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
   // Search debounce timer
   Timer? _searchDebounceTimer;
 
-/*  void _showLoginRequiredDialog(BuildContext context, String feature) {
-    final Color _primaryRed = Color(0xFFF42A41);
-    final Color _primaryGreen = Color(0xFF006A4E);
-    final Color _goldAccent = Color(0xFFFFD700);
-    
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 30,
-                offset: Offset(0, 15),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header with gradient - reduced size
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_primaryRed, _primaryGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.lock_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Login Required',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              Padding(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'You need to login to $feature',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Create an account or sign in to access full details',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 16),
-                    
-                    // Login Button - reduced size
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => LoginScreen(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primaryGreen,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Login',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    
-                    // Sign Up Button - reduced size
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RegisterScreen(role: 'user'),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _primaryGreen,
-                          side: BorderSide(color: _primaryGreen, width: 2),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Create Account',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    
-                    // Continue Browsing - slightly reduced size
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        'Continue Browsing',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }   */
-
-
-/*   void _showLoginRequiredDialog(BuildContext context, String feature) {
-  final Color _primaryRed = Color(0xFFE03C32);
-  final Color _primaryGreen = Color(0xFF006A4E);
-  final Color _goldAccent = Color(0xFFFFD700);
-  final Color _deepRed = Color(0xFFC62828);
-  
-  showDialog(
-    context: context,
-    builder: (context) => Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.85,
-        constraints: BoxConstraints(maxWidth: 320),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [_primaryGreen, _primaryRed],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 20,
-              offset: Offset(0, 10),
-            ),
-            BoxShadow(
-              color: _primaryRed.withOpacity(0.3),
-              blurRadius: 30,
-              offset: Offset(0, 0),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header with gradient - smaller
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [_primaryRed, _primaryGreen],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_goldAccent, Color(0xFFFFC107)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: _goldAccent.withOpacity(0.4),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.lock_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Login Required',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'to access $feature',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
-                    ),
-                    child: Text(
-                      'Create an account or sign in to access full details',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.9),
-                        height: 1.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  
-                  // Login Button - colorful
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => LoginScreen(),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: _primaryGreen,
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 3,
-                        shadowColor: Colors.white.withOpacity(0.3),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.login_rounded, size: 18),
-                          SizedBox(width: 8),
-                          Text(
-                            'Login',
-                            style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  
-                  // Sign Up Button - colorful
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RegisterScreen(role: 'user'),
-                          ),
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: BorderSide(color: Colors.white, width: 1.5),
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.person_add_rounded, size: 18),
-                          SizedBox(width: 8),
-                          Text(
-                            'Create Account',
-                            style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  
-                  // Continue Browsing - elegant
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                    ),
-                    child: Text(
-                      'Continue Browsing',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: Colors.white.withOpacity(0.7),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-*/
 
 
 
@@ -1551,7 +1151,7 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
     );
   }
 
-  Widget _buildPremiumJobSiteCard(JobSite site, JobSitesBrowseProvider provider, int index, bool isTablet) {
+/*  Widget _buildPremiumJobSiteCard(JobSite site, JobSitesBrowseProvider provider, int index, bool isTablet) {
     final categoryColor = _getCategoryColor(site.category);
     final String siteKey = '${site.id}_${site.name}';
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
@@ -1915,6 +1515,902 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
     );
   }
 
+*/
+
+
+
+/*Widget _buildPremiumJobSiteCard(JobSite site, JobSitesBrowseProvider provider, int index, bool isTablet) {
+  final categoryColor = _getCategoryColor(site.category);
+  final String siteKey = '${site.id}_${site.name}';
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Eye-catching gradient options (choose one or alternate based on index)
+  final List<LinearGradient> _cardGradients = [
+    // Deep Teal to Emerald
+    LinearGradient(
+      colors: [Color(0xFF0F766E), Color(0xFF059669), Color(0xFF10B981)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Royal Purple to Amethyst
+    LinearGradient(
+      colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6), Color(0xFFA78BFA)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Sunset Orange to Coral
+    LinearGradient(
+      colors: [Color(0xFFEA580C), Color(0xFFF97316), Color(0xFFFB923C)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Ocean Blue to Cyan
+    LinearGradient(
+      colors: [Color(0xFF1E40AF), Color(0xFF3B82F6), Color(0xFF38BDF8)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Rose to Pink
+    LinearGradient(
+      colors: [Color(0xFFBE123C), Color(0xFFE11D48), Color(0xFFFB7185)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Forest to Mint
+    LinearGradient(
+      colors: [Color(0xFF047857), Color(0xFF10B981), Color(0xFF34D399)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Indigo to Violet
+    LinearGradient(
+      colors: [Color(0xFF4338CA), Color(0xFF6366F1), Color(0xFF818CF8)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Amber to Yellow
+    LinearGradient(
+      colors: [Color(0xFFD97706), Color(0xFFF59E0B), Color(0xFFFBBF24)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+  ];
+  
+  // Select gradient based on index (alternates for variety)
+  final cardGradient = _cardGradients[index % _cardGradients.length];
+  
+  return TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: 1),
+    duration: Duration(milliseconds: 500 + (index * 100)),
+    curve: Curves.elasticOut,
+    builder: (context, value, child) {
+      final clampedValue = value.clamp(0.0, 1.0);
+      return Transform.scale(
+        scale: 0.92 + (0.08 * clampedValue),
+        child: Opacity(
+          opacity: clampedValue,
+          child: Container(
+            margin: EdgeInsets.symmetric(
+              horizontal: isTablet ? 16 : 12,
+              vertical: 8,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
+                  spreadRadius: -2,
+                ),
+                BoxShadow(
+                  color: _secondaryGold.withOpacity(0.15),
+                  blurRadius: 15,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: cardGradient,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                      if (authProvider.isGuestMode) {
+                        _showLoginRequiredDialog(context, 'view this job site');
+                        return;
+                      }
+                      _openJobSite(site, provider);
+                    },
+                    borderRadius: BorderRadius.circular(28),
+                    splashColor: Colors.white.withOpacity(0.2),
+                    highlightColor: Colors.transparent,
+                    child: Padding(
+                      padding: EdgeInsets.all(isTablet ? 20 : 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header with Logo and Name
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Site Logo with white background for contrast
+                              Container(
+                                width: isTablet ? 60 : 50,
+                                height: isTablet ? 60 : 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.15),
+                                      blurRadius: 10,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(18),
+                                  child: _buildSiteLogo(site, size: isTablet ? 32 : 28, key: siteKey),
+                                ),
+                              ),
+                              
+                              SizedBox(width: 14),
+                              
+                              // Site Name and Category
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      site.name,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: isTablet ? 20 : 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                        letterSpacing: -0.3,
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.black.withOpacity(0.2),
+                                            blurRadius: 4,
+                                            offset: Offset(0, 1),
+                                          ),
+                                        ],
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    SizedBox(height: 6),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.25),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.4),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(site.category.icon, size: 12, color: Colors.white),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            site.category.displayName,
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontSize: isTablet ? 11 : 10,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              // Visit Count Badge
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.25),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.5),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: shouldAnimate
+                                    ? RotationTransition(
+                                        turns: _rotateController,
+                                        child: Icon(
+                                          Icons.trending_up_rounded,
+                                          color: Colors.white,
+                                          size: isTablet ? 16 : 14,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.trending_up_rounded,
+                                        color: Colors.white,
+                                        size: isTablet ? 16 : 14,
+                                      ),
+                              ),
+                            ],
+                          ),
+                          
+                          SizedBox(height: 14),
+                          
+                          // Description with white text
+                          Text(
+                            site.description,
+                            style: GoogleFonts.inter(
+                              fontSize: isTablet ? 14 : 13,
+                              color: Colors.white.withOpacity(0.9),
+                              height: 1.4,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          
+                          // Features with semi-transparent chips
+                          if (site.features.isNotEmpty) ...[
+                            SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: site.features.map((feature) {
+                                return Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(25),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.3),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    feature,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontSize: isTablet ? 11 : 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                          
+                          SizedBox(height: 14),
+                          
+                          // Stats and Visit Button
+                          Row(
+                            children: [
+                              // Click Count
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(25),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.3),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.remove_red_eye_rounded, 
+                                      size: 14,
+                                      color: Colors.white
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      '${_formatNumber(site.clickCount)} clicks',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: isTablet ? 12 : 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              const Spacer(),
+                              
+                              // Visit Site Button
+                              GestureDetector(
+                                onTap: () {
+                                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                                  if (authProvider.isGuestMode) {
+                                    _showLoginRequiredDialog(context, 'view this job site');
+                                    return;
+                                  }
+                                  _openJobSite(site, provider);
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isTablet ? 18 : 14,
+                                    vertical: isTablet ? 10 : 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(30),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 12,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Visit Site',
+                                        style: GoogleFonts.poppins(
+                                          color: _charcoal,
+                                          fontSize: isTablet ? 14 : 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Icon(
+                                        Icons.open_in_new_rounded,
+                                        color: _charcoal,
+                                        size: isTablet ? 16 : 14,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          SizedBox(height: 12),
+                          
+                          // URL Row
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.25),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.link_rounded, 
+                                  size: 16,
+                                  color: Colors.white
+                                ),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    site.url,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontSize: isTablet ? 13 : 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _copyToClipboard(site.url),
+                                  child: Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.copy_rounded, 
+                                      size: 16,
+                                      color: Colors.white
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+ 
+ */
+ 
+ 
+ Widget _buildPremiumJobSiteCard(JobSite site, JobSitesBrowseProvider provider, int index, bool isTablet) {
+  final categoryColor = _getCategoryColor(site.category);
+  final String siteKey = '${site.id}_${site.name}';
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Same margin as other cards (16 for tablet, 12 for mobile)
+  final horizontalMargin = isTablet ? 16.0 : 12.0;
+  
+  // Eye-catching gradient options (choose one or alternate based on index)
+  final List<LinearGradient> _cardGradients = [
+    // Deep Teal to Emerald
+    LinearGradient(
+      colors: [Color(0xFF0F766E), Color(0xFF059669), Color(0xFF10B981)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Royal Purple to Amethyst
+    LinearGradient(
+      colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6), Color(0xFFA78BFA)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Sunset Orange to Coral
+    LinearGradient(
+      colors: [Color(0xFFEA580C), Color(0xFFF97316), Color(0xFFFB923C)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Ocean Blue to Cyan
+    LinearGradient(
+      colors: [Color(0xFF1E40AF), Color(0xFF3B82F6), Color(0xFF38BDF8)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Rose to Pink
+    LinearGradient(
+      colors: [Color(0xFFBE123C), Color(0xFFE11D48), Color(0xFFFB7185)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Forest to Mint
+    LinearGradient(
+      colors: [Color(0xFF047857), Color(0xFF10B981), Color(0xFF34D399)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Indigo to Violet
+    LinearGradient(
+      colors: [Color(0xFF4338CA), Color(0xFF6366F1), Color(0xFF818CF8)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    // Amber to Yellow
+    LinearGradient(
+      colors: [Color(0xFFD97706), Color(0xFFF59E0B), Color(0xFFFBBF24)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+  ];
+  
+  // Select gradient based on index (alternates for variety)
+  final cardGradient = _cardGradients[index % _cardGradients.length];
+  
+  Widget cardContent = Container(
+    margin: EdgeInsets.symmetric(
+      horizontal: horizontalMargin,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.15),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+          spreadRadius: -1,
+        ),
+        BoxShadow(
+          color: _secondaryGold.withOpacity(0.15),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: cardGradient,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.2),
+            width: 0.5,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isGuestMode) {
+                _showLoginRequiredDialog(context, 'view this job site');
+                return;
+              }
+              _openJobSite(site, provider);
+            },
+            borderRadius: BorderRadius.circular(20),
+            splashColor: Colors.white.withOpacity(0.2),
+            highlightColor: Colors.transparent,
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 14 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header with Logo and Name - Compact
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Site Logo with white background for contrast
+                      Container(
+                        width: isTablet ? 44 : 38,
+                        height: isTablet ? 44 : 38,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: _buildSiteLogo(site, size: isTablet ? 24 : 20, key: siteKey),
+                        ),
+                      ),
+                      
+                      SizedBox(width: 10),
+                      
+                      // Site Name and Category
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              site.name,
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 16 : 14,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: -0.3,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 4),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.4),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(site.category.icon, size: 10, color: Colors.white),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    site.category.displayName,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontSize: isTablet ? 10 : 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Visit Count Badge - Compact
+                      Container(
+                        padding: EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.5),
+                            width: 1,
+                          ),
+                        ),
+                        child: shouldAnimate
+                            ? RotationTransition(
+                                turns: _rotateController,
+                                child: Icon(
+                                  Icons.trending_up_rounded,
+                                  color: Colors.white,
+                                  size: isTablet ? 14 : 12,
+                                ),
+                              )
+                            : Icon(
+                                Icons.trending_up_rounded,
+                                color: Colors.white,
+                                size: isTablet ? 14 : 12,
+                              ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Description - Compact
+                  Text(
+                    site.description,
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 12 : 11,
+                      color: Colors.white.withOpacity(0.9),
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  // Features with semi-transparent chips - Compact
+                  if (site.features.isNotEmpty) ...[
+                    SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: site.features.map((feature) {
+                        return Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Text(
+                            feature,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: isTablet ? 10 : 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                  
+                  SizedBox(height: 10),
+                  
+                  // Stats and Visit Button - Compact
+                  Row(
+                    children: [
+                      // Click Count
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.remove_red_eye_rounded, 
+                              size: 12,
+                              color: Colors.white
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              '${_formatNumber(site.clickCount)}',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: isTablet ? 10 : 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const Spacer(),
+                      
+                      // Visit Site Button - Compact
+                      GestureDetector(
+                        onTap: () {
+                          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                          if (authProvider.isGuestMode) {
+                            _showLoginRequiredDialog(context, 'view this job site');
+                            return;
+                          }
+                          _openJobSite(site, provider);
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 12 : 10,
+                            vertical: isTablet ? 6 : 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Visit',
+                                style: GoogleFonts.poppins(
+                                  color: _charcoal,
+                                  fontSize: isTablet ? 12 : 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(
+                                Icons.open_in_new_rounded,
+                                color: _charcoal,
+                                size: isTablet ? 12 : 10,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // URL Row - Compact
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.25),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.link_rounded, 
+                          size: 12,
+                          color: Colors.white
+                        ),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            site.url,
+                            style: GoogleFonts.inter(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: isTablet ? 11 : 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => _copyToClipboard(site.url),
+                          child: Container(
+                            padding: EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.copy_rounded, 
+                              size: 12,
+                              color: Colors.white
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  
+  if (shouldAnimate) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.96 + (0.04 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: cardContent,
+          ),
+        );
+      },
+    );
+  }
+  
+  return cardContent;
+}
+ 
+ 
+ 
   // Main logo builder that handles both asset and base64
   Widget _buildSiteLogo(JobSite site, {required double size, required String key}) {
     // If previously failed, show fallback immediately

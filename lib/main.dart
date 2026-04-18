@@ -12,12 +12,12 @@ import 'package:bangla_hub/screens/admin_app/screens/home/admin_homescreen.dart'
 import 'package:bangla_hub/screens/auth/landing_screen.dart';
 import 'package:bangla_hub/screens/auth/login_screen.dart';
 import 'package:bangla_hub/screens/auth/signup_screen.dart';
-import 'package:bangla_hub/screens/user_app/event/events_screen.dart';
 import 'package:bangla_hub/screens/user_app/home_screen.dart';
 import 'package:bangla_hub/screens/user_app/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -61,27 +61,20 @@ class MyApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
         useMaterial3: true,
       ),
-            navigatorKey: navigatorKey,
-
+      navigatorKey: navigatorKey,
       home: const AuthWrapper(),
       routes: {
-        '/splash': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => RegisterScreen(role: 'user'),
-        '/home': (context) => const HomeScreen(),
-        '/admin': (context) => const AdminHomeScreen(),
         '/welcome': (context) => WelcomeScreen(
               onComplete: () {
-                Navigator.of(context).pushReplacementNamed('/home');
+                navigatorKey.currentState?.pushReplacementNamed('/home');
               },
             ),
-        '/events': (context) => const EventsScreen(),
       },
     );
   }
 }
-
-
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({Key? key}) : super(key: key);
@@ -92,10 +85,20 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _showSplash = true;
+  
+  // Store the screen instances at the class level
+  late Widget _homeScreen;
+  late Widget _adminScreen;
+  bool _screensInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    
+    // Initialize screens once
+    _homeScreen = const HomeScreen();
+    _adminScreen = const AdminHomeScreen();
+    _screensInitialized = true;
     
     // Show splash for 4 seconds minimum
     Future.delayed(const Duration(seconds: 4), () {
@@ -109,15 +112,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    // Show splash screen for first 4 seconds
     if (_showSplash) {
       return const SplashScreen();
     }
 
-    // After splash, use Consumer to react to auth changes in REAL TIME
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        // Show loading while checking auth
         if (authProvider.isLoading) {
           return const Scaffold(
             body: Center(
@@ -126,11 +126,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
         }
 
-        // Show appropriate screen based on auth state
         if (authProvider.isLoggedIn && authProvider.user != null) {
-          return authProvider.user!.isAdmin 
-              ? const AdminHomeScreen() 
-              : const HomeScreen();
+          if (authProvider.user!.isAdmin) {
+            return _adminScreen;
+          } else {
+            // Return the SAME HomeScreen instance every time
+            return _homeScreen;
+          }
         } else {
           return const LoginScreen();
         }
@@ -139,118 +141,3 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 }
 
-
-
-// Auth State classes for better type safety
-abstract class AuthState {}
-
-class ShowingSplashAuthState extends AuthState {}
-
-class ReadyAuthState extends AuthState {
-  final bool isLoggedIn;
-  final bool isAdmin;
-
-  ReadyAuthState({
-    required this.isLoggedIn,
-    this.isAdmin = false,
-  });
-}
-
-// Splash Screen Widget
-/*class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
-
-  @override
-  _SplashScreenState createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-    
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
-    
-    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
-    
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Center(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.language,
-                      color: Colors.white,
-                      size: 60,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'BanglaHub',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Connecting Bengalis Worldwide',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}  */

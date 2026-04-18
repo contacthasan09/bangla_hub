@@ -1,9 +1,18 @@
-// lib/screens/user_app/my_services/my_services_screen.dart
+// lib/screens/user_app/community_services/my_services/my_services_screen.dart
+import 'package:bangla_hub/screens/user_app/community_services/my_services/widgets/edit_service_dialog.dart';
+import 'package:bangla_hub/screens/user_app/community_services/my_services/widgets/service_card.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:bangla_hub/models/community_services_models.dart';
+import 'package:bangla_hub/providers/auth_provider.dart';
+import 'package:bangla_hub/providers/service_provider_provider.dart';
+import 'package:bangla_hub/screens/user_app/community_services/service_provider_detail_screen.dart';
 
 class MyServicesScreen extends StatefulWidget {
-  const MyServicesScreen({Key? key}) : super(key: key);
+  final VoidCallback? onBack;
+  
+  const MyServicesScreen({Key? key, this.onBack}) : super(key: key);
 
   @override
   State<MyServicesScreen> createState() => _MyServicesScreenState();
@@ -20,6 +29,93 @@ class _MyServicesScreenState extends State<MyServicesScreen> with TickerProvider
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserServices();
+    });
+  }
+
+  Future<void> _loadUserServices() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final serviceProvider = Provider.of<ServiceProviderProvider>(context, listen: false);
+    
+    if (authProvider.user != null) {
+      print('👤 Loading services for user: ${authProvider.user!.id}');
+      await serviceProvider.loadUserServices(authProvider.user!.id);
+    }
+  }
+
+  Future<void> _refreshData() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final serviceProvider = Provider.of<ServiceProviderProvider>(context, listen: false);
+    
+    if (authProvider.user != null) {
+      await serviceProvider.loadUserServices(authProvider.user!.id);
+    }
+  }
+
+  Future<void> _showDeleteConfirmationDialog(ServiceProviderModel service) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Delete Service',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: _primaryRed),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${service.companyName}"? This action cannot be undone.',
+          style: GoogleFonts.inter(),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Delete', style: TextStyle(color: _primaryRed, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+    
+    if (shouldDelete == true) {
+      final serviceProvider = Provider.of<ServiceProviderProvider>(context, listen: false);
+      final success = await serviceProvider.deleteUserService(service.id!);
+      
+      if (mounted && success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Service deleted successfully'),
+            backgroundColor: _primaryGreen,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        await _refreshData();
+      }
+    }
+  }
+
+  void _showEditDialog(ServiceProviderModel service) {
+    showDialog(
+      context: context,
+      builder: (context) => EditServiceDialog(
+        service: service,
+        onUpdate: _refreshData,
+      ),
+    );
+  }
+
+  void _showServiceDetails(ServiceProviderModel service) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ServiceProviderDetailScreen(
+          providerId: service.id!,
+        ),
+      ),
+    );
   }
 
   @override
@@ -35,6 +131,18 @@ class _MyServicesScreenState extends State<MyServicesScreen> with TickerProvider
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_rounded,
+            color: Colors.white,
+            size: isTablet ? 28 : 24,
+          ),
+          onPressed: () {
+            if (widget.onBack != null) {
+              widget.onBack!();
+            }
+          },
+        ),
         title: Text(
           'My Services',
           style: GoogleFonts.poppins(
@@ -59,9 +167,19 @@ class _MyServicesScreenState extends State<MyServicesScreen> with TickerProvider
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          _MyServicesList(),
-          _PendingServicesList(),
+        children: [
+          _MyServicesList(
+            onEdit: _showEditDialog,
+            onDelete: _showDeleteConfirmationDialog,
+            onTap: _showServiceDetails,
+            onRefresh: _refreshData,
+          ),
+          _PendingServicesList(
+            onEdit: _showEditDialog,
+            onDelete: _showDeleteConfirmationDialog,
+            onTap: _showServiceDetails,
+            onRefresh: _refreshData,
+          ),
         ],
       ),
     );
@@ -69,10 +187,57 @@ class _MyServicesScreenState extends State<MyServicesScreen> with TickerProvider
 }
 
 class _MyServicesList extends StatelessWidget {
-  const _MyServicesList();
+  final Function(ServiceProviderModel) onEdit;
+  final Function(ServiceProviderModel) onDelete;
+  final Function(ServiceProviderModel) onTap;
+  final Future<void> Function() onRefresh;
+
+  const _MyServicesList({
+    required this.onEdit,
+    required this.onDelete,
+    required this.onTap,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final serviceProvider = Provider.of<ServiceProviderProvider>(context);
+    final services = serviceProvider.myApprovedServices;
+    final isLoading = serviceProvider.isLoading;
+    
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    if (services.isEmpty) {
+      return _buildEmptyState(
+        context: context,
+        icon: Icons.miscellaneous_services_rounded,
+        title: 'No Services Yet',
+        message: 'Services you create will be shown here after approval',
+      );
+    }
+    
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        padding: EdgeInsets.all(12),
+        itemCount: services.length,
+        itemBuilder: (context, index) {
+          final service = services[index];
+          return ServiceCard(
+            service: service,
+            onTap: () => onTap(service),
+            onEdit: () => onEdit(service),
+            onDelete: () => onDelete(service),
+            showActions: true,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState({required IconData icon, required BuildContext context, required String title, required String message}) {
     final isTablet = MediaQuery.of(context).size.width >= 600;
     
     return Center(
@@ -81,14 +246,10 @@ class _MyServicesList extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.miscellaneous_services_rounded,
-              size: isTablet ? 80 : 60,
-              color: Colors.grey[400],
-            ),
+            Icon(icon, size: isTablet ? 80 : 60, color: Colors.grey[400]),
             const SizedBox(height: 20),
             Text(
-              'Your Services Will Appear Here',
+              title,
               style: GoogleFonts.poppins(
                 fontSize: isTablet ? 20 : 16,
                 fontWeight: FontWeight.w600,
@@ -97,7 +258,7 @@ class _MyServicesList extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Services you create will be shown here after approval',
+              message,
               style: GoogleFonts.inter(
                 fontSize: isTablet ? 14 : 12,
                 color: Colors.grey[500],
@@ -112,10 +273,57 @@ class _MyServicesList extends StatelessWidget {
 }
 
 class _PendingServicesList extends StatelessWidget {
-  const _PendingServicesList();
+  final Function(ServiceProviderModel) onEdit;
+  final Function(ServiceProviderModel) onDelete;
+  final Function(ServiceProviderModel) onTap;
+  final Future<void> Function() onRefresh;
+
+  const _PendingServicesList({
+    required this.onEdit,
+    required this.onDelete,
+    required this.onTap,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final serviceProvider = Provider.of<ServiceProviderProvider>(context);
+    final services = serviceProvider.myPendingServices;
+    final isLoading = serviceProvider.isLoading;
+    
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    if (services.isEmpty) {
+      return _buildEmptyState(
+        context: context,
+        icon: Icons.hourglass_empty_rounded,
+        title: 'No Pending Services',
+        message: 'Services waiting for approval will appear here',
+      );
+    }
+    
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        padding: EdgeInsets.all(12),
+        itemCount: services.length,
+        itemBuilder: (context, index) {
+          final service = services[index];
+          return ServiceCard(
+            service: service,
+            onTap: () => onTap(service),
+            onEdit: () => onEdit(service),
+            onDelete: () => onDelete(service),
+            showActions: true,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState({required IconData icon, required BuildContext context, required String title, required String message}) {
     final isTablet = MediaQuery.of(context).size.width >= 600;
     
     return Center(
@@ -124,14 +332,10 @@ class _PendingServicesList extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.hourglass_empty_rounded,
-              size: isTablet ? 80 : 60,
-              color: Colors.orange[400],
-            ),
+            Icon(icon, size: isTablet ? 80 : 60, color: Colors.orange[400]),
             const SizedBox(height: 20),
             Text(
-              'Pending Approval',
+              title,
               style: GoogleFonts.poppins(
                 fontSize: isTablet ? 20 : 16,
                 fontWeight: FontWeight.w600,
@@ -140,7 +344,7 @@ class _PendingServicesList extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Your submitted services are waiting for admin approval',
+              message,
               style: GoogleFonts.inter(
                 fontSize: isTablet ? 14 : 12,
                 color: Colors.grey[500],

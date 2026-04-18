@@ -59,7 +59,53 @@ class _AdminSportsClubsScreenState extends State<AdminSportsClubsScreen> with Si
         _isLoading = false;
       });
     }
+
   }
+
+  Future<void> _permanentDeleteClub(String id) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Permanent Delete'),
+      content: const Text(
+        'Are you sure you want to permanently delete this sports club? This action cannot be undone.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Delete Permanently'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed == true) {
+    final provider = Provider.of<EducationProvider>(context, listen: false);
+    final success = await provider.permanentDeleteSportsClub(id);
+    
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sports club permanently deleted'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete: ${provider.error}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
 
   @override
   void dispose() {
@@ -795,10 +841,8 @@ class _AdminSportsClubsScreenState extends State<AdminSportsClubsScreen> with Si
               SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                //  onPressed: () => _permanentDeleteClub(club),
-                onPressed: () {
-                  
-                },
+                  onPressed: () => _permanentDeleteClub(club.id!),
+                
                   icon: Icon(Icons.delete_forever_rounded, size: isSmallScreen ? 14 : 18),
                   label: Text(
                     'Delete\nPermanently',

@@ -1,4 +1,3 @@
-// models/entrepreneurship_models.dart
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -58,13 +57,13 @@ extension EntrepreneurshipCategoryExtension on EntrepreneurshipCategory {
   Color get color {
     switch (this) {
       case EntrepreneurshipCategory.networkingBusinessPartner:
-        return Color(0xFF3498db); // Blue
+        return Color(0xFF3498db);
       case EntrepreneurshipCategory.jobPostings:
-        return Color(0xFF2ecc71); // Green
+        return Color(0xFF2ecc71);
       case EntrepreneurshipCategory.smallBusinessPromotion:
-        return Color(0xFFe74c3c); // Red
+        return Color(0xFFe74c3c);
       case EntrepreneurshipCategory.lookingForBusinessPartner:
-        return Color(0xFF9b59b6); // Purple
+        return Color(0xFF9b59b6);
     }
   }
 }
@@ -211,11 +210,9 @@ Widget buildProfileImageWidget({
     return _buildDefaultProfileImage(size: size, backgroundColor: backgroundColor, fallbackIcon: fallbackIcon);
   }
 
-  // Check if it's a URL
   if (isUrlString(imageData)) {
     return _buildNetworkImage(imageData, size);
   } else {
-    // Try to decode as Base64
     try {
       final cleanedBase64 = cleanBase64String(imageData);
       final bytes = base64Decode(cleanedBase64);
@@ -228,8 +225,6 @@ Widget buildProfileImageWidget({
 }
 
 Widget _buildNetworkImage(String url, double size) {
-  // Note: You'll need to import cached_network_image in your UI file
-  // This is just a placeholder - the actual implementation should use CachedNetworkImage
   return Container(
     width: size,
     height: size,
@@ -293,7 +288,7 @@ class NetworkingBusinessPartner {
   String state;
   String city;
   BusinessType businessType;
-  String industry; // e.g., Restaurant, IT, Retail, etc.
+  String industry;
   String description;
   String? website;
   String? licenseNumber;
@@ -306,16 +301,14 @@ class NetworkingBusinessPartner {
   List<String> businessHours;
   List<String> languagesSpoken;
 
-  // Add these fields to store user information directly
-  String? postedByUserId; // Keep the user ID for reference
-  String? postedByName; // Store user's full name
-  String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image (can be URL or Base64)
+  String? postedByUserId;
+  String? postedByName;
+  String? postedByEmail;
+  String? postedByProfileImageBase64;
 
   double? latitude;
   double? longitude;
   
-  // Status fields
   bool isVerified;
   bool isActive;
   bool isDeleted;
@@ -324,12 +317,10 @@ class NetworkingBusinessPartner {
   int totalLikes;
   List<String> likedByUsers;
   
-  // Timestamps
   String createdBy;
   DateTime createdAt;
   DateTime updatedAt;
   
-  // Additional information
   Map<String, dynamic>? additionalInfo;
   List<String>? certifications;
   List<String>? socialMediaLinks;
@@ -438,7 +429,6 @@ class NetworkingBusinessPartner {
       type = BusinessType.soleProprietorship;
     }
 
-    // Handle socialMediaLinks - it might be String or List
     List<String>? socialMediaList;
     final socialMediaData = data['socialMediaLinks'];
     
@@ -522,7 +512,6 @@ class NetworkingBusinessPartner {
       ...languagesSpoken.map((lang) => lang.toLowerCase()),
     ];
 
-    // Split multi-word fields
     keywords.addAll(businessName.toLowerCase().split(' '));
     keywords.addAll(ownerName.toLowerCase().split(' '));
     keywords.addAll(description.toLowerCase().split(' '));
@@ -533,7 +522,6 @@ class NetworkingBusinessPartner {
         .toList();
   }
 
-  /// Get the poster's profile image widget (handles both URL and Base64)
   Widget getPosterProfileImageWidget({
     double size = 40,
     VoidCallback? onError,
@@ -592,6 +580,92 @@ class NetworkingBusinessPartner {
       ),
     );
   }
+
+  NetworkingBusinessPartner copyWith({
+    String? id,
+    String? businessName,
+    String? ownerName,
+    String? email,
+    String? phone,
+    String? address,
+    String? state,
+    String? city,
+    BusinessType? businessType,
+    String? industry,
+    String? description,
+    String? website,
+    String? licenseNumber,
+    String? taxId,
+    int? yearsInBusiness,
+    List<String>? servicesOffered,
+    List<String>? targetMarkets,
+    String? logoImageBase64,
+    List<String>? galleryImagesBase64,
+    List<String>? businessHours,
+    List<String>? languagesSpoken,
+    String? postedByUserId,
+    String? postedByName,
+    String? postedByEmail,
+    String? postedByProfileImageBase64,
+    double? latitude,
+    double? longitude,
+    bool? isVerified,
+    bool? isActive,
+    bool? isDeleted,
+    double? rating,
+    int? totalReviews,
+    int? totalLikes,
+    List<String>? likedByUsers,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Map<String, dynamic>? additionalInfo,
+    List<String>? certifications,
+    List<String>? socialMediaLinks,
+  }) {
+    return NetworkingBusinessPartner(
+      id: id ?? this.id,
+      businessName: businessName ?? this.businessName,
+      ownerName: ownerName ?? this.ownerName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      state: state ?? this.state,
+      city: city ?? this.city,
+      businessType: businessType ?? this.businessType,
+      industry: industry ?? this.industry,
+      description: description ?? this.description,
+      website: website ?? this.website,
+      licenseNumber: licenseNumber ?? this.licenseNumber,
+      taxId: taxId ?? this.taxId,
+      yearsInBusiness: yearsInBusiness ?? this.yearsInBusiness,
+      servicesOffered: servicesOffered ?? this.servicesOffered,
+      targetMarkets: targetMarkets ?? this.targetMarkets,
+      logoImageBase64: logoImageBase64 ?? this.logoImageBase64,
+      galleryImagesBase64: galleryImagesBase64 ?? this.galleryImagesBase64,
+      businessHours: businessHours ?? this.businessHours,
+      languagesSpoken: languagesSpoken ?? this.languagesSpoken,
+      postedByUserId: postedByUserId ?? this.postedByUserId,
+      postedByName: postedByName ?? this.postedByName,
+      postedByEmail: postedByEmail ?? this.postedByEmail,
+      postedByProfileImageBase64: postedByProfileImageBase64 ?? this.postedByProfileImageBase64,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isVerified: isVerified ?? this.isVerified,
+      isActive: isActive ?? this.isActive,
+      isDeleted: isDeleted ?? this.isDeleted,
+      rating: rating ?? this.rating,
+      totalReviews: totalReviews ?? this.totalReviews,
+      totalLikes: totalLikes ?? this.totalLikes,
+      likedByUsers: likedByUsers ?? this.likedByUsers,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      additionalInfo: additionalInfo ?? this.additionalInfo,
+      certifications: certifications ?? this.certifications,
+      socialMediaLinks: socialMediaLinks ?? this.socialMediaLinks,
+    );
+  }
 }
 
 // ====================== JOB POSTING MODEL ======================
@@ -610,7 +684,7 @@ class JobPosting {
   String city;
   double? salaryMin;
   double? salaryMax;
-  String salaryPeriod; // hourly, monthly, yearly
+  String salaryPeriod;
   List<String> benefits;
   List<String> skillsRequired;
   String contactEmail;
@@ -619,27 +693,23 @@ class JobPosting {
   DateTime applicationDeadline;
   int numberOfVacancies;
 
-  // Add these fields to store user information directly
-  String? postedByUserId; // Keep the user ID for reference
-  String? postedByName; // Store user's full name
-  String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image (can be URL or Base64)
+  String? postedByUserId;
+  String? postedByName;
+  String? postedByEmail;
+  String? postedByProfileImageBase64;
 
   double? latitude;
   double? longitude;
   
-  // Status fields
   bool isVerified;
   bool isActive;
   bool isDeleted;
   bool isUrgent;
   
-  // Timestamps
   String postedBy;
   DateTime createdAt;
   DateTime updatedAt;
   
-  // Additional info
   String? companyLogoBase64;
   List<String>? additionalDocumentsBase64;
   Map<String, dynamic>? additionalInfo;
@@ -837,7 +907,6 @@ class JobPosting {
         .toList();
   }
 
-  /// Get the poster's profile image widget (handles both URL and Base64)
   Widget getPosterProfileImageWidget({
     double size = 40,
     VoidCallback? onError,
@@ -886,6 +955,90 @@ class JobPosting {
       ),
     );
   }
+
+  JobPosting copyWith({
+    String? id,
+    String? jobTitle,
+    String? companyName,
+    EntrepreneurshipCategory? category,
+    String? description,
+    String? requirements,
+    String? responsibilities,
+    JobType? jobType,
+    ExperienceLevel? experienceLevel,
+    String? location,
+    String? state,
+    String? city,
+    double? salaryMin,
+    double? salaryMax,
+    String? salaryPeriod,
+    List<String>? benefits,
+    List<String>? skillsRequired,
+    String? contactEmail,
+    String? contactPhone,
+    String? applicationLink,
+    DateTime? applicationDeadline,
+    int? numberOfVacancies,
+    String? postedByUserId,
+    String? postedByName,
+    String? postedByEmail,
+    String? postedByProfileImageBase64,
+    double? latitude,
+    double? longitude,
+    bool? isVerified,
+    bool? isActive,
+    bool? isDeleted,
+    bool? isUrgent,
+    String? postedBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? companyLogoBase64,
+    List<String>? additionalDocumentsBase64,
+    Map<String, dynamic>? additionalInfo,
+    List<String>? preferredQualifications,
+  }) {
+    return JobPosting(
+      id: id ?? this.id,
+      jobTitle: jobTitle ?? this.jobTitle,
+      companyName: companyName ?? this.companyName,
+      category: category ?? this.category,
+      description: description ?? this.description,
+      requirements: requirements ?? this.requirements,
+      responsibilities: responsibilities ?? this.responsibilities,
+      jobType: jobType ?? this.jobType,
+      experienceLevel: experienceLevel ?? this.experienceLevel,
+      location: location ?? this.location,
+      state: state ?? this.state,
+      city: city ?? this.city,
+      salaryMin: salaryMin ?? this.salaryMin,
+      salaryMax: salaryMax ?? this.salaryMax,
+      salaryPeriod: salaryPeriod ?? this.salaryPeriod,
+      benefits: benefits ?? this.benefits,
+      skillsRequired: skillsRequired ?? this.skillsRequired,
+      contactEmail: contactEmail ?? this.contactEmail,
+      contactPhone: contactPhone ?? this.contactPhone,
+      applicationLink: applicationLink ?? this.applicationLink,
+      applicationDeadline: applicationDeadline ?? this.applicationDeadline,
+      numberOfVacancies: numberOfVacancies ?? this.numberOfVacancies,
+      postedByUserId: postedByUserId ?? this.postedByUserId,
+      postedByName: postedByName ?? this.postedByName,
+      postedByEmail: postedByEmail ?? this.postedByEmail,
+      postedByProfileImageBase64: postedByProfileImageBase64 ?? this.postedByProfileImageBase64,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isVerified: isVerified ?? this.isVerified,
+      isActive: isActive ?? this.isActive,
+      isDeleted: isDeleted ?? this.isDeleted,
+      isUrgent: isUrgent ?? this.isUrgent,
+      postedBy: postedBy ?? this.postedBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      companyLogoBase64: companyLogoBase64 ?? this.companyLogoBase64,
+      additionalDocumentsBase64: additionalDocumentsBase64 ?? this.additionalDocumentsBase64,
+      additionalInfo: additionalInfo ?? this.additionalInfo,
+      preferredQualifications: preferredQualifications ?? this.preferredQualifications,
+    );
+  }
 }
 
 // ====================== SMALL BUSINESS PROMOTION MODEL ======================
@@ -912,16 +1065,14 @@ class SmallBusinessPromotion {
   String? offerValidity;
   List<String> paymentMethods;
 
-  // Add these fields to store user information directly
-  String? postedByUserId; // Keep the user ID for reference
-  String? postedByName; // Store user's full name
-  String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image (can be URL or Base64)
+  String? postedByUserId;
+  String? postedByName;
+  String? postedByEmail;
+  String? postedByProfileImageBase64;
 
   double? latitude;
   double? longitude;
   
-  // Status fields
   bool isVerified;
   bool isActive;
   bool isDeleted;
@@ -929,12 +1080,10 @@ class SmallBusinessPromotion {
   int totalViews;
   int totalShares;
   
-  // Timestamps
   String createdBy;
   DateTime createdAt;
   DateTime updatedAt;
   
-  // Categories
   EntrepreneurshipCategory category;
   List<String> businessTags;
   
@@ -1102,7 +1251,6 @@ class SmallBusinessPromotion {
         .toList();
   }
 
-  /// Get the poster's profile image widget (handles both URL and Base64)
   Widget getPosterProfileImageWidget({
     double size = 40,
     VoidCallback? onError,
@@ -1114,7 +1262,6 @@ class SmallBusinessPromotion {
     );
   }
 
-  // Add the cleanBase64String method
   static String cleanBase64String(String base64) {
     String cleaned = base64.trim();
     if (cleaned.contains('base64,')) {
@@ -1127,7 +1274,6 @@ class SmallBusinessPromotion {
     return cleaned;
   }
 
-  // Add a method to get logo widget if needed
   Widget getLogoImageWidget({
     double size = 100,
     BoxShape shape = BoxShape.circle,
@@ -1180,6 +1326,88 @@ class SmallBusinessPromotion {
     if (specialOfferDiscount == null) return 'No current offers';
     return '$specialOfferDiscount% OFF - Valid until $offerValidity';
   }
+
+  SmallBusinessPromotion copyWith({
+    String? id,
+    String? businessName,
+    String? ownerName,
+    String? description,
+    String? uniqueSellingPoints,
+    List<String>? productsServices,
+    String? targetAudience,
+    String? location,
+    String? state,
+    String? city,
+    String? contactEmail,
+    String? contactPhone,
+    String? website,
+    String? socialMediaLinks,
+    String? promoVideoLink,
+    String? logoImageBase64,
+    List<String>? galleryImagesBase64,
+    List<String>? businessHours,
+    double? specialOfferDiscount,
+    String? offerValidity,
+    List<String>? paymentMethods,
+    String? postedByUserId,
+    String? postedByName,
+    String? postedByEmail,
+    String? postedByProfileImageBase64,
+    double? latitude,
+    double? longitude,
+    bool? isVerified,
+    bool? isActive,
+    bool? isDeleted,
+    bool? isFeatured,
+    int? totalViews,
+    int? totalShares,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    EntrepreneurshipCategory? category,
+    List<String>? businessTags,
+  }) {
+    return SmallBusinessPromotion(
+      id: id ?? this.id,
+      businessName: businessName ?? this.businessName,
+      ownerName: ownerName ?? this.ownerName,
+      description: description ?? this.description,
+      uniqueSellingPoints: uniqueSellingPoints ?? this.uniqueSellingPoints,
+      productsServices: productsServices ?? this.productsServices,
+      targetAudience: targetAudience ?? this.targetAudience,
+      location: location ?? this.location,
+      state: state ?? this.state,
+      city: city ?? this.city,
+      contactEmail: contactEmail ?? this.contactEmail,
+      contactPhone: contactPhone ?? this.contactPhone,
+      website: website ?? this.website,
+      socialMediaLinks: socialMediaLinks ?? this.socialMediaLinks,
+      promoVideoLink: promoVideoLink ?? this.promoVideoLink,
+      logoImageBase64: logoImageBase64 ?? this.logoImageBase64,
+      galleryImagesBase64: galleryImagesBase64 ?? this.galleryImagesBase64,
+      businessHours: businessHours ?? this.businessHours,
+      specialOfferDiscount: specialOfferDiscount ?? this.specialOfferDiscount,
+      offerValidity: offerValidity ?? this.offerValidity,
+      paymentMethods: paymentMethods ?? this.paymentMethods,
+      postedByUserId: postedByUserId ?? this.postedByUserId,
+      postedByName: postedByName ?? this.postedByName,
+      postedByEmail: postedByEmail ?? this.postedByEmail,
+      postedByProfileImageBase64: postedByProfileImageBase64 ?? this.postedByProfileImageBase64,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isVerified: isVerified ?? this.isVerified,
+      isActive: isActive ?? this.isActive,
+      isDeleted: isDeleted ?? this.isDeleted,
+      isFeatured: isFeatured ?? this.isFeatured,
+      totalViews: totalViews ?? this.totalViews,
+      totalShares: totalShares ?? this.totalShares,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      category: category ?? this.category,
+      businessTags: businessTags ?? this.businessTags,
+    );
+  }
 }
 
 // ====================== LOOKING FOR BUSINESS PARTNER MODEL ======================
@@ -1204,16 +1432,14 @@ class BusinessPartnerRequest {
   String? preferredMeetingMethod;
   List<String>? additionalDocumentsBase64;
 
-  // Add these fields to store user information directly
-  String? postedByUserId; // Keep the user ID for reference
-  String? postedByName; // Store user's full name
-  String? postedByEmail; // Store user's email
-  String? postedByProfileImageBase64; // Store user's profile image (can be URL or Base64)
+  String? postedByUserId;
+  String? postedByName;
+  String? postedByEmail;
+  String? postedByProfileImageBase64;
 
   double? latitude;
   double? longitude;
   
-  // Status fields
   bool isVerified;
   bool isActive;
   bool isDeleted;
@@ -1221,12 +1447,10 @@ class BusinessPartnerRequest {
   int totalViews;
   int totalResponses;
   
-  // Timestamps
   String createdBy;
   DateTime createdAt;
   DateTime updatedAt;
   
-  // Additional info
   EntrepreneurshipCategory category;
   List<String> tags;
   Map<String, dynamic>? additionalInfo;
@@ -1415,7 +1639,6 @@ class BusinessPartnerRequest {
         .toList();
   }
 
-  /// Get the poster's profile image widget (handles both URL and Base64)
   Widget getPosterProfileImageWidget({
     double size = 40,
     VoidCallback? onError,
@@ -1453,6 +1676,86 @@ class BusinessPartnerRequest {
           fontWeight: FontWeight.w500,
         ),
       ),
+    );
+  }
+
+  BusinessPartnerRequest copyWith({
+    String? id,
+    String? title,
+    String? description,
+    PartnerType? partnerType,
+    BusinessType? businessType,
+    String? industry,
+    String? location,
+    String? state,
+    String? city,
+    double? budgetMin,
+    double? budgetMax,
+    String? investmentDuration,
+    List<String>? skillsRequired,
+    List<String>? responsibilities,
+    String? contactName,
+    String? contactEmail,
+    String? contactPhone,
+    String? preferredMeetingMethod,
+    List<String>? additionalDocumentsBase64,
+    String? postedByUserId,
+    String? postedByName,
+    String? postedByEmail,
+    String? postedByProfileImageBase64,
+    double? latitude,
+    double? longitude,
+    bool? isVerified,
+    bool? isActive,
+    bool? isDeleted,
+    bool? isUrgent,
+    int? totalViews,
+    int? totalResponses,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    EntrepreneurshipCategory? category,
+    List<String>? tags,
+    Map<String, dynamic>? additionalInfo,
+  }) {
+    return BusinessPartnerRequest(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      partnerType: partnerType ?? this.partnerType,
+      businessType: businessType ?? this.businessType,
+      industry: industry ?? this.industry,
+      location: location ?? this.location,
+      state: state ?? this.state,
+      city: city ?? this.city,
+      budgetMin: budgetMin ?? this.budgetMin,
+      budgetMax: budgetMax ?? this.budgetMax,
+      investmentDuration: investmentDuration ?? this.investmentDuration,
+      skillsRequired: skillsRequired ?? this.skillsRequired,
+      responsibilities: responsibilities ?? this.responsibilities,
+      contactName: contactName ?? this.contactName,
+      contactEmail: contactEmail ?? this.contactEmail,
+      contactPhone: contactPhone ?? this.contactPhone,
+      preferredMeetingMethod: preferredMeetingMethod ?? this.preferredMeetingMethod,
+      additionalDocumentsBase64: additionalDocumentsBase64 ?? this.additionalDocumentsBase64,
+      postedByUserId: postedByUserId ?? this.postedByUserId,
+      postedByName: postedByName ?? this.postedByName,
+      postedByEmail: postedByEmail ?? this.postedByEmail,
+      postedByProfileImageBase64: postedByProfileImageBase64 ?? this.postedByProfileImageBase64,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isVerified: isVerified ?? this.isVerified,
+      isActive: isActive ?? this.isActive,
+      isDeleted: isDeleted ?? this.isDeleted,
+      isUrgent: isUrgent ?? this.isUrgent,
+      totalViews: totalViews ?? this.totalViews,
+      totalResponses: totalResponses ?? this.totalResponses,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      category: category ?? this.category,
+      tags: tags ?? this.tags,
+      additionalInfo: additionalInfo ?? this.additionalInfo,
     );
   }
 }

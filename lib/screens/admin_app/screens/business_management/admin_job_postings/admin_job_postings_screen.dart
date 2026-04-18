@@ -62,6 +62,53 @@ class _AdminJobPostingsScreenState extends State<AdminJobPostingsScreen> with Si
     }
   }
 
+  Future<void> _permanentDeleteJob(dynamic item) async {
+  final id = item.id!;
+  final title = item.title;
+  
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Permanent Delete'),
+      content: Text(
+        'Are you sure you want to permanently delete "$title"? This action cannot be undone.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Delete Permanently'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed == true) {
+    final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
+    final success = await provider.permanentDeleteJobPosting(id);
+    
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Job posting permanently deleted'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete: ${provider.error}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChange);
@@ -1034,10 +1081,8 @@ Uint8List _base64ToImageForProfile(String base64String) {
               SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-               //   onPressed: () => _permanentDeleteJob(job),
-               onPressed: () {
-                 
-               },
+                  onPressed: () => _permanentDeleteJob(job),
+               
                   icon: Icon(Icons.delete_forever_rounded, size: isSmallScreen ? 14 : 18),
                   label: Text(
                     'Delete\nPermanently',

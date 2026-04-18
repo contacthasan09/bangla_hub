@@ -63,24 +63,24 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
   List<String> _acceptedPaymentMethods = [];
 
   // Premium Color Palette - Matching ServiceProviderDetailScreen
-  final Color _primaryRed = Color(0xFFE03C32); // Bangladesh flag red
-  final Color _primaryGreen = Color(0xFF006A4E); // Bangladesh flag green
-  final Color _darkGreen = Color(0xFF00432D);
-  final Color _lightGreen = Color(0xFFE8F5E9);
-  final Color _goldAccent = Color(0xFFFFD700);
-  final Color _deepRed = Color(0xFFC62828);
-  final Color _bgGradient1 = Color(0xFF0A2F1D);
-  final Color _bgGradient2 = Color(0xFF121212);
-  final Color _cardColor = Color(0x1AFFFFFF);
-  final Color _borderColor = Color(0x33FFFFFF);
-  final Color _textWhite = Color(0xFFFFFFFF);
-  final Color _textLight = Color(0xFFE0E0E0);
-  final Color _textMuted = Color(0xFFAAAAAA);
-  final Color _offWhite = Color(0xFFF8F8F8);
-  final Color _surfaceColor = Color(0xFFF5F7FA);
-  final Color _successGreen = Color(0xFF4CAF50);
-  final Color _warningOrange = Color(0xFFFF9800);
-  final Color _infoBlue = Color(0xFF2196F3);
+  final Color _primaryRed = const Color(0xFFE03C32);
+  final Color _primaryGreen = const Color(0xFF006A4E);
+  final Color _darkGreen = const Color(0xFF00432D);
+  final Color _lightGreen = const Color(0xFFE8F5E9);
+  final Color _goldAccent = const Color(0xFFFFD700);
+  final Color _deepRed = const Color(0xFFC62828);
+  final Color _bgGradient1 = const Color(0xFF0A2F1D);
+  final Color _bgGradient2 = const Color(0xFF121212);
+  final Color _cardColor = const Color(0x1AFFFFFF);
+  final Color _borderColor = const Color(0x33FFFFFF);
+  final Color _textWhite = const Color(0xFFFFFFFF);
+  final Color _textLight = const Color(0xFFE0E0E0);
+  final Color _textMuted = const Color(0xFFAAAAAA);
+  final Color _offWhite = const Color(0xFFF8F8F8);
+  final Color _surfaceColor = const Color(0xFFF5F7FA);
+  final Color _successGreen = const Color(0xFF4CAF50);
+  final Color _warningOrange = const Color(0xFFFF9800);
+  final Color _infoBlue = const Color(0xFF2196F3);
 
   // Scroll controller
   final ScrollController _scrollController = ScrollController();
@@ -279,18 +279,18 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(isTablet ? 35 : 25),
-                border: Border.all(color: _borderColor, width: 2),
+                borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+                border: Border.all(color: _borderColor, width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.4),
-                    blurRadius: 40,
-                    offset: Offset(0, 20),
+                    blurRadius: 30,
+                    offset: const Offset(0, 15),
                   ),
                 ],
               ),
               child: Padding(
-                padding: EdgeInsets.all(isTablet ? 32 : 24),
+                padding: EdgeInsets.all(isTablet ? 24 : 18),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -299,35 +299,35 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                     Row(
                       children: [
                         Container(
-                          width: isTablet ? 60 : 48,
-                          height: isTablet ? 60 : 48,
+                          width: isTablet ? 48 : 42,
+                          height: isTablet ? 48 : 42,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [_primaryRed, _primaryGreen],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                            borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.2),
-                                blurRadius: 10,
-                                offset: Offset(0, 5),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
                           child: Icon(
                             Icons.edit_rounded,
                             color: Colors.white,
-                            size: isTablet ? 32 : 28,
+                            size: isTablet ? 24 : 20,
                           ),
                         ),
-                        SizedBox(width: isTablet ? 20 : 16),
+                        SizedBox(width: isTablet ? 16 : 12),
                         Expanded(
                           child: Text(
                             'Edit Service Provider',
                             style: GoogleFonts.poppins(
-                              fontSize: isTablet ? 28 : 22,
+                              fontSize: isTablet ? 22 : 18,
                               fontWeight: FontWeight.w800,
                               color: _textWhite,
                             ),
@@ -335,7 +335,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         ),
                       ],
                     ),
-                    SizedBox(height: isTablet ? 28 : 24),
+                    SizedBox(height: isTablet ? 20 : 16),
 
                     // Form Fields
                     SingleChildScrollView(
@@ -344,32 +344,53 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         children: [
                           // Basic Information Section
                           _buildSectionTitle('Basic Information', isTablet),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // State Dropdown
                           _buildDropdownSection(
                             title: 'State',
                             icon: Icons.location_on_rounded,
                             isTablet: isTablet,
-                      /*      child: DropdownButton<String>(
+                            child: DropdownButton<String>(
                               value: _selectedState,
                               isExpanded: true,
                               dropdownColor: _bgGradient2,
+                              underline: const SizedBox(),
                               style: TextStyle(
                                 color: _textWhite,
-                                fontSize: isTablet ? 18 : 16,
+                                fontSize: isTablet ? 16 : 14,
                                 fontWeight: FontWeight.w500,
                               ),
-                              underline: SizedBox(),
                               icon: Icon(
                                 Icons.arrow_drop_down_rounded,
                                 color: _textMuted,
-                                size: isTablet ? 32 : 28,
+                                size: isTablet ? 28 : 24,
                               ),
+                              selectedItemBuilder: (context) {
+                                return CommunityStates.states.map((state) {
+                                  return Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      state,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: _textWhite,
+                                        fontSize: isTablet ? 16 : 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  );
+                                }).toList();
+                              },
                               items: CommunityStates.states.map((state) {
                                 return DropdownMenuItem<String>(
                                   value: state,
-                                  child: Text(state , overflow: TextOverflow.ellipsis,),
+                                  child: Text(
+                                    state,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 );
                               }).toList(),
                               onChanged: (value) {
@@ -377,68 +398,9 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                   _selectedState = value;
                                 });
                               },
-                            ),   */
-              child : DropdownButton<String>(
-  value: _selectedState,
-  isExpanded: true,
-  dropdownColor: _bgGradient2,
-  underline: const SizedBox(),
-
-  style: TextStyle(
-    color: _textWhite,
-    fontSize: isTablet ? 18 : 16,
-    fontWeight: FontWeight.w500,
-  ),
-
-  icon: Icon(
-    Icons.arrow_drop_down_rounded,
-    color: _textMuted,
-    size: isTablet ? 32 : 28,
-  ),
-
-  // ✅ FIX #1: selected value overflow
-  selectedItemBuilder: (context) {
-    return CommunityStates.states.map((state) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          state,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: _textWhite,
-            fontSize: isTablet ? 18 : 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
-    }).toList();
-  },
-
-  // ✅ FIX #2: dropdown menu overflow
-  items: CommunityStates.states.map((state) {
-    return DropdownMenuItem<String>(
-      value: state,
-      child: Text(
-        state,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }).toList(),
-
-  onChanged: (value) {
-    setState(() {
-      _selectedState = value;
-    });
-  },
-)
-           
-                        
-                        
-                        
+                            ),
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // City Text Field
                           _buildTextField(
@@ -447,36 +409,75 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             prefixIcon: Icons.location_city_rounded,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Service Category Dropdown
                           _buildDropdownSection(
                             title: 'Service Category',
                             icon: Icons.category_rounded,
                             isTablet: isTablet,
-                    /*        child: DropdownButton<ServiceCategory>(
+                            child: DropdownButton<ServiceCategory>(
                               value: _selectedCategory,
                               isExpanded: true,
                               dropdownColor: _bgGradient2,
+                              underline: const SizedBox(),
                               style: TextStyle(
                                 color: _textWhite,
-                                fontSize: isTablet ? 18 : 16,
+                                fontSize: isTablet ? 16 : 14,
                                 fontWeight: FontWeight.w500,
                               ),
-                              underline: SizedBox(),
                               icon: Icon(
                                 Icons.arrow_drop_down_rounded,
                                 color: _textMuted,
-                                size: isTablet ? 32 : 28,
+                                size: isTablet ? 28 : 24,
                               ),
+                              selectedItemBuilder: (context) {
+                                return ServiceCategory.values.map((category) {
+                                  return Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          category.icon,
+                                          color: _primaryRed,
+                                          size: isTablet ? 18 : 14,
+                                        ),
+                                        SizedBox(width: isTablet ? 12 : 8),
+                                        Expanded(
+                                          child: Text(
+                                            category.displayName,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: _textWhite,
+                                              fontSize: isTablet ? 16 : 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList();
+                              },
                               items: ServiceCategory.values.map((category) {
                                 return DropdownMenuItem<ServiceCategory>(
                                   value: category,
                                   child: Row(
                                     children: [
-                                      Icon(category.icon, color: _primaryRed, size: isTablet ? 22 : 18),
-                                      SizedBox(width: isTablet ? 16 : 12),
-                                      Text(category.displayName , overflow: TextOverflow.ellipsis,),
+                                      Icon(
+                                        category.icon,
+                                        color: _primaryRed,
+                                        size: isTablet ? 18 : 14,
+                                      ),
+                                      SizedBox(width: isTablet ? 12 : 8),
+                                      Expanded(
+                                        child: Text(
+                                          category.displayName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 );
@@ -487,98 +488,9 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                   _updateServiceProviders();
                                 });
                               },
-                            ),  */
-
-                    child : DropdownButton<ServiceCategory>(
-  value: _selectedCategory,
-  isExpanded: true,
-  dropdownColor: _bgGradient2,
-  underline: const SizedBox(),
-
-  style: TextStyle(
-    color: _textWhite,
-    fontSize: isTablet ? 18 : 16,
-    fontWeight: FontWeight.w500,
-  ),
-
-  icon: Icon(
-    Icons.arrow_drop_down_rounded,
-    color: _textMuted,
-    size: isTablet ? 32 : 28,
-  ),
-
-  // ✅ FIX #1: selected value overflow (closed dropdown)
-  selectedItemBuilder: (context) {
-    return ServiceCategory.values.map((category) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Row(
-          children: [
-            Icon(
-              category.icon,
-              color: _primaryRed,
-              size: isTablet ? 22 : 18,
-            ),
-            SizedBox(width: isTablet ? 16 : 12),
-
-            // 🔑 Expanded is REQUIRED for ellipsis inside Row
-            Expanded(
-              child: Text(
-                category.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: _textWhite,
-                  fontSize: isTablet ? 18 : 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }).toList();
-  },
-
-  // ✅ FIX #2: dropdown menu items overflow
-  items: ServiceCategory.values.map((category) {
-    return DropdownMenuItem<ServiceCategory>(
-      value: category,
-      child: Row(
-        children: [
-          Icon(
-            category.icon,
-            color: _primaryRed,
-            size: isTablet ? 22 : 18,
-          ),
-          SizedBox(width: isTablet ? 16 : 12),
-
-          // 🔑 Expanded required here too
-          Expanded(
-            child: Text(
-              category.displayName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }).toList(),
-
-  onChanged: (value) {
-    setState(() {
-      _selectedCategory = value;
-      _updateServiceProviders();
-    });
-  },
-)
-   
-                       
-                       
-                       
+                            ),
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Service Provider Dropdown
                           if (_selectedCategory != null)
@@ -588,25 +500,46 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                   title: 'Service Provider',
                                   icon: Icons.work_rounded,
                                   isTablet: isTablet,
-                      /*            child: DropdownButton<String>(
+                                  child: DropdownButton<String>(
                                     value: _selectedServiceProvider,
                                     isExpanded: true,
                                     dropdownColor: _bgGradient2,
+                                    underline: const SizedBox(),
                                     style: TextStyle(
                                       color: _textWhite,
-                                      fontSize: isTablet ? 18 : 16,
+                                      fontSize: isTablet ? 16 : 14,
                                       fontWeight: FontWeight.w500,
                                     ),
-                                    underline: SizedBox(),
                                     icon: Icon(
                                       Icons.arrow_drop_down_rounded,
                                       color: _textMuted,
-                                      size: isTablet ? 32 : 28,
+                                      size: isTablet ? 28 : 24,
                                     ),
+                                    selectedItemBuilder: (context) {
+                                      return _availableServiceProviders.map((provider) {
+                                        return Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            provider,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: _textWhite,
+                                              fontSize: isTablet ? 16 : 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList();
+                                    },
                                     items: _availableServiceProviders.map((provider) {
                                       return DropdownMenuItem<String>(
                                         value: provider,
-                                        child: Text(provider , overflow: TextOverflow.ellipsis,),
+                                        child: Text(
+                                          provider,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       );
                                     }).toList(),
                                     onChanged: (value) {
@@ -615,68 +548,9 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                         _updateSubServiceProviders();
                                       });
                                     },
-                                  ), */
-                        child  : DropdownButton<String>(
-  value: _selectedServiceProvider,
-  isExpanded: true,
-  dropdownColor: _bgGradient2,
-  underline: const SizedBox(),
-
-  style: TextStyle(
-    color: _textWhite,
-    fontSize: isTablet ? 18 : 16,
-    fontWeight: FontWeight.w500,
-  ),
-
-  icon: Icon(
-    Icons.arrow_drop_down_rounded,
-    color: _textMuted,
-    size: isTablet ? 32 : 28,
-  ),
-
-  // ✅ FIX #1: selected value overflow
-  selectedItemBuilder: (context) {
-    return _availableServiceProviders.map((provider) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          provider,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: _textWhite,
-            fontSize: isTablet ? 18 : 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
-    }).toList();
-  },
-
-  // ✅ FIX #2: dropdown menu overflow
-  items: _availableServiceProviders.map((provider) {
-    return DropdownMenuItem<String>(
-      value: provider,
-      child: Text(
-        provider,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }).toList(),
-
-  onChanged: (value) {
-    setState(() {
-      _selectedServiceProvider = value;
-      _updateSubServiceProviders();
-    });
-  },
-)
- 
-                         
-                         
+                                  ),
                                 ),
-                                SizedBox(height: isTablet ? 20 : 16),
+                                SizedBox(height: isTablet ? 16 : 12),
                               ],
                             ),
 
@@ -688,124 +562,79 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                   title: 'Sub-Service Provider',
                                   icon: Icons.work_outline_rounded,
                                   isTablet: isTablet,
-                           /*       child: DropdownButton<String?>(
+                                  child: DropdownButton<String?>(
                                     value: _selectedSubServiceProvider,
                                     isExpanded: true,
                                     dropdownColor: _bgGradient2,
+                                    underline: const SizedBox(),
                                     style: TextStyle(
                                       color: _textWhite,
-                                      fontSize: isTablet ? 18 : 16,
+                                      fontSize: isTablet ? 16 : 14,
                                       fontWeight: FontWeight.w500,
                                     ),
-                                    underline: SizedBox(),
                                     icon: Icon(
                                       Icons.arrow_drop_down_rounded,
                                       color: _textMuted,
-                                      size: isTablet ? 32 : 28,
+                                      size: isTablet ? 28 : 24,
                                     ),
+                                    selectedItemBuilder: (context) {
+                                      return [
+                                        null,
+                                        ..._availableSubServiceProviders,
+                                      ].map((provider) {
+                                        return Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            provider ?? 'None',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: _textWhite,
+                                              fontSize: isTablet ? 16 : 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList();
+                                    },
                                     items: [
-                                      DropdownMenuItem<String?>(
+                                      const DropdownMenuItem<String?>(
                                         value: null,
-                                        child: Text('None' , overflow: TextOverflow.ellipsis,),
+                                        child: Text(
+                                          'None',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                       ..._availableSubServiceProviders.map((provider) {
                                         return DropdownMenuItem<String?>(
                                           value: provider,
-                                          child: Text(provider),
+                                          child: Text(
+                                            provider,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         );
                                       }),
-                                    ].toList(),
+                                    ],
                                     onChanged: (value) {
                                       setState(() {
                                         _selectedSubServiceProvider = value;
                                       });
                                     },
-                                  ),  */
-            
-            child : DropdownButton<String?>(
-  value: _selectedSubServiceProvider,
-  isExpanded: true,
-  dropdownColor: _bgGradient2,
-  underline: const SizedBox(),
-
-  style: TextStyle(
-    color: _textWhite,
-    fontSize: isTablet ? 18 : 16,
-    fontWeight: FontWeight.w500,
-  ),
-
-  icon: Icon(
-    Icons.arrow_drop_down_rounded,
-    color: _textMuted,
-    size: isTablet ? 32 : 28,
-  ),
-
-  // ✅ selected value overflow fix
-  selectedItemBuilder: (context) {
-    return [
-      // Map null to "None" for selected value
-      null,
-      ..._availableSubServiceProviders,
-    ].map((provider) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          provider ?? 'None',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: _textWhite,
-            fontSize: isTablet ? 18 : 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
-    }).toList();
-  },
-
-  // ✅ dropdown menu items overflow
-  items: [
-    DropdownMenuItem<String?>(
-      value: null,
-      child: Text(
-        'None',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-    ),
-    ..._availableSubServiceProviders.map((provider) {
-      return DropdownMenuItem<String?>(
-        value: provider,
-        child: Text(
-          provider,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      );
-    }),
-  ],
-
-  onChanged: (value) {
-    setState(() {
-      _selectedSubServiceProvider = value;
-    });
-  },
-)
-
-            
-            
+                                  ),
                                 ),
-                                SizedBox(height: isTablet ? 20 : 16),
+                                SizedBox(height: isTablet ? 16 : 12),
                               ],
                             ),
 
                           // Profile Image
                           _buildImagePicker(isTablet, setState),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Provider Details Section
                           _buildSectionTitle('Provider Details', isTablet),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Name and Company
                           _buildTextField(
@@ -814,7 +643,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             prefixIcon: Icons.person_rounded,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           _buildTextField(
                             controller: _companyNameController,
@@ -822,17 +651,17 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             prefixIcon: Icons.business_rounded,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Contact Information
                           _buildTextField(
                             controller: _phoneController,
-                            labelText: 'Phone *',
+                            labelText: 'Enter a valid US number *',
                             prefixIcon: Icons.phone_rounded,
                             keyboardType: TextInputType.phone,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           _buildTextField(
                             controller: _emailController,
@@ -841,7 +670,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             keyboardType: TextInputType.emailAddress,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           _buildTextField(
                             controller: _addressController,
@@ -850,43 +679,43 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             maxLines: 2,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Description
                           Container(
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
-                              border: Border.all(color: _borderColor, width: 1.5),
+                              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                              border: Border.all(color: _borderColor, width: 1.2),
                             ),
                             child: TextFormField(
                               controller: _descriptionController,
-                              maxLines: 4,
+                              maxLines: 3,
                               style: TextStyle(
                                 color: _textWhite,
-                                fontSize: isTablet ? 18 : 16,
+                                fontSize: isTablet ? 16 : 14,
                               ),
                               decoration: InputDecoration(
                                 labelText: 'Description',
                                 labelStyle: TextStyle(
                                   color: _textMuted,
-                                  fontSize: isTablet ? 16 : 14,
+                                  fontSize: isTablet ? 14 : 12,
                                 ),
                                 alignLabelWithHint: true,
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.all(isTablet ? 24 : 20),
+                                contentPadding: EdgeInsets.all(isTablet ? 18 : 14),
                                 prefixIcon: Padding(
-                                  padding: EdgeInsets.only(top: 20),
+                                  padding: const EdgeInsets.only(top: 16),
                                   child: Icon(
                                     Icons.description_rounded,
                                     color: _primaryRed,
-                                    size: isTablet ? 28 : 24,
+                                    size: isTablet ? 22 : 18,
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Website and Business Hours
                           _buildTextField(
@@ -896,7 +725,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             keyboardType: TextInputType.url,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           _buildTextField(
                             controller: _businessHoursController,
@@ -904,11 +733,11 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             prefixIcon: Icons.access_time_rounded,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Professional Information Section
                           _buildSectionTitle('Professional Information', isTablet),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Professional Fields
                           _buildTextField(
@@ -917,7 +746,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             prefixIcon: Icons.timeline_rounded,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           _buildTextField(
                             controller: _licenseNumberController,
@@ -925,7 +754,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             prefixIcon: Icons.badge_rounded,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           _buildTextField(
                             controller: _specialtiesController,
@@ -934,7 +763,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             maxLines: 2,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           _buildTextField(
                             controller: _consultationFeeController,
@@ -943,7 +772,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             keyboardType: TextInputType.number,
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Availability Checkbox
                           _buildCheckbox(
@@ -956,7 +785,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             },
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Insurance Checkbox
                           _buildCheckbox(
@@ -969,7 +798,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             },
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Multi-select Fields
                           _buildMultiSelectField(
@@ -992,7 +821,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             },
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           _buildMultiSelectField(
                             title: 'Service Tags',
@@ -1014,7 +843,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             },
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           _buildMultiSelectField(
                             title: 'Service Areas',
@@ -1036,14 +865,14 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             },
                             isTablet: isTablet,
                           ),
-                          SizedBox(height: isTablet ? 20 : 16),
+                          SizedBox(height: isTablet ? 16 : 12),
 
                           // Payment Methods
                           _buildPaymentMethods(isTablet, setState),
                         ],
                       ),
                     ),
-                    SizedBox(height: isTablet ? 24 : 20),
+                    SizedBox(height: isTablet ? 20 : 16),
 
                     // Action Buttons
                     Row(
@@ -1058,13 +887,13 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                 });
                                 Navigator.pop(context);
                               },
-                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                               child: Container(
-                                padding: EdgeInsets.symmetric(vertical: isTablet ? 22 : 18),
+                                padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 12),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.05),
-                                  borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
-                                  border: Border.all(color: _borderColor, width: 1.5),
+                                  borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                                  border: Border.all(color: _borderColor, width: 1.2),
                                 ),
                                 child: Center(
                                   child: Text(
@@ -1072,7 +901,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                     style: TextStyle(
                                       color: _textMuted,
                                       fontWeight: FontWeight.w800,
-                                      fontSize: isTablet ? 20 : 18,
+                                      fontSize: isTablet ? 16 : 14,
                                     ),
                                   ),
                                 ),
@@ -1080,37 +909,37 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             ),
                           ),
                         ),
-                        SizedBox(width: isTablet ? 20 : 16),
+                        SizedBox(width: isTablet ? 16 : 12),
                         Expanded(
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
                               onTap: _isSaving ? null : () => _updateService(provider, setState),
-                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                               child: Container(
-                                padding: EdgeInsets.symmetric(vertical: isTablet ? 22 : 18),
+                                padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 12),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [_primaryGreen, _darkGreen],
                                     begin: Alignment.centerLeft,
                                     end: Alignment.centerRight,
                                   ),
-                                  borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                                  borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                                   boxShadow: [
                                     BoxShadow(
                                       color: _primaryGreen.withOpacity(0.4),
-                                      blurRadius: 15,
-                                      offset: Offset(0, 8),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6),
                                     ),
                                   ],
                                 ),
                                 child: Center(
                                   child: _isSaving
                                       ? SizedBox(
-                                          width: isTablet ? 30 : 24,
-                                          height: isTablet ? 30 : 24,
+                                          width: 22,
+                                          height: 22,
                                           child: CircularProgressIndicator(
-                                            strokeWidth: 3,
+                                            strokeWidth: 2.5,
                                             color: Colors.white,
                                           ),
                                         )
@@ -1119,8 +948,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.w800,
-                                      //    fontSize: isTablet ? 20 : 18,
-                                           fontSize: isTablet ? 15 : 10,
+                                          fontSize: isTablet ? 15 : 13,
                                         ),
                                       ),
                                 ),
@@ -1144,7 +972,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
     return Text(
       title,
       style: GoogleFonts.poppins(
-        fontSize: isTablet ? 22 : 18,
+        fontSize: isTablet ? 18 : 16,
         fontWeight: FontWeight.w700,
         color: _textWhite,
       ),
@@ -1163,8 +991,8 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
-        border: Border.all(color: _borderColor, width: 1.5),
+        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+        border: Border.all(color: _borderColor, width: 1.2),
       ),
       child: TextFormField(
         controller: controller,
@@ -1172,24 +1000,24 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
         maxLines: maxLines,
         style: TextStyle(
           color: _textWhite,
-          fontSize: isTablet ? 18 : 16,
+          fontSize: isTablet ? 16 : 14,
         ),
         decoration: InputDecoration(
           labelText: labelText,
           labelStyle: TextStyle(
             color: _textMuted,
-            fontSize: isTablet ? 16 : 14,
+            fontSize: isTablet ? 14 : 12,
           ),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.all(isTablet ? 24 : 20),
+          contentPadding: EdgeInsets.all(isTablet ? 18 : 14),
           prefixIcon: Container(
-            width: isTablet ? 24 : 20,
-            height: isTablet ? 24 : 20,
+            width: isTablet ? 20 : 18,
+            height: isTablet ? 20 : 18,
             alignment: Alignment.center,
             child: Icon(
               prefixIcon,
               color: _primaryRed,
-              size: isTablet ? 24 : 20,
+              size: isTablet ? 20 : 16,
             ),
           ),
         ),
@@ -1205,36 +1033,36 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
   }) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isTablet ? 24 : 16,
-        vertical: isTablet ? 20 : 16,
+        horizontal: isTablet ? 18 : 12,
+        vertical: isTablet ? 14 : 10,
       ),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
-        border: Border.all(color: _borderColor, width: 1.5),
+        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+        border: Border.all(color: _borderColor, width: 1.2),
       ),
       child: Row(
         children: [
           Container(
-            width: isTablet ? 48 : 40,
-            height: isTablet ? 48 : 40,
+            width: isTablet ? 40 : 32,
+            height: isTablet ? 40 : 32,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [_primaryRed.withOpacity(0.2), _primaryGreen.withOpacity(0.2)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+              borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
             ),
             child: Center(
               child: Icon(
                 icon,
                 color: _primaryRed,
-                size: isTablet ? 24 : 20,
+                size: isTablet ? 20 : 16,
               ),
             ),
           ),
-          SizedBox(width: isTablet ? 20 : 16),
+          SizedBox(width: isTablet ? 16 : 12),
           Expanded(child: child),
         ],
       ),
@@ -1245,13 +1073,13 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
     return GestureDetector(
       onTap: _pickImage,
       child: Container(
-        padding: EdgeInsets.all(isTablet ? 24 : 20),
+        padding: EdgeInsets.all(isTablet ? 18 : 14),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+          borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
           border: Border.all(
             color: (_selectedImage != null || _base64Image != null) ? _primaryGreen : _borderColor,
-            width: (_selectedImage != null || _base64Image != null) ? 2.5 : 1.5,
+            width: (_selectedImage != null || _base64Image != null) ? 2 : 1.2,
           ),
         ),
         child: Column(
@@ -1260,10 +1088,10 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
               Column(
                 children: [
                   Container(
-                    height: isTablet ? 160 : 120,
+                    height: isTablet ? 140 : 110,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(isTablet ? 12 : 8),
+                      borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
                       image: DecorationImage(
                         image: _selectedImage != null
                             ? FileImage(File(_selectedImage!.path))
@@ -1272,15 +1100,15 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                       ),
                     ),
                   ),
-                  SizedBox(height: isTablet ? 20 : 16),
+                  SizedBox(height: isTablet ? 16 : 12),
                 ],
               ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: isTablet ? 60 : 50,
-                  height: isTablet ? 60 : 50,
+                  width: isTablet ? 50 : 42,
+                  height: isTablet ? 50 : 42,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: (_selectedImage != null || _base64Image != null)
@@ -1289,12 +1117,12 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(isTablet ? 15 : 12),
+                    borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                     boxShadow: [
                       BoxShadow(
                         color: ((_selectedImage != null || _base64Image != null) ? _primaryGreen : _primaryRed).withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: Offset(0, 5),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
@@ -1302,11 +1130,11 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                     child: Icon(
                       (_selectedImage != null || _base64Image != null) ? Icons.image_rounded : Icons.add_photo_alternate_rounded,
                       color: Colors.white,
-                      size: isTablet ? 30 : 24,
+                      size: isTablet ? 24 : 20,
                     ),
                   ),
                 ),
-                SizedBox(width: isTablet ? 20 : 16),
+                SizedBox(width: isTablet ? 16 : 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1315,16 +1143,16 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         (_selectedImage != null || _base64Image != null) ? 'Profile Image Selected' : 'Upload Profile Image',
                         style: TextStyle(
                           color: (_selectedImage != null || _base64Image != null) ? _primaryGreen : _textWhite,
-                          fontSize: isTablet ? 20 : 18,
+                          fontSize: isTablet ? 16 : 14,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         (_selectedImage != null || _base64Image != null) ? 'Tap to change image' : 'Recommended headshot photo',
                         style: TextStyle(
                           color: _textMuted,
-                          fontSize: isTablet ? 16 : 14,
+                          fontSize: isTablet ? 13 : 11,
                         ),
                       ),
                     ],
@@ -1334,9 +1162,10 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
             ),
             if (_isImageLoading)
               Padding(
-                padding: EdgeInsets.only(top: isTablet ? 20 : 16),
+                padding: EdgeInsets.only(top: isTablet ? 16 : 12),
                 child: CircularProgressIndicator(
                   color: _primaryGreen,
+                  strokeWidth: 2.5,
                 ),
               ),
           ],
@@ -1355,45 +1184,45 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
       color: Colors.transparent,
       child: InkWell(
         onTap: () => onChanged(!value),
-        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
         child: Container(
-          padding: EdgeInsets.all(isTablet ? 20 : 16),
+          padding: EdgeInsets.all(isTablet ? 16 : 12),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+            borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
             border: Border.all(
               color: value ? _primaryGreen : _borderColor,
-              width: value ? 2 : 1.5,
+              width: value ? 1.5 : 1.2,
             ),
           ),
           child: Row(
             children: [
               Container(
-                width: isTablet ? 30 : 24,
-                height: isTablet ? 30 : 24,
+                width: isTablet ? 24 : 20,
+                height: isTablet ? 24 : 20,
                 decoration: BoxDecoration(
                   color: value ? _primaryGreen : Colors.transparent,
-                  borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
+                  borderRadius: BorderRadius.circular(isTablet ? 6 : 5),
                   border: Border.all(
                     color: value ? _primaryGreen : Colors.grey,
-                    width: 2,
+                    width: 1.5,
                   ),
                 ),
                 child: value
                     ? Icon(
                         Icons.check_rounded,
                         color: Colors.white,
-                        size: isTablet ? 20 : 16,
+                        size: isTablet ? 16 : 12,
                       )
                     : null,
               ),
-              SizedBox(width: isTablet ? 20 : 16),
+              SizedBox(width: isTablet ? 16 : 12),
               Expanded(
                 child: Text(
                   label,
                   style: TextStyle(
                     color: _textWhite,
-                    fontSize: isTablet ? 20 : 18,
+                    fontSize: isTablet ? 16 : 14,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1415,11 +1244,11 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
     required bool isTablet,
   }) {
     return Container(
-      padding: EdgeInsets.all(isTablet ? 20 : 16),
+      padding: EdgeInsets.all(isTablet ? 16 : 12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
-        border: Border.all(color: _borderColor, width: 1.5),
+        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+        border: Border.all(color: _borderColor, width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1428,31 +1257,31 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
             title,
             style: TextStyle(
               color: _textWhite,
-              fontSize: isTablet ? 18 : 16,
+              fontSize: isTablet ? 16 : 14,
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 12),
+          SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(isTablet ? 12 : 8),
+                    borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
                     border: Border.all(color: _borderColor),
                   ),
                   child: TextFormField(
                     controller: controller,
                     style: TextStyle(
                       color: _textWhite,
-                      fontSize: isTablet ? 16 : 14,
+                      fontSize: isTablet ? 14 : 12,
                     ),
                     decoration: InputDecoration(
                       hintText: hintText,
                       hintStyle: TextStyle(color: _textMuted),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(isTablet ? 16 : 12),
+                      contentPadding: EdgeInsets.all(isTablet ? 14 : 10),
                     ),
                     onFieldSubmitted: (value) {
                       onAdd(value);
@@ -1460,30 +1289,30 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                   ),
                 ),
               ),
-              SizedBox(width: isTablet ? 12 : 8),
+              SizedBox(width: isTablet ? 10 : 8),
               Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
                     onAdd(controller.text.trim());
                   },
-                  borderRadius: BorderRadius.circular(isTablet ? 12 : 8),
+                  borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
                   child: Container(
-                    width: isTablet ? 50 : 40,
-                    height: isTablet ? 50 : 40,
+                    width: isTablet ? 42 : 36,
+                    height: isTablet ? 42 : 36,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [_primaryRed, _primaryGreen],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(isTablet ? 12 : 8),
+                      borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
                     ),
                     child: Center(
                       child: Icon(
                         Icons.add_rounded,
                         color: Colors.white,
-                        size: isTablet ? 24 : 20,
+                        size: isTablet ? 20 : 16,
                       ),
                     ),
                   ),
@@ -1491,17 +1320,21 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
               ),
             ],
           ),
-          if (items.isNotEmpty) SizedBox(height: 12),
+          if (items.isNotEmpty) SizedBox(height: 10),
           if (items.isNotEmpty)
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: items.map((item) {
                 return Chip(
-                  label: Text(item),
+                  label: Text(
+                    item,
+                    style: TextStyle(fontSize: isTablet ? 12 : 10),
+                  ),
                   onDeleted: () => onRemove(item),
                   backgroundColor: _primaryGreen.withOpacity(0.2),
                   deleteIconColor: _primaryRed,
+                  deleteIcon: Icon(Icons.close, size: isTablet ? 16 : 12),
                 );
               }).toList(),
             ),
@@ -1514,11 +1347,11 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
     final paymentMethods = ['Cash', 'Credit Card', 'Debit Card', 'Check', 'Online Payment', 'Bank Transfer'];
     
     return Container(
-      padding: EdgeInsets.all(isTablet ? 20 : 16),
+      padding: EdgeInsets.all(isTablet ? 16 : 12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
-        border: Border.all(color: _borderColor, width: 1.5),
+        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+        border: Border.all(color: _borderColor, width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1527,17 +1360,20 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
             'Accepted Payment Methods',
             style: TextStyle(
               color: _textWhite,
-              fontSize: isTablet ? 18 : 16,
+              fontSize: isTablet ? 16 : 14,
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 12),
+          SizedBox(height: 10),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: paymentMethods.map((method) {
               return FilterChip(
-                label: Text(method),
+                label: Text(
+                  method,
+                  style: TextStyle(fontSize: isTablet ? 12 : 10),
+                ),
                 selected: _acceptedPaymentMethods.contains(method),
                 onSelected: (selected) {
                   setState(() {
@@ -1658,20 +1494,20 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          padding: EdgeInsets.all(isTablet ? 32 : 24),
+          padding: EdgeInsets.all(isTablet ? 24 : 18),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [_bgGradient2, _primaryGreen.withOpacity(0.9)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(isTablet ? 30 : 24),
-            border: Border.all(color: _borderColor, width: 2),
+            borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
+            border: Border.all(color: _borderColor, width: 1.5),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.4),
-                blurRadius: 40,
-                offset: Offset(0, 20),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
               ),
             ],
           ),
@@ -1680,11 +1516,11 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: isTablet ? 80 : 60,
-                height: isTablet ? 80 : 60,
+                width: isTablet ? 64 : 52,
+                height: isTablet ? 64 : 52,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: provider.isDeleted ? [_successGreen, Color(0xFF2E7D32)] : [_primaryRed, _deepRed],
+                    colors: provider.isDeleted ? [_successGreen, const Color(0xFF2E7D32)] : [_primaryRed, _deepRed],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -1692,39 +1528,39 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                   boxShadow: [
                     BoxShadow(
                       color: (provider.isDeleted ? _successGreen : _primaryRed).withOpacity(0.4),
-                      blurRadius: 15,
-                      offset: Offset(0, 8),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
                 child: Icon(
                   provider.isDeleted ? Icons.restore_rounded : Icons.delete_forever_rounded,
                   color: Colors.white,
-                  size: isTablet ? 40 : 32,
+                  size: isTablet ? 32 : 26,
                 ),
               ),
-              SizedBox(height: isTablet ? 24 : 20),
+              SizedBox(height: isTablet ? 20 : 16),
               Text(
                 provider.isDeleted ? 'Restore Service Provider' : 'Delete Service Provider',
                 style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 26 : 22,
+                  fontSize: isTablet ? 22 : 18,
                   fontWeight: FontWeight.w800,
                   color: _textWhite,
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: isTablet ? 16 : 12),
+              SizedBox(height: isTablet ? 12 : 10),
               Text(
                 provider.isDeleted
                     ? 'Are you sure you want to restore ${provider.fullName}? This will make them available to users again.'
                     : 'Are you sure you want to delete ${provider.fullName}? This action cannot be undone.',
                 style: GoogleFonts.inter(
-                  fontSize: isTablet ? 18 : 16,
+                  fontSize: isTablet ? 15 : 13,
                   color: _textMuted,
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: isTablet ? 28 : 24),
+              SizedBox(height: isTablet ? 24 : 20),
               Row(
                 children: [
                   Expanded(
@@ -1732,19 +1568,19 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () => Navigator.pop(context),
-                        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                         child: Container(
-                          padding: EdgeInsets.symmetric(vertical: isTablet ? 20 : 16),
+                          padding: EdgeInsets.symmetric(vertical: isTablet ? 14 : 10),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
-                            border: Border.all(color: _borderColor, width: 1.5),
+                            borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                            border: Border.all(color: _borderColor, width: 1.2),
                           ),
                           child: Center(
                             child: Text(
                               'Cancel',
                               style: GoogleFonts.inter(
-                                fontSize: isTablet ? 18 : 16,
+                                fontSize: isTablet ? 16 : 14,
                                 fontWeight: FontWeight.w700,
                                 color: _textMuted,
                               ),
@@ -1754,7 +1590,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                       ),
                     ),
                   ),
-                  SizedBox(width: isTablet ? 20 : 16),
+                  SizedBox(width: isTablet ? 16 : 12),
                   Expanded(
                     child: Material(
                       color: Colors.transparent,
@@ -1762,33 +1598,31 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         onTap: () async {
                           final providerProvider = Provider.of<ServiceProviderProvider>(context, listen: false);
                           if (provider.isDeleted) {
-                            // Restore service provider
                             await providerProvider.updateServiceProvider(
                               provider.id!,
                               provider.copyWith(isDeleted: false, updatedAt: DateTime.now()),
                             );
                           } else {
-                            // Delete service provider
                             await providerProvider.deleteServiceProvider(provider.id!);
                           }
                           Navigator.pop(context);
                           Navigator.pop(context);
                         },
-                        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                         child: Container(
-                          padding: EdgeInsets.symmetric(vertical: isTablet ? 20 : 16),
+                          padding: EdgeInsets.symmetric(vertical: isTablet ? 14 : 10),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: provider.isDeleted ? [_successGreen, Color(0xFF2E7D32)] : [_primaryRed, _deepRed],
+                              colors: provider.isDeleted ? [_successGreen, const Color(0xFF2E7D32)] : [_primaryRed, _deepRed],
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                             ),
-                            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                            borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                             boxShadow: [
                               BoxShadow(
                                 color: (provider.isDeleted ? _successGreen : _primaryRed).withOpacity(0.4),
-                                blurRadius: 15,
-                                offset: Offset(0, 8),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
                               ),
                             ],
                           ),
@@ -1796,7 +1630,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             child: Text(
                               provider.isDeleted ? 'Restore' : 'Delete',
                               style: GoogleFonts.inter(
-                                fontSize: isTablet ? 18 : 16,
+                                fontSize: isTablet ? 16 : 14,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
@@ -1817,7 +1651,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
 
   Widget _buildDetailRow(String label, String value, {bool isTablet = false}) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: isTablet ? 10 : 8),
+      padding: EdgeInsets.symmetric(vertical: isTablet ? 8 : 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1826,7 +1660,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
             child: Text(
               label,
               style: GoogleFonts.inter(
-                fontSize: isTablet ? 16 : 14,
+                fontSize: isTablet ? 14 : 12,
                 color: Colors.grey.shade600,
                 fontWeight: FontWeight.w500,
               ),
@@ -1837,7 +1671,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
             child: Text(
               value,
               style: GoogleFonts.inter(
-                fontSize: isTablet ? 18 : 16,
+                fontSize: isTablet ? 16 : 14,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
@@ -1860,41 +1694,37 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
         Row(
           children: [
             Container(
-            //  width: isTablet ? 50 : 40,
-             // height: isTablet ? 50 : 40,
-                width: isTablet ? 40 : 30,
-              height: isTablet ? 40 : 30,
+              width: isTablet ? 36 : 30,
+              height: isTablet ? 36 : 30,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [_primaryRed, _primaryGreen],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
               ),
               child: Center(
                 child: Icon(
                   icon,
                   color: Colors.white,
-                //  size: isTablet ? 24 : 20,
-                   size: isTablet ? 20 : 15,
+                  size: isTablet ? 18 : 14,
                 ),
               ),
             ),
-         //   SizedBox(width: isTablet ? 16 : 12),
-             SizedBox(width: isTablet ? 12 : 8),
+            SizedBox(width: isTablet ? 10 : 8),
             Text(
-              title, overflow: TextOverflow.ellipsis,
+              title,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.poppins(
-              //  fontSize: isTablet ? 26 : 22,
-                 fontSize: isTablet ? 22 : 18,
+                fontSize: isTablet ? 20 : 16,
                 fontWeight: FontWeight.w800,
                 color: Colors.black,
               ),
             ),
           ],
         ),
-        SizedBox(height: isTablet ? 20 : 16),
+        SizedBox(height: isTablet ? 16 : 12),
         child,
       ],
     );
@@ -1912,38 +1742,38 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+        borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
         child: Container(
-          padding: EdgeInsets.all(isTablet ? 24 : 20),
+          padding: EdgeInsets.all(isTablet ? 18 : 14),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
-            border: Border.all(color: _borderColor, width: 1.5),
+            borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+            border: Border.all(color: _borderColor, width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 15,
-                offset: Offset(0, 8),
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
           child: Row(
             children: [
               Container(
-                width: isTablet ? 60 : 50,
-                height: isTablet ? 60 : 50,
+                width: isTablet ? 48 : 40,
+                height: isTablet ? 48 : 40,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: gradientColors,
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                  borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                   boxShadow: [
                     BoxShadow(
                       color: gradientColors.first.withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: Offset(0, 5),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -1951,11 +1781,11 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                   child: Icon(
                     icon,
                     color: Colors.white,
-                    size: isTablet ? 28 : 24,
+                    size: isTablet ? 22 : 18,
                   ),
                 ),
               ),
-              SizedBox(width: isTablet ? 20 : 16),
+              SizedBox(width: isTablet ? 16 : 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1963,15 +1793,15 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                     Text(
                       title,
                       style: GoogleFonts.inter(
-                        fontSize: isTablet ? 16 : 14,
+                        fontSize: isTablet ? 14 : 12,
                         color: Colors.grey[600],
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       value,
                       style: GoogleFonts.inter(
-                        fontSize: isTablet ? 18 : 16,
+                        fontSize: isTablet ? 16 : 14,
                         fontWeight: FontWeight.w700,
                         color: onTap != null ? Colors.blue : Colors.black,
                       ),
@@ -1983,7 +1813,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                 Icon(
                   Icons.chevron_right_rounded,
                   color: Colors.grey[400],
-                  size: isTablet ? 28 : 24,
+                  size: isTablet ? 22 : 18,
                 ),
             ],
           ),
@@ -2003,32 +1833,32 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+        borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
         child: Container(
-          padding: EdgeInsets.all(isTablet ? 16 : 14),
+          padding: EdgeInsets.all(isTablet ? 14 : 10),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
-            border: Border.all(color: _borderColor, width: 1),
+            borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
+            border: Border.all(color: _borderColor, width: 0.8),
           ),
           child: Row(
             children: [
               Container(
-                width: isTablet ? 50 : 40,
-                height: isTablet ? 50 : 40,
+                width: isTablet ? 40 : 32,
+                height: isTablet ? 40 : 32,
                 decoration: BoxDecoration(
                   color: _primaryGreen.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                  borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
                 ),
                 child: Center(
                   child: Icon(
                     icon,
                     color: _primaryGreen,
-                    size: isTablet ? 22 : 18,
+                    size: isTablet ? 18 : 14,
                   ),
                 ),
               ),
-              SizedBox(width: isTablet ? 16 : 12),
+              SizedBox(width: isTablet ? 14 : 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2036,15 +1866,15 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                     Text(
                       title,
                       style: GoogleFonts.inter(
-                        fontSize: isTablet ? 14 : 12,
+                        fontSize: isTablet ? 12 : 10,
                         color: Colors.grey[600],
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       value,
                       style: GoogleFonts.inter(
-                        fontSize: isTablet ? 18 : 16,
+                        fontSize: isTablet ? 16 : 14,
                         fontWeight: FontWeight.w600,
                         color: onTap != null ? Colors.blue : Colors.black,
                       ),
@@ -2056,7 +1886,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                 Icon(
                   Icons.chevron_right_rounded,
                   color: Colors.grey[400],
-                  size: isTablet ? 24 : 20,
+                  size: isTablet ? 20 : 16,
                 ),
             ],
           ),
@@ -2067,21 +1897,21 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
 
   Widget _buildChipGrid(List<String> items, bool isTablet) {
     return Wrap(
-      spacing: isTablet ? 12 : 8,
-      runSpacing: isTablet ? 12 : 8,
+      spacing: isTablet ? 8 : 6,
+      runSpacing: isTablet ? 8 : 6,
       children: items.map((item) {
         return Chip(
           label: Text(
             item,
             style: GoogleFonts.inter(
-              fontSize: isTablet ? 14 : 12,
+              fontSize: isTablet ? 13 : 11,
               fontWeight: FontWeight.w600,
             ),
           ),
           backgroundColor: _primaryGreen.withOpacity(0.1),
           side: BorderSide(color: _primaryGreen),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
           ),
         );
       }).toList(),
@@ -2090,7 +1920,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
 
   Widget _buildGalleryImages(List<String> galleryImagesBase64, bool isTablet) {
     return SizedBox(
-      height: isTablet ? 140 : 120,
+      height: isTablet ? 110 : 90,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: galleryImagesBase64.length,
@@ -2100,32 +1930,32 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
             final cleanedBase64 = _cleanBase64String(base64);
             final bytes = base64Decode(cleanedBase64);
             return Container(
-              width: isTablet ? 120 : 100,
-              height: isTablet ? 120 : 100,
-              margin: EdgeInsets.only(right: isTablet ? 16 : 12),
+              width: isTablet ? 100 : 80,
+              height: isTablet ? 100 : 80,
+              margin: EdgeInsets.only(right: isTablet ? 12 : 10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                 image: DecorationImage(
                   image: MemoryImage(bytes),
                   fit: BoxFit.cover,
                 ),
-                border: Border.all(color: _borderColor, width: 2),
+                border: Border.all(color: _borderColor, width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: Offset(0, 5),
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
             );
           } catch (e) {
             return Container(
-              width: isTablet ? 120 : 100,
-              height: isTablet ? 120 : 100,
-              margin: EdgeInsets.only(right: isTablet ? 16 : 12),
+              width: isTablet ? 100 : 80,
+              height: isTablet ? 100 : 80,
+              margin: EdgeInsets.only(right: isTablet ? 12 : 10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                 color: Colors.grey.shade200,
                 border: Border.all(color: _borderColor),
               ),
@@ -2133,7 +1963,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                 child: Icon(
                   Icons.broken_image_rounded,
                   color: Colors.grey[400],
-                  size: isTablet ? 40 : 32,
+                  size: isTablet ? 32 : 24,
                 ),
               ),
             );
@@ -2180,18 +2010,18 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(
-                  width: isTablet ? 80 : 60,
-                  height: isTablet ? 80 : 60,
+                  width: isTablet ? 60 : 48,
+                  height: isTablet ? 60 : 48,
                   child: CircularProgressIndicator(
-                    strokeWidth: 4,
+                    strokeWidth: 3,
                     color: _primaryGreen,
                   ),
                 ),
-                SizedBox(height: isTablet ? 24 : 20),
+                SizedBox(height: isTablet ? 20 : 16),
                 Text(
                   'Loading Service Provider...',
                   style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 24 : 20,
+                    fontSize: isTablet ? 20 : 16,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
@@ -2218,46 +2048,46 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: isTablet ? 120 : 100,
-                  height: isTablet ? 120 : 100,
+                  width: isTablet ? 100 : 80,
+                  height: isTablet ? 100 : 80,
                   decoration: BoxDecoration(
                     color: _primaryRed.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.error_outline_rounded,
-                    size: isTablet ? 60 : 50,
+                    size: isTablet ? 48 : 40,
                     color: _primaryRed,
                   ),
                 ),
-                SizedBox(height: isTablet ? 24 : 20),
+                SizedBox(height: isTablet ? 20 : 16),
                 Text(
                   'Service Provider Not Found',
                   style: GoogleFonts.poppins(
-                    fontSize: isTablet ? 24 : 20,
+                    fontSize: isTablet ? 20 : 16,
                     fontWeight: FontWeight.w800,
                     color: _primaryRed,
                   ),
                 ),
-                SizedBox(height: isTablet ? 16 : 12),
+                SizedBox(height: isTablet ? 12 : 10),
                 Text(
                   'The requested service provider could not be found',
                   style: GoogleFonts.inter(
-                    fontSize: isTablet ? 16 : 14,
+                    fontSize: isTablet ? 14 : 12,
                     color: Colors.grey[600],
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: isTablet ? 24 : 20),
+                SizedBox(height: isTablet ? 20 : 16),
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () => Navigator.pop(context),
-                    borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                    borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: isTablet ? 32 : 24,
-                        vertical: isTablet ? 16 : 14,
+                        horizontal: isTablet ? 28 : 20,
+                        vertical: isTablet ? 14 : 10,
                       ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -2265,19 +2095,19 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
-                        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                         boxShadow: [
                           BoxShadow(
                             color: _primaryGreen.withOpacity(0.3),
-                            blurRadius: 15,
-                            offset: Offset(0, 8),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
                           ),
                         ],
                       ),
                       child: Text(
                         'Go Back',
                         style: GoogleFonts.inter(
-                          fontSize: isTablet ? 18 : 16,
+                          fontSize: isTablet ? 16 : 14,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
                         ),
@@ -2301,29 +2131,29 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
               _isEditing = true;
             });
           },
-          borderRadius: BorderRadius.circular(isTablet ? 20 : 18),
+          borderRadius: BorderRadius.circular(isTablet ? 16 : 14),
           child: Container(
-            width: isTablet ? 70 : 64,
-            height: isTablet ? 70 : 64,
+            width: isTablet ? 56 : 48,
+            height: isTablet ? 56 : 48,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [_primaryRed, _primaryGreen],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(isTablet ? 18 : 16),
+              borderRadius: BorderRadius.circular(isTablet ? 14 : 12),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: Offset(0, 10),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
             child: Icon(
               Icons.edit_rounded,
               color: Colors.white,
-              size: isTablet ? 32 : 28,
+              size: isTablet ? 26 : 22,
             ),
           ),
         ),
@@ -2345,29 +2175,29 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
           slivers: [
             // Premium Sliver App Bar
             SliverAppBar(
-              expandedHeight: isTablet ? 400 : 320,
-              collapsedHeight: isTablet ? 120 : 100,
+              expandedHeight: isTablet ? 320 : 260,
+              collapsedHeight: isTablet ? 100 : 80,
               floating: false,
               pinned: true,
               snap: false,
               elevation: 0,
               backgroundColor: Colors.transparent,
               leading: Container(
-                margin: EdgeInsets.only(left: 20, top: isTablet ? 10 : 0),
+                margin: const EdgeInsets.only(left: 16),
                 child: Material(
                   color: Colors.black.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   child: InkWell(
                     onTap: () => Navigator.pop(context),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     child: Container(
-                      width: 48,
-                      height: 48,
+                      width: 40,
+                      height: 40,
                       child: Center(
                         child: Icon(
                           Icons.arrow_back_rounded,
                           color: Colors.white,
-                          size: isTablet ? 28 : 24,
+                          size: isTablet ? 24 : 20,
                         ),
                       ),
                     ),
@@ -2377,23 +2207,23 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
               actions: [
                 PopupMenuButton(
                   icon: Container(
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
                       Icons.more_vert_rounded,
                       color: Colors.white,
-                      size: isTablet ? 24 : 20,
+                      size: isTablet ? 22 : 18,
                     ),
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                    borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                   ),
                   color: _bgGradient2,
-                  elevation: 8,
+                  elevation: 6,
                   onSelected: (value) async {
                     final providerProvider = Provider.of<ServiceProviderProvider>(context, listen: false);
                     
@@ -2426,27 +2256,27 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                       child: Row(
                         children: [
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 28,
+                            height: 28,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [_primaryRed, _primaryGreen],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: Icon(
                               Icons.edit_rounded,
                               color: Colors.white,
-                              size: 18,
+                              size: 14,
                             ),
                           ),
-                          SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Text(
                             'Edit',
                             style: GoogleFonts.inter(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
@@ -2459,29 +2289,29 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                       child: Row(
                         children: [
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 28,
+                            height: 28,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: serviceProvider.isAvailable
-                                  ? [_warningOrange, Color(0xFFEF6C00)]
-                                  : [_successGreen, Color(0xFF2E7D32)],
+                                  ? [_warningOrange, const Color(0xFFEF6C00)]
+                                  : [_successGreen, const Color(0xFF2E7D32)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: Icon(
                               serviceProvider.isAvailable ? Icons.block : Icons.check_circle_rounded,
                               color: Colors.white,
-                              size: 18,
+                              size: 14,
                             ),
                           ),
-                          SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Text(
                             serviceProvider.isAvailable ? 'Make Inactive' : 'Make Active',
                             style: GoogleFonts.inter(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
@@ -2494,29 +2324,29 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                       child: Row(
                         children: [
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 28,
+                            height: 28,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: serviceProvider.isVerified
-                                  ? [_infoBlue, Color(0xFF1565C0)]
-                                  : [_warningOrange, Color(0xFFEF6C00)],
+                                  ? [_infoBlue, const Color(0xFF1565C0)]
+                                  : [_warningOrange, const Color(0xFFEF6C00)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: Icon(
                               serviceProvider.isVerified ? Icons.verified_outlined : Icons.verified,
                               color: Colors.white,
-                              size: 18,
+                              size: 14,
                             ),
                           ),
-                          SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Text(
                             serviceProvider.isVerified ? 'Unverify' : 'Verify',
                             style: GoogleFonts.inter(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
@@ -2529,29 +2359,29 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                       child: Row(
                         children: [
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 28,
+                            height: 28,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: serviceProvider.isDeleted
-                                  ? [_successGreen, Color(0xFF2E7D32)]
+                                  ? [_successGreen, const Color(0xFF2E7D32)]
                                   : [_primaryRed, _deepRed],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: Icon(
                               serviceProvider.isDeleted ? Icons.restore_rounded : Icons.delete_rounded,
                               color: Colors.white,
-                              size: 18,
+                              size: 14,
                             ),
                           ),
-                          SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Text(
                             serviceProvider.isDeleted ? 'Restore' : 'Delete',
                             style: GoogleFonts.inter(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
@@ -2565,22 +2395,42 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
               flexibleSpace: FlexibleSpaceBar(
                 background: Stack(
                   children: [
-                    // Profile Image
-                    serviceProvider.getProfileImageWidget(),
+                    // Profile Image - Centered
+                    Center(
+                      child: Container(
+                        margin: EdgeInsets.only(top: isTablet ? 80 : 60),
+                        width: isTablet ? 140 : 110,
+                        height: isTablet ? 140 : 110,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _goldAccent, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: serviceProvider.getProfileImageWidget(),
+                        ),
+                      ),
+                    ),
                     
                     // Gradient Overlay
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Colors.black.withOpacity(0.8),
-                            Colors.black.withOpacity(0.5),
-                            Colors.transparent,
                             Colors.black.withOpacity(0.7),
+                            Colors.black.withOpacity(0.4),
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.6),
                           ],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          stops: [0.0, 0.3, 0.6, 1.0],
+                          stops: const [0.0, 0.3, 0.6, 1.0],
                         ),
                       ),
                     ),
@@ -2588,25 +2438,25 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                     // Verified Badge
                     if (serviceProvider.isVerified)
                       Positioned(
-                        top: isTablet ? 80 : 60,
+                        top: isTablet ? 140 : 110,
                         left: isTablet ? 40 : 20,
                         child: Container(
                           padding: EdgeInsets.symmetric(
-                            horizontal: isTablet ? 20 : 16,
-                            vertical: isTablet ? 10 : 8,
+                            horizontal: isTablet ? 16 : 12,
+                            vertical: isTablet ? 8 : 6,
                           ),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [_successGreen, Color(0xFF2E7D32)],
+                              colors: [_successGreen, const Color(0xFF2E7D32)],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.3),
-                                blurRadius: 10,
-                                offset: Offset(0, 5),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
@@ -2615,16 +2465,16 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                               Icon(
                                 Icons.verified_rounded,
                                 color: Colors.white,
-                                size: isTablet ? 18 : 14,
+                                size: isTablet ? 16 : 12,
                               ),
-                              SizedBox(width: isTablet ? 8 : 6),
+                              SizedBox(width: isTablet ? 6 : 4),
                               Text(
                                 'VERIFIED',
                                 style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 14 : 12,
+                                  fontSize: isTablet ? 12 : 10,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
-                                  letterSpacing: 1.5,
+                                  letterSpacing: 1.2,
                                 ),
                               ),
                             ],
@@ -2634,37 +2484,37 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                     
                     // Status Badge
                     Positioned(
-                      top: isTablet ? 80 : 60,
+                      top: isTablet ? 140 : 110,
                       right: isTablet ? 40 : 20,
                       child: Container(
                         padding: EdgeInsets.symmetric(
-                          horizontal: isTablet ? 20 : 16,
-                          vertical: isTablet ? 10 : 8,
+                          horizontal: isTablet ? 16 : 12,
+                          vertical: isTablet ? 8 : 6,
                         ),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: serviceProvider.isAvailable
-                              ? [_successGreen, Color(0xFF2E7D32)]
-                              : [_warningOrange, Color(0xFFEF6C00)],
+                              ? [_successGreen, const Color(0xFF2E7D32)]
+                              : [_warningOrange, const Color(0xFFEF6C00)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                          borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.3),
-                              blurRadius: 10,
-                              offset: Offset(0, 5),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
                         child: Text(
                           serviceProvider.isAvailable ? 'AVAILABLE' : 'NOT AVAILABLE',
                           style: GoogleFonts.inter(
-                            fontSize: isTablet ? 14 : 12,
+                            fontSize: isTablet ? 12 : 10,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
-                            letterSpacing: 1.5,
+                            letterSpacing: 1.2,
                           ),
                         ),
                       ),
@@ -2673,12 +2523,12 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                     // Deleted Badge
                     if (serviceProvider.isDeleted)
                       Positioned(
-                        bottom: isTablet ? 120 : 100,
+                        bottom: isTablet ? 100 : 80,
                         left: isTablet ? 40 : 20,
                         child: Container(
                           padding: EdgeInsets.symmetric(
-                            horizontal: isTablet ? 24 : 20,
-                            vertical: isTablet ? 12 : 10,
+                            horizontal: isTablet ? 20 : 16,
+                            vertical: isTablet ? 10 : 8,
                           ),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -2686,12 +2536,12 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.3),
-                                blurRadius: 10,
-                                offset: Offset(0, 5),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
@@ -2700,16 +2550,16 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                               Icon(
                                 Icons.delete_rounded,
                                 color: Colors.white,
-                                size: isTablet ? 20 : 16,
+                                size: isTablet ? 16 : 12,
                               ),
-                              SizedBox(width: isTablet ? 8 : 6),
+                              SizedBox(width: isTablet ? 6 : 4),
                               Text(
                                 'DELETED',
                                 style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 14 : 12,
+                                  fontSize: isTablet ? 12 : 10,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
-                                  letterSpacing: 1.5,
+                                  letterSpacing: 1.2,
                                 ),
                               ),
                             ],
@@ -2719,55 +2569,27 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                     
                     // Profile Info Overlay
                     Positioned(
-                      bottom: isTablet ? 60 : 40,
+                      bottom: isTablet ? 30 : 20,
                       left: isTablet ? 40 : 20,
                       right: isTablet ? 40 : 20,
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isTablet ? 20 : 16,
-                              vertical: isTablet ? 10 : 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  serviceProvider.serviceCategory.icon,
-                                  color: _goldAccent,
-                                  size: isTablet ? 22 : 18,
-                                ),
-                                SizedBox(width: isTablet ? 8 : 6),
-                                Text(
-                                  serviceProvider.serviceCategory.displayName,
-                                  style: GoogleFonts.inter(
-                                    fontSize: isTablet ? 16 : 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: isTablet ? 16 : 12),
                           Text(
                             serviceProvider.fullName,
                             style: GoogleFonts.poppins(
-                              fontSize: isTablet ? 36 : 28,
+                              fontSize: isTablet ? 28 : 22,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
                               letterSpacing: 0.5,
                               shadows: [
                                 Shadow(
-                                  blurRadius: 10,
+                                  blurRadius: 8,
                                   color: Colors.black.withOpacity(0.5),
                                 ),
                               ],
                             ),
+                            textAlign: TextAlign.center,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -2775,22 +2597,24 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                           Text(
                             serviceProvider.companyName,
                             style: GoogleFonts.inter(
-                              fontSize: isTablet ? 20 : 18,
+                              fontSize: isTablet ? 16 : 14,
                               color: Colors.white.withOpacity(0.9),
                               fontWeight: FontWeight.w600,
                             ),
+                            textAlign: TextAlign.center,
                           ),
-                          SizedBox(height: isTablet ? 16 : 12),
+                          SizedBox(height: isTablet ? 12 : 10),
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Container(
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 16 : 12,
-                                  vertical: isTablet ? 8 : 6,
+                                  horizontal: isTablet ? 14 : 10,
+                                  vertical: isTablet ? 6 : 4,
                                 ),
                                 decoration: BoxDecoration(
                                   color: Colors.red.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                                  borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
                                   border: Border.all(color: Colors.red),
                                 ),
                                 child: Row(
@@ -2798,13 +2622,13 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                     Icon(
                                       Icons.favorite_rounded,
                                       color: Colors.red,
-                                      size: isTablet ? 18 : 14,
+                                      size: isTablet ? 16 : 12,
                                     ),
-                                    SizedBox(width: isTablet ? 6 : 4),
+                                    SizedBox(width: isTablet ? 4 : 2),
                                     Text(
                                       '${serviceProvider.totalLikes}',
                                       style: GoogleFonts.inter(
-                                        fontSize: isTablet ? 16 : 14,
+                                        fontSize: isTablet ? 14 : 12,
                                         fontWeight: FontWeight.w800,
                                         color: Colors.white,
                                       ),
@@ -2812,21 +2636,21 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                   ],
                                 ),
                               ),
-                              SizedBox(width: isTablet ? 12 : 8),
+                              SizedBox(width: isTablet ? 10 : 8),
                               Container(
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: isTablet ? 16 : 12,
-                                  vertical: isTablet ? 8 : 6,
+                                  horizontal: isTablet ? 14 : 10,
+                                  vertical: isTablet ? 6 : 4,
                                 ),
                                 decoration: BoxDecoration(
                                   color: _primaryGreen.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                                  borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
                                   border: Border.all(color: _primaryGreen),
                                 ),
                                 child: Text(
                                   '⭐ ${serviceProvider.rating ?? 4.5}',
                                   style: GoogleFonts.inter(
-                                    fontSize: isTablet ? 16 : 14,
+                                    fontSize: isTablet ? 14 : 12,
                                     fontWeight: FontWeight.w800,
                                     color: Colors.white,
                                   ),
@@ -2848,23 +2672,23 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                 decoration: BoxDecoration(
                   color: _surfaceColor,
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(isTablet ? 50 : 40),
-                    topRight: Radius.circular(isTablet ? 50 : 40),
+                    topLeft: Radius.circular(isTablet ? 40 : 32),
+                    topRight: Radius.circular(isTablet ? 40 : 32),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 40,
-                      spreadRadius: 5,
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 30,
+                      spreadRadius: 3,
                     ),
                   ],
                 ),
                 child: Padding(
-                  padding: EdgeInsets.all(isTablet ? 32 : 24),
+                  padding: EdgeInsets.all(isTablet ? 24 : 18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: isTablet ? 20 : 16),
+                      SizedBox(height: isTablet ? 16 : 12),
                       
                       // Service Details Section
                       _buildPremiumDetailSection(
@@ -2880,7 +2704,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                               gradientColors: [_primaryRed, _primaryGreen],
                               isTablet: isTablet,
                             ),
-                            SizedBox(height: isTablet ? 20 : 16),
+                            SizedBox(height: isTablet ? 16 : 12),
                             
                             // Service Provider Card
                             _buildPremiumDetailCard(
@@ -2890,7 +2714,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                               gradientColors: [_primaryGreen, _darkGreen],
                               isTablet: isTablet,
                             ),
-                            SizedBox(height: isTablet ? 20 : 16),
+                            SizedBox(height: isTablet ? 16 : 12),
                             
                             // Sub-Service Provider Card
                             if (serviceProvider.subServiceProvider != null)
@@ -2903,43 +2727,43 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                     gradientColors: [_goldAccent, Colors.orange],
                                     isTablet: isTablet,
                                   ),
-                                  SizedBox(height: isTablet ? 20 : 16),
+                                  SizedBox(height: isTablet ? 16 : 12),
                                 ],
                               ),
                             
                             // Years of Experience
                             if (serviceProvider.yearsOfExperience != null && serviceProvider.yearsOfExperience!.isNotEmpty)
                               Container(
-                                padding: EdgeInsets.all(isTablet ? 24 : 20),
+                                padding: EdgeInsets.all(isTablet ? 18 : 14),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
-                                  border: Border.all(color: _borderColor, width: 1.5),
+                                  borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                                  border: Border.all(color: _borderColor, width: 1.2),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 15,
-                                      offset: Offset(0, 8),
+                                      color: Colors.black.withOpacity(0.08),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6),
                                     ),
                                   ],
                                 ),
                                 child: Row(
                                   children: [
                                     Container(
-                                      width: isTablet ? 60 : 50,
-                                      height: isTablet ? 60 : 50,
+                                      width: isTablet ? 48 : 40,
+                                      height: isTablet ? 48 : 40,
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
-                                          colors: [_infoBlue, Color(0xFF1565C0)],
+                                          colors: [_infoBlue, const Color(0xFF1565C0)],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
                                         ),
-                                        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                                        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                                         boxShadow: [
                                           BoxShadow(
                                             color: _infoBlue.withOpacity(0.3),
-                                            blurRadius: 10,
-                                            offset: Offset(0, 5),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
                                           ),
                                         ],
                                       ),
@@ -2947,11 +2771,11 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                         child: Icon(
                                           Icons.timeline_rounded,
                                           color: Colors.white,
-                                          size: isTablet ? 28 : 24,
+                                          size: isTablet ? 22 : 18,
                                         ),
                                       ),
                                     ),
-                                    SizedBox(width: isTablet ? 20 : 16),
+                                    SizedBox(width: isTablet ? 16 : 12),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2959,15 +2783,15 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                           Text(
                                             'Years of Experience',
                                             style: GoogleFonts.inter(
-                                              fontSize: isTablet ? 16 : 14,
+                                              fontSize: isTablet ? 14 : 12,
                                               color: Colors.grey[600],
                                             ),
                                           ),
-                                          SizedBox(height: 4),
+                                          const SizedBox(height: 2),
                                           Text(
                                             serviceProvider.yearsOfExperience!,
                                             style: GoogleFonts.inter(
-                                              fontSize: isTablet ? 24 : 20,
+                                              fontSize: isTablet ? 20 : 16,
                                               fontWeight: FontWeight.w800,
                                               color: Colors.black,
                                             ),
@@ -2983,7 +2807,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         isTablet: isTablet,
                       ),
                       
-                      SizedBox(height: isTablet ? 32 : 24),
+                      SizedBox(height: isTablet ? 24 : 20),
                       
                       // Contact Information Section
                       _buildPremiumDetailSection(
@@ -2998,7 +2822,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                               value: serviceProvider.phone,
                               isTablet: isTablet,
                             ),
-                            SizedBox(height: isTablet ? 16 : 12),
+                            SizedBox(height: isTablet ? 12 : 10),
                             
                             // Email Card
                             _buildPremiumContactItem(
@@ -3007,7 +2831,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                               value: serviceProvider.email,
                               isTablet: isTablet,
                             ),
-                            SizedBox(height: isTablet ? 16 : 12),
+                            SizedBox(height: isTablet ? 12 : 10),
                             
                             // Address Card
                             _buildPremiumContactItem(
@@ -3021,7 +2845,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         isTablet: isTablet,
                       ),
                       
-                      SizedBox(height: isTablet ? 32 : 24),
+                      SizedBox(height: isTablet ? 24 : 20),
                       
                       // Professional Information Section
                       if (serviceProvider.description != null || 
@@ -3034,16 +2858,16 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             children: [
                               if (serviceProvider.description != null && serviceProvider.description!.isNotEmpty)
                                 Container(
-                                  padding: EdgeInsets.all(isTablet ? 24 : 20),
+                                  padding: EdgeInsets.all(isTablet ? 18 : 14),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
-                                    border: Border.all(color: _borderColor, width: 1.5),
+                                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                                    border: Border.all(color: _borderColor, width: 1.2),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.08),
-                                        blurRadius: 15,
-                                        offset: Offset(0, 8),
+                                        color: Colors.black.withOpacity(0.06),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 6),
                                       ),
                                     ],
                                   ),
@@ -3053,38 +2877,38 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                       Row(
                                         children: [
                                           Container(
-                                            width: isTablet ? 40 : 32,
-                                            height: isTablet ? 40 : 32,
+                                            width: isTablet ? 32 : 28,
+                                            height: isTablet ? 32 : 28,
                                             decoration: BoxDecoration(
                                               color: _primaryGreen.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
+                                              borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
                                             ),
                                             child: Center(
                                               child: Icon(
                                                 Icons.description_rounded,
                                                 color: _primaryGreen,
-                                                size: isTablet ? 20 : 16,
+                                                size: isTablet ? 16 : 14,
                                               ),
                                             ),
                                           ),
-                                          SizedBox(width: isTablet ? 16 : 12),
+                                          SizedBox(width: isTablet ? 12 : 10),
                                           Text(
                                             'Description',
                                             style: GoogleFonts.inter(
-                                              fontSize: isTablet ? 18 : 16,
+                                              fontSize: isTablet ? 16 : 14,
                                               fontWeight: FontWeight.w700,
                                               color: Colors.black,
                                             ),
                                           ),
                                         ],
                                       ),
-                                      SizedBox(height: isTablet ? 16 : 12),
+                                      SizedBox(height: isTablet ? 12 : 10),
                                       Text(
                                         serviceProvider.description!,
                                         style: GoogleFonts.inter(
-                                          fontSize: isTablet ? 16 : 14,
+                                          fontSize: isTablet ? 14 : 12,
                                           color: Colors.grey[700],
-                                          height: 1.6,
+                                          height: 1.5,
                                         ),
                                       ),
                                     ],
@@ -3092,7 +2916,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                 ),
                               
                               if (serviceProvider.description != null && serviceProvider.description!.isNotEmpty)
-                                SizedBox(height: isTablet ? 16 : 12),
+                                SizedBox(height: isTablet ? 12 : 10),
                               
                               if (serviceProvider.website != null && serviceProvider.website!.isNotEmpty)
                                 _buildPremiumDetailCard(
@@ -3104,20 +2928,20 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                 ),
                               
                               if (serviceProvider.website != null && serviceProvider.website!.isNotEmpty)
-                                SizedBox(height: isTablet ? 16 : 12),
+                                SizedBox(height: isTablet ? 12 : 10),
                               
                               if (serviceProvider.businessHours != null && serviceProvider.businessHours!.isNotEmpty)
                                 Container(
-                                  padding: EdgeInsets.all(isTablet ? 24 : 20),
+                                  padding: EdgeInsets.all(isTablet ? 18 : 14),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
-                                    border: Border.all(color: _borderColor, width: 1.5),
+                                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                                    border: Border.all(color: _borderColor, width: 1.2),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.08),
-                                        blurRadius: 15,
-                                        offset: Offset(0, 8),
+                                        color: Colors.black.withOpacity(0.06),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 6),
                                       ),
                                     ],
                                   ),
@@ -3127,38 +2951,38 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                       Row(
                                         children: [
                                           Container(
-                                            width: isTablet ? 40 : 32,
-                                            height: isTablet ? 40 : 32,
+                                            width: isTablet ? 32 : 28,
+                                            height: isTablet ? 32 : 28,
                                             decoration: BoxDecoration(
                                               color: _infoBlue.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
+                                              borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
                                             ),
                                             child: Center(
                                               child: Icon(
                                                 Icons.access_time_rounded,
                                                 color: _infoBlue,
-                                                size: isTablet ? 20 : 16,
+                                                size: isTablet ? 16 : 14,
                                               ),
                                             ),
                                           ),
-                                          SizedBox(width: isTablet ? 16 : 12),
+                                          SizedBox(width: isTablet ? 12 : 10),
                                           Text(
                                             'Business Hours',
                                             style: GoogleFonts.inter(
-                                              fontSize: isTablet ? 18 : 16,
+                                              fontSize: isTablet ? 16 : 14,
                                               fontWeight: FontWeight.w700,
                                               color: Colors.black,
                                             ),
                                           ),
                                         ],
                                       ),
-                                      SizedBox(height: isTablet ? 16 : 12),
+                                      SizedBox(height: isTablet ? 12 : 10),
                                       Text(
                                         serviceProvider.businessHours!,
                                         style: GoogleFonts.inter(
-                                          fontSize: isTablet ? 16 : 14,
+                                          fontSize: isTablet ? 14 : 12,
                                           color: Colors.grey[700],
-                                          height: 1.6,
+                                          height: 1.5,
                                         ),
                                       ),
                                     ],
@@ -3172,7 +2996,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                       if ((serviceProvider.description != null || 
                           serviceProvider.website != null || 
                           serviceProvider.businessHours != null))
-                        SizedBox(height: isTablet ? 32 : 24),
+                        SizedBox(height: isTablet ? 24 : 20),
                       
                       // Additional Information Section
                       if (serviceProvider.licenseNumber != null || 
@@ -3185,30 +3009,30 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             children: [
                               if (serviceProvider.licenseNumber != null && serviceProvider.licenseNumber!.isNotEmpty)
                                 Container(
-                                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                  padding: EdgeInsets.all(isTablet ? 16 : 12),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                    border: Border.all(color: _borderColor, width: 1),
+                                    borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                                    border: Border.all(color: _borderColor, width: 0.8),
                                   ),
                                   child: Row(
                                     children: [
                                       Container(
-                                        width: isTablet ? 40 : 32,
-                                        height: isTablet ? 40 : 32,
+                                        width: isTablet ? 32 : 28,
+                                        height: isTablet ? 32 : 28,
                                         decoration: BoxDecoration(
                                           color: _primaryGreen.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
+                                          borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
                                         ),
                                         child: Center(
                                           child: Icon(
                                             Icons.badge_rounded,
                                             color: _primaryGreen,
-                                            size: isTablet ? 20 : 16,
+                                            size: isTablet ? 16 : 14,
                                           ),
                                         ),
                                       ),
-                                      SizedBox(width: isTablet ? 16 : 12),
+                                      SizedBox(width: isTablet ? 12 : 10),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -3216,15 +3040,15 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                             Text(
                                               'License Number',
                                               style: GoogleFonts.inter(
-                                                fontSize: isTablet ? 14 : 12,
+                                                fontSize: isTablet ? 12 : 10,
                                                 color: Colors.grey[600],
                                               ),
                                             ),
-                                            SizedBox(height: 4),
+                                            const SizedBox(height: 2),
                                             Text(
                                               serviceProvider.licenseNumber!,
                                               style: GoogleFonts.inter(
-                                                fontSize: isTablet ? 18 : 16,
+                                                fontSize: isTablet ? 16 : 14,
                                                 fontWeight: FontWeight.w600,
                                                 color: Colors.black,
                                               ),
@@ -3237,34 +3061,34 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                 ),
                               
                               if (serviceProvider.licenseNumber != null && serviceProvider.licenseNumber!.isNotEmpty)
-                                SizedBox(height: isTablet ? 12 : 8),
+                                SizedBox(height: isTablet ? 10 : 8),
                               
                               if (serviceProvider.consultationFee != null && serviceProvider.consultationFee! > 0)
                                 Container(
-                                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                  padding: EdgeInsets.all(isTablet ? 16 : 12),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                    border: Border.all(color: _borderColor, width: 1),
+                                    borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                                    border: Border.all(color: _borderColor, width: 0.8),
                                   ),
                                   child: Row(
                                     children: [
                                       Container(
-                                        width: isTablet ? 40 : 32,
-                                        height: isTablet ? 40 : 32,
+                                        width: isTablet ? 32 : 28,
+                                        height: isTablet ? 32 : 28,
                                         decoration: BoxDecoration(
                                           color: _primaryRed.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
+                                          borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
                                         ),
                                         child: Center(
                                           child: Icon(
                                             Icons.attach_money_rounded,
                                             color: _primaryRed,
-                                            size: isTablet ? 20 : 16,
+                                            size: isTablet ? 16 : 14,
                                           ),
                                         ),
                                       ),
-                                      SizedBox(width: isTablet ? 16 : 12),
+                                      SizedBox(width: isTablet ? 12 : 10),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -3272,15 +3096,15 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                             Text(
                                               'Consultation Fee',
                                               style: GoogleFonts.inter(
-                                                fontSize: isTablet ? 14 : 12,
+                                                fontSize: isTablet ? 12 : 10,
                                                 color: Colors.grey[600],
                                               ),
                                             ),
-                                            SizedBox(height: 4),
+                                            const SizedBox(height: 2),
                                             Text(
                                               '\$${serviceProvider.consultationFee!.toStringAsFixed(2)}',
                                               style: GoogleFonts.inter(
-                                                fontSize: isTablet ? 24 : 20,
+                                                fontSize: isTablet ? 20 : 16,
                                                 fontWeight: FontWeight.w800,
                                                 color: _primaryRed,
                                               ),
@@ -3293,15 +3117,15 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                 ),
                               
                               if (serviceProvider.consultationFee != null && serviceProvider.consultationFee! > 0)
-                                SizedBox(height: isTablet ? 12 : 8),
+                                SizedBox(height: isTablet ? 10 : 8),
                               
                               if (serviceProvider.specialties != null && serviceProvider.specialties!.isNotEmpty)
                                 Container(
-                                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                                  padding: EdgeInsets.all(isTablet ? 16 : 12),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                    border: Border.all(color: _borderColor, width: 1),
+                                    borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                                    border: Border.all(color: _borderColor, width: 0.8),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -3309,38 +3133,38 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                       Row(
                                         children: [
                                           Container(
-                                            width: isTablet ? 40 : 32,
-                                            height: isTablet ? 40 : 32,
+                                            width: isTablet ? 32 : 28,
+                                            height: isTablet ? 32 : 28,
                                             decoration: BoxDecoration(
                                               color: _goldAccent.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
+                                              borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
                                             ),
                                             child: Center(
                                               child: Icon(
                                                 Icons.star_rounded,
                                                 color: _goldAccent,
-                                                size: isTablet ? 20 : 16,
+                                                size: isTablet ? 16 : 14,
                                               ),
                                             ),
                                           ),
-                                          SizedBox(width: isTablet ? 16 : 12),
+                                          SizedBox(width: isTablet ? 12 : 10),
                                           Text(
                                             'Specialties',
                                             style: GoogleFonts.inter(
-                                              fontSize: isTablet ? 18 : 16,
+                                              fontSize: isTablet ? 16 : 14,
                                               fontWeight: FontWeight.w700,
                                               color: Colors.black,
                                             ),
                                           ),
                                         ],
                                       ),
-                                      SizedBox(height: isTablet ? 12 : 8),
+                                      SizedBox(height: isTablet ? 10 : 8),
                                       Text(
                                         serviceProvider.specialties!,
                                         style: GoogleFonts.inter(
-                                          fontSize: isTablet ? 16 : 14,
+                                          fontSize: isTablet ? 14 : 12,
                                           color: Colors.grey[700],
-                                          height: 1.6,
+                                          height: 1.5,
                                         ),
                                       ),
                                     ],
@@ -3354,36 +3178,36 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                       if ((serviceProvider.licenseNumber != null || 
                           serviceProvider.specialties != null || 
                           serviceProvider.consultationFee != null))
-                        SizedBox(height: isTablet ? 32 : 24),
+                        SizedBox(height: isTablet ? 24 : 20),
                       
                       // Statistics Section
                       _buildPremiumDetailSection(
                         title: 'Statistics',
                         icon: Icons.analytics_rounded,
                         child: Container(
-                          padding: EdgeInsets.all(isTablet ? 24 : 20),
+                          padding: EdgeInsets.all(isTablet ? 18 : 14),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
-                            border: Border.all(color: _borderColor, width: 1.5),
+                            borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                            border: Border.all(color: _borderColor, width: 1.2),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 15,
-                                offset: Offset(0, 8),
+                                color: Colors.black.withOpacity(0.06),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
                               ),
                             ],
                           ),
                           child: Column(
                             children: [
                               _buildDetailRow('Rating', '${serviceProvider.rating ?? 0.0}/5 (${serviceProvider.totalReviews} reviews)', isTablet: isTablet),
-                              Divider(height: 20, color: _borderColor),
+                              Divider(height: 16, color: _borderColor),
                               _buildDetailRow('Total Likes', serviceProvider.totalLikes.toString(), isTablet: isTablet),
-                              Divider(height: 20, color: _borderColor),
+                              Divider(height: 16, color: _borderColor),
                               _buildDetailRow('Accepts Insurance', serviceProvider.acceptsInsurance == true ? 'Yes' : 'No', isTablet: isTablet),
-                              Divider(height: 20, color: _borderColor),
+                              Divider(height: 16, color: _borderColor),
                               _buildDetailRow('Created On', DateFormat('MMM dd, yyyy HH:mm').format(serviceProvider.createdAt), isTablet: isTablet),
-                              Divider(height: 20, color: _borderColor),
+                              Divider(height: 16, color: _borderColor),
                               _buildDetailRow('Last Updated', DateFormat('MMM dd, yyyy HH:mm').format(serviceProvider.updatedAt), isTablet: isTablet),
                             ],
                           ),
@@ -3391,7 +3215,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         isTablet: isTablet,
                       ),
                       
-                      SizedBox(height: isTablet ? 32 : 24),
+                      SizedBox(height: isTablet ? 24 : 20),
                       
                       // Languages Spoken Section
                       if (serviceProvider.languagesSpoken.isNotEmpty)
@@ -3399,16 +3223,16 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                           title: 'Languages Spoken',
                           icon: Icons.language_rounded,
                           child: Container(
-                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            padding: EdgeInsets.all(isTablet ? 16 : 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                              border: Border.all(color: _borderColor, width: 1.5),
+                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                              border: Border.all(color: _borderColor, width: 1.2),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 5),
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
@@ -3418,7 +3242,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         ),
                       
                       if (serviceProvider.languagesSpoken.isNotEmpty)
-                        SizedBox(height: isTablet ? 32 : 24),
+                        SizedBox(height: isTablet ? 24 : 20),
                       
                       // Service Tags Section
                       if (serviceProvider.serviceTags.isNotEmpty)
@@ -3426,16 +3250,16 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                           title: 'Service Tags',
                           icon: Icons.tag_rounded,
                           child: Container(
-                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            padding: EdgeInsets.all(isTablet ? 16 : 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                              border: Border.all(color: _borderColor, width: 1.5),
+                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                              border: Border.all(color: _borderColor, width: 1.2),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 5),
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
@@ -3445,7 +3269,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         ),
                       
                       if (serviceProvider.serviceTags.isNotEmpty)
-                        SizedBox(height: isTablet ? 32 : 24),
+                        SizedBox(height: isTablet ? 24 : 20),
                       
                       // Service Areas Section
                       if (serviceProvider.serviceAreas.isNotEmpty)
@@ -3453,16 +3277,16 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                           title: 'Service Areas',
                           icon: Icons.map_rounded,
                           child: Container(
-                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            padding: EdgeInsets.all(isTablet ? 16 : 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                              border: Border.all(color: _borderColor, width: 1.5),
+                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                              border: Border.all(color: _borderColor, width: 1.2),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 5),
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
@@ -3472,43 +3296,43 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         ),
                       
                       if (serviceProvider.serviceAreas.isNotEmpty)
-                        SizedBox(height: isTablet ? 32 : 24),
+                        SizedBox(height: isTablet ? 24 : 20),
                       
                       // Accepted Payment Methods
                       if (serviceProvider.acceptedPaymentMethods?.isNotEmpty == true)
                         _buildPremiumDetailSection(
-                          title: 'Accepted Payment Methods' ,
+                          title: 'Accepted Payment Methods',
                           icon: Icons.payment_rounded,
                           child: Container(
-                            padding: EdgeInsets.all(isTablet ? 20 : 16),
+                            padding: EdgeInsets.all(isTablet ? 16 : 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                              border: Border.all(color: _borderColor, width: 1.5),
+                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                              border: Border.all(color: _borderColor, width: 1.2),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 5),
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
                             child: Wrap(
-                              spacing: isTablet ? 12 : 8,
-                              runSpacing: isTablet ? 12 : 8,
+                              spacing: isTablet ? 8 : 6,
+                              runSpacing: isTablet ? 8 : 6,
                               children: serviceProvider.acceptedPaymentMethods!.map((method) {
                                 return Chip(
                                   label: Text(
                                     method,
                                     style: GoogleFonts.inter(
-                                      fontSize: isTablet ? 14 : 12,
+                                      fontSize: isTablet ? 13 : 11,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                   backgroundColor: _primaryRed.withOpacity(0.1),
                                   side: BorderSide(color: _primaryRed),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
                                 );
                               }).toList(),
@@ -3518,7 +3342,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         ),
                       
                       if (serviceProvider.acceptedPaymentMethods?.isNotEmpty == true)
-                        SizedBox(height: isTablet ? 32 : 24),
+                        SizedBox(height: isTablet ? 24 : 20),
                       
                       // Gallery Section
                       if (serviceProvider.galleryImagesBase64 != null && serviceProvider.galleryImagesBase64!.isNotEmpty)
@@ -3529,11 +3353,11 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildGalleryImages(serviceProvider.galleryImagesBase64!, isTablet),
-                              SizedBox(height: isTablet ? 16 : 12),
+                              SizedBox(height: isTablet ? 12 : 10),
                               Text(
                                 '${serviceProvider.galleryImagesBase64!.length} photos',
                                 style: GoogleFonts.inter(
-                                  fontSize: isTablet ? 14 : 12,
+                                  fontSize: isTablet ? 12 : 10,
                                   color: Colors.grey[600],
                                 ),
                               ),
@@ -3543,7 +3367,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         ),
                       
                       if (serviceProvider.galleryImagesBase64 != null && serviceProvider.galleryImagesBase64!.isNotEmpty)
-                        SizedBox(height: isTablet ? 32 : 24),
+                        SizedBox(height: isTablet ? 24 : 20),
                       
                       // Admin Action Buttons
                       Column(
@@ -3561,23 +3385,23 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                         !serviceProvider.isVerified,
                                       );
                                     },
-                                    borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+                                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
                                     child: Container(
-                                      padding: EdgeInsets.symmetric(vertical: isTablet ? 22 : 20),
+                                      padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 12),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: serviceProvider.isVerified
-                                            ? [_infoBlue, Color(0xFF1565C0)]
-                                            : [_warningOrange, Color(0xFFEF6C00)],
+                                            ? [_infoBlue, const Color(0xFF1565C0)]
+                                            : [_warningOrange, const Color(0xFFEF6C00)],
                                           begin: Alignment.centerLeft,
                                           end: Alignment.centerRight,
                                         ),
-                                        borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
+                                        borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
                                         boxShadow: [
                                           BoxShadow(
                                             color: (serviceProvider.isVerified ? _infoBlue : _warningOrange).withOpacity(0.4),
-                                            blurRadius: 20,
-                                            offset: Offset(0, 10),
+                                            blurRadius: 16,
+                                            offset: const Offset(0, 8),
                                           ),
                                         ],
                                       ),
@@ -3587,16 +3411,16 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                           Icon(
                                             serviceProvider.isVerified ? Icons.verified_rounded : Icons.pending_rounded,
                                             color: Colors.white,
-                                            size: isTablet ? 24 : 20,
+                                            size: isTablet ? 20 : 16,
                                           ),
-                                          SizedBox(width: isTablet ? 12 : 10),
+                                          SizedBox(width: isTablet ? 10 : 8),
                                           Text(
                                             serviceProvider.isVerified ? 'VERIFIED' : 'VERIFY NOW',
                                             style: GoogleFonts.poppins(
-                                              fontSize: isTablet ? 18 : 16,
+                                              fontSize: isTablet ? 16 : 14,
                                               fontWeight: FontWeight.w800,
                                               color: Colors.white,
-                                              letterSpacing: 1.2,
+                                              letterSpacing: 1.0,
                                             ),
                                           ),
                                         ],
@@ -3608,7 +3432,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             ],
                           ),
                           
-                          SizedBox(height: isTablet ? 16 : 12),
+                          SizedBox(height: isTablet ? 12 : 10),
                           
                           Row(
                             children: [
@@ -3623,23 +3447,23 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                         !serviceProvider.isAvailable,
                                       );
                                     },
-                                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                                    borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                                     child: Container(
-                                      padding: EdgeInsets.symmetric(vertical: isTablet ? 18 : 16),
+                                      padding: EdgeInsets.symmetric(vertical: isTablet ? 14 : 10),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: serviceProvider.isAvailable
-                                            ? [_warningOrange, Color(0xFFEF6C00)]
-                                            : [_successGreen, Color(0xFF2E7D32)],
+                                            ? [_warningOrange, const Color(0xFFEF6C00)]
+                                            : [_successGreen, const Color(0xFF2E7D32)],
                                           begin: Alignment.centerLeft,
                                           end: Alignment.centerRight,
                                         ),
-                                        borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                                        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                                         boxShadow: [
                                           BoxShadow(
                                             color: (serviceProvider.isAvailable ? _warningOrange : _successGreen).withOpacity(0.3),
-                                            blurRadius: 15,
-                                            offset: Offset(0, 8),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 6),
                                           ),
                                         ],
                                       ),
@@ -3649,13 +3473,13 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                           Icon(
                                             serviceProvider.isAvailable ? Icons.block_rounded : Icons.check_circle_rounded,
                                             color: Colors.white,
-                                            size: isTablet ? 22 : 18,
+                                            size: isTablet ? 18 : 14,
                                           ),
-                                          SizedBox(width: isTablet ? 10 : 8),
+                                          SizedBox(width: isTablet ? 8 : 6),
                                           Text(
                                             serviceProvider.isAvailable ? 'MAKE INACTIVE' : 'MAKE ACTIVE',
                                             style: GoogleFonts.poppins(
-                                              fontSize: isTablet ? 16 : 14,
+                                              fontSize: isTablet ? 14 : 12,
                                               fontWeight: FontWeight.w700,
                                               color: Colors.white,
                                             ),
@@ -3666,24 +3490,24 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                   ),
                                 ),
                               ),
-                              SizedBox(width: isTablet ? 16 : 12),
+                              SizedBox(width: isTablet ? 12 : 10),
                               Expanded(
                                 child: Material(
                                   color: Colors.transparent,
                                   child: InkWell(
                                     onTap: () => _showDeleteDialog(context, serviceProvider),
-                                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+                                    borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                                     child: Container(
-                                      padding: EdgeInsets.symmetric(vertical: isTablet ? 18 : 16),
+                                      padding: EdgeInsets.symmetric(vertical: isTablet ? 14 : 10),
                                       decoration: BoxDecoration(
                                         color: Colors.white,
-                                        borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-                                        border: Border.all(color: serviceProvider.isDeleted ? _successGreen : _primaryRed, width: 2),
+                                        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                                        border: Border.all(color: serviceProvider.isDeleted ? _successGreen : _primaryRed, width: 1.5),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(0.1),
-                                            blurRadius: 10,
-                                            offset: Offset(0, 5),
+                                            color: Colors.black.withOpacity(0.08),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
                                           ),
                                         ],
                                       ),
@@ -3693,13 +3517,13 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                           Icon(
                                             serviceProvider.isDeleted ? Icons.restore_rounded : Icons.delete_rounded,
                                             color: serviceProvider.isDeleted ? _successGreen : _primaryRed,
-                                            size: isTablet ? 22 : 18,
+                                            size: isTablet ? 18 : 14,
                                           ),
-                                          SizedBox(width: isTablet ? 10 : 8),
+                                          SizedBox(width: isTablet ? 8 : 6),
                                           Text(
                                             serviceProvider.isDeleted ? 'RESTORE' : 'DELETE',
                                             style: GoogleFonts.poppins(
-                                              fontSize: isTablet ? 16 : 14,
+                                              fontSize: isTablet ? 14 : 12,
                                               fontWeight: FontWeight.w700,
                                               color: serviceProvider.isDeleted ? _successGreen : _primaryRed,
                                             ),
@@ -3715,21 +3539,21 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         ],
                       ),
                       
-                      SizedBox(height: isTablet ? 40 : 32),
+                      SizedBox(height: isTablet ? 28 : 24),
                       
                       // Admin Footer
                       Container(
-                        padding: EdgeInsets.all(isTablet ? 30 : 24),
+                        padding: EdgeInsets.all(isTablet ? 24 : 18),
                         decoration: BoxDecoration(
                           color: _cardColor,
-                          borderRadius: BorderRadius.circular(isTablet ? 30 : 24),
-                          border: Border.all(color: _borderColor, width: 1.5),
+                          borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
+                          border: Border.all(color: _borderColor, width: 1.2),
                         ),
                         child: Row(
                           children: [
                             Container(
-                              width: isTablet ? 60 : 50,
-                              height: isTablet ? 60 : 50,
+                              width: isTablet ? 48 : 40,
+                              height: isTablet ? 48 : 40,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [_primaryRed, _primaryGreen],
@@ -3742,11 +3566,11 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                 child: Icon(
                                   Icons.admin_panel_settings_rounded,
                                   color: Colors.white,
-                                  size: isTablet ? 28 : 24,
+                                  size: isTablet ? 22 : 18,
                                 ),
                               ),
                             ),
-                            SizedBox(width: isTablet ? 20 : 16),
+                            SizedBox(width: isTablet ? 16 : 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3754,16 +3578,16 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                                   Text(
                                     'Admin Control Panel',
                                     style: GoogleFonts.poppins(
-                                      fontSize: isTablet ? 18 : 16,
+                                      fontSize: isTablet ? 16 : 14,
                                       fontWeight: FontWeight.w800,
                                       color: _primaryGreen,
                                     ),
                                   ),
-                                  SizedBox(height: isTablet ? 8 : 6),
+                                  SizedBox(height: isTablet ? 6 : 4),
                                   Text(
                                     'Full administrative control over this service provider',
                                     style: GoogleFonts.inter(
-                                      fontSize: isTablet ? 16 : 14,
+                                      fontSize: isTablet ? 14 : 12,
                                       color: Colors.grey[600],
                                     ),
                                   ),
@@ -3774,7 +3598,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                         ),
                       ),
                       
-                      SizedBox(height: isTablet ? 40 : 32),
+                      SizedBox(height: isTablet ? 32 : 24),
                     ],
                   ),
                 ),

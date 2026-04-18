@@ -610,4 +610,92 @@ class EducationService {
         ).map((list) => list as List<dynamic>);
     }
   }
+
+
+  // Add to EducationService class
+
+Future<void> deleteTutoringService(String id) async {
+  try {
+    await _firestore.collection(_tutoringCollection).doc(id).update({
+      'isDeleted': true,
+      'isActive': false,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    throw Exception('Failed to delete tutoring service: $e');
+  }
+}
+
+Future<void> deleteAdmissionsGuidance(String id) async {
+  try {
+    await _firestore.collection(_admissionsCollection).doc(id).update({
+      'isDeleted': true,
+      'isActive': false,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    throw Exception('Failed to delete admissions guidance: $e');
+  }
+}
+
+Future<void> deleteBanglaClass(String id) async {
+  try {
+    await _firestore.collection(_banglaClassesCollection).doc(id).update({
+      'isDeleted': true,
+      'isActive': false,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    throw Exception('Failed to delete Bangla class: $e');
+  }
+}
+
+Future<void> deleteSportsClub(String id) async {
+  try {
+    await _firestore.collection(_sportsClubsCollection).doc(id).update({
+      'isDeleted': true,
+      'isActive': false,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    throw Exception('Failed to delete sports club: $e');
+  }
+}
+
+// ====================== PERMANENT DELETE METHODS ======================
+
+Future<void> permanentDeleteTutoringService(String id) async {
+  try {
+    await _firestore.collection(_tutoringCollection).doc(id).delete();
+  } catch (e) {
+    throw Exception('Failed to permanently delete tutoring service: $e');
+  }
+}
+
+Future<void> permanentDeleteAdmissionsGuidance(String id) async {
+  try {
+    await _firestore.collection(_admissionsCollection).doc(id).delete();
+  } catch (e) {
+    throw Exception('Failed to permanently delete admissions guidance: $e');
+  }
+}
+
+Future<void> permanentDeleteBanglaClass(String id) async {
+  try {
+    await _firestore.collection(_banglaClassesCollection).doc(id).delete();
+  } catch (e) {
+    throw Exception('Failed to permanently delete Bangla class: $e');
+  }
+}
+
+Future<void> permanentDeleteSportsClub(String id) async {
+  try {
+    await _firestore.collection(_sportsClubsCollection).doc(id).delete();
+  } catch (e) {
+    throw Exception('Failed to permanently delete sports club: $e');
+  }
+}
+
+
+
 }

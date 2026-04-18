@@ -1,15 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:bangla_hub/main.dart';
 import 'package:bangla_hub/models/user_model.dart';
 import 'package:bangla_hub/providers/auth_provider.dart';
 import 'package:bangla_hub/screens/auth/login_screen.dart';
 import 'package:bangla_hub/screens/user_app/community_services/community_services_list_screen.dart';
+import 'package:bangla_hub/screens/user_app/community_services/my_services/my_services_screen.dart';
 import 'package:bangla_hub/screens/user_app/education_youth/education_youth_screen.dart';
+import 'package:bangla_hub/screens/user_app/education_youth/my_education/my_education_screen.dart';
 import 'package:bangla_hub/screens/user_app/entrepreneurship/entrepreneurship_screen.dart';
+import 'package:bangla_hub/screens/user_app/entrepreneurship/my_business/my_business_screen.dart';
 import 'package:bangla_hub/screens/user_app/event/events_screen.dart';
+import 'package:bangla_hub/screens/user_app/event/my_events/my_events_screen.dart';
 import 'package:bangla_hub/screens/user_app/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,42 +33,45 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   bool get wantKeepAlive => true;
 
-  // ✅ Instance-specific scaffold key
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // Static variable to preserve selected index across rebuilds
+  static int _globalSelectedIndex = 0;
   int _selectedIndex = 0;
-  bool _isIndexLoaded = false; // Track if index has been loaded from SharedPreferences
+  bool _isIndexLoaded = false;
   
-  // Track app lifecycle
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
-  // Color scheme
   final Color _primaryRed = const Color(0xFFF42A41);
   final Color _primaryGreen = const Color(0xFF006A4E);
   final Color _darkGreen = const Color(0xFF004D38);
   final Color _goldAccent = const Color(0xFFFFD700);
   final Color _offWhite = const Color(0xFFF8F8F8);
   
-  // Screens for each navigation item
-  late final List<Widget> _screens;
+  late final List<Widget> _regularScreens;
+  late final List<Widget> _myItemsScreens;
   
-  // Animation Controllers
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
   
-  // Cache expensive widgets
   Widget? _cachedDrawer;
   UserModel? _lastUserForDrawer;
   
-  // Navigation items data - made const
   static const List<NavItem> _navItems = [
     NavItem(icon: Icons.event_rounded, label: 'Events'),
     NavItem(icon: Icons.people_rounded, label: 'Services'),
     NavItem(icon: Icons.business_rounded, label: 'Business'),
     NavItem(icon: Icons.school_rounded, label: 'Education'),
     NavItem(icon: Icons.settings_rounded, label: 'Settings'),
+  ];
+  
+  static const List<DrawerItem> _drawerItems = [
+    DrawerItem(icon: Icons.event_note_rounded, label: 'My Events'),
+    DrawerItem(icon: Icons.miscellaneous_services_rounded, label: 'My Services'),
+    DrawerItem(icon: Icons.business_center_rounded, label: 'My Business'),
+    DrawerItem(icon: Icons.school_rounded, label: 'My Education'),
   ];
 
   @override
@@ -71,11 +80,12 @@ class _HomeScreenState extends State<HomeScreen>
     
     print('🔄 HomeScreen initState called');
     
-    // Add WidgetsBindingObserver
+    // Reset to Events tab on fresh login (not from static variable)
+    _resetToEventsTab();
+    
     WidgetsBinding.instance.addObserver(this);
     
-    // Initialize screens
-    _screens =  [
+    _regularScreens = [
       const EventsScreen(),
       const CommunityServicesListScreen(),
       EntrepreneurshipScreen(),
@@ -83,7 +93,13 @@ class _HomeScreenState extends State<HomeScreen>
       PremiumSettingsScreen(),
     ];
     
-    // Initialize animations
+    _myItemsScreens = [
+      MyEventsScreen(onBack: _goToHome),
+      MyServicesScreen(onBack: _goToHome),
+      MyBusinessScreen(onBack: _goToHome),
+      MyEducationScreen(onBack: _goToHome),
+    ];
+    
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -107,15 +123,30 @@ class _HomeScreenState extends State<HomeScreen>
       curve: Curves.easeOut,
     ));
     
-    // Start animations if app is visible
     if (_appLifecycleState == AppLifecycleState.resumed) {
       _startAnimations();
     }
     
-    // Initialize data
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeData();
     });
+  }
+  
+  void _resetToEventsTab() {
+    // Reset to Events tab (index 0)
+    _selectedIndex = 0;
+    _globalSelectedIndex = 0;
+    print('📊 Reset to Events tab (index: 0)');
+  }
+  
+  void _goToHome() {
+    print("🔙 Returning to Events screen from My Items");
+    if (mounted) {
+      setState(() {
+        _selectedIndex = 0;
+        _globalSelectedIndex = 0;
+      });
+    }
   }
   
   @override
@@ -143,51 +174,26 @@ class _HomeScreenState extends State<HomeScreen>
     _slideController.stop();
   }
   
-  // ✅ FIXED: Always start with Events screen (index 0) when app opens
   Future<void> _loadSavedIndex() async {
     try {
-      // Always start with Events screen (index 0) when app opens
-      // This ensures users always see the Events tab first regardless of what they were doing before closing the app
-      
       if (mounted) {
-        print('📊 HomeScreen loaded - starting at Events tab (index 0)');
+        // Always start from Events tab on fresh load
+        _selectedIndex = 0;
+        _globalSelectedIndex = 0;
+        print('📊 HomeScreen loaded - current tab index: $_selectedIndex');
         setState(() {
-          _selectedIndex = 0;
           _isIndexLoaded = true;
         });
       }
-      
-      // Clear any previously saved index to prevent issues
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('selected_tab_index');
-      
     } catch (e) {
       print('Error in _loadSavedIndex: $e');
       if (mounted) {
         setState(() {
           _selectedIndex = 0;
+          _globalSelectedIndex = 0;
           _isIndexLoaded = true;
         });
       }
-    }
-  }
-  
-  Future<void> _saveSelectedIndex(int index) async {
-    // We're no longer saving the index to always start with Events screen
-    // This method is kept but does nothing to prevent saving
-    print('📊 Navigation persistence disabled - not saving index: $index');
-    // Uncomment the line below if you want to save navigation state again
-    // final prefs = await SharedPreferences.getInstance();
-    // await prefs.setInt('selected_tab_index', index);
-  }
-  
-  Future<void> _clearSavedIndex() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('selected_tab_index');
-      print('📊 Cleared saved tab index');
-    } catch (e) {
-      print('Error clearing saved index: $e');
     }
   }
   
@@ -207,24 +213,19 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  // ✅ FIXED: Proper logout method with safety
-  Future<void> _handleLogout() async {
-    final authProvider = context.read<AuthProvider>();
+  Future<void> _performPremiumLogout(BuildContext context) async {
     BuildContext? dialogContext;
-
-    // Show loading dialog with safety
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        dialogContext = context;
-        return WillPopScope(
-          onWillPop: () async => false,
-          child: Dialog(
+    
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          dialogContext = context;
+          return Dialog(
             backgroundColor: Colors.transparent,
-            elevation: 0,
             child: Container(
-              padding: const EdgeInsets.all(30),
+              padding: EdgeInsets.all(30),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [_primaryGreen, _primaryRed],
@@ -236,14 +237,14 @@ class _HomeScreenState extends State<HomeScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const CircularProgressIndicator(
-                    color: Colors.white,
+                  CircularProgressIndicator(
+                    color: _goldAccent,
                     strokeWidth: 3,
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   Text(
                     'Logging out...',
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -252,50 +253,41 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
 
-    try {
-      await authProvider.signOut();
-      await _clearSavedIndex();
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.signOut(context);
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('selected_tab_index');
+      print('📊 Cleared saved tab index on logout');
 
-      // Safety timeout - force close dialog after 2 seconds
-      Future.delayed(const Duration(seconds: 2), () {
-        if (dialogContext != null && Navigator.canPop(dialogContext!)) {
-          Navigator.of(dialogContext!, rootNavigator: true).pop();
-        }
-      });
-
-      // Close dialog if it's still open
       if (dialogContext != null && Navigator.canPop(dialogContext!)) {
         Navigator.of(dialogContext!, rootNavigator: true).pop();
       }
 
-      // Navigate to login screen
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        navigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
           (route) => false,
         );
-      }
-
+      });
     } catch (e) {
-      // Close dialog on error
       if (dialogContext != null && Navigator.canPop(dialogContext!)) {
         Navigator.of(dialogContext!, rootNavigator: true).pop();
       }
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logout failed: $e'),
-            backgroundColor: _primaryRed,
-          ),
-        );
-      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Logout failed: $e'),
+              backgroundColor: _primaryRed,
+            ),
+          );
+        }
+      });
     }
   }
 
@@ -303,23 +295,115 @@ class _HomeScreenState extends State<HomeScreen>
     _scaffoldKey.currentState?.openDrawer();
   }
 
-  // ✅ FIXED: Centralized method for handling navigation taps - no longer saves index
   void _onNavItemTapped(int index) {
     if (_selectedIndex != index) {
       print('📱 Nav item tapped: ${_navItems[index].label} (index: $index)');
       setState(() {
         _selectedIndex = index;
+        _globalSelectedIndex = index;
       });
-      // Navigation persistence disabled - always start with Events screen on next app launch
-      // _saveSelectedIndex(index);
     }
+  }
+  
+  void _onDrawerItemTapped(int drawerIndex) {
+    final mappedIndex = 5 + drawerIndex;
+    
+    if (_selectedIndex != mappedIndex) {
+      print('📱 Drawer item tapped: ${_drawerItems[drawerIndex].label} (mapped index: $mappedIndex)');
+      setState(() {
+        _selectedIndex = mappedIndex;
+        _globalSelectedIndex = mappedIndex;
+      });
+    }
+  }
+
+  // Handle device back button
+  Future<bool> _onWillPop() async {
+    print('📍 Device back button pressed, current index: $_selectedIndex');
+    
+    if (_selectedIndex >= 5) {
+      print('📍 On My Items screen, switching to Events');
+      setState(() {
+        _selectedIndex = 0;
+        _globalSelectedIndex = 0;
+      });
+      return false;
+    }
+    
+    if (_selectedIndex > 0 && _selectedIndex < 5) {
+      print('📍 On ${_navItems[_selectedIndex].label}, switching to Events');
+      setState(() {
+        _selectedIndex = 0;
+        _globalSelectedIndex = 0;
+      });
+      return false;
+    }
+    
+    if (_selectedIndex == 0) {
+      final shouldExit = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(
+            'Exit BanglaHub',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              color: _primaryGreen,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to exit the app?',
+            style: GoogleFonts.inter(),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: _primaryGreen, fontWeight: FontWeight.w600),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                'Exit',
+                style: TextStyle(color: _primaryRed, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      );
+      
+      if (shouldExit == true) {
+        SystemNavigator.pop();
+      }
+      return false;
+    }
+    
+    return false;
+  }
+
+  Widget _getCurrentScreen() {
+    if (_selectedIndex >= 0 && _selectedIndex < _regularScreens.length) {
+      return _regularScreens[_selectedIndex];
+    }
+    else if (_selectedIndex >= 5 && _selectedIndex < 5 + _myItemsScreens.length) {
+      return _myItemsScreens[_selectedIndex - 5];
+    }
+    return _regularScreens[0];
+  }
+
+  bool _shouldShowBottomNav() {
+    return _selectedIndex >= 0 && _selectedIndex < _regularScreens.length;
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
     
-    print('🏗️ Building HomeScreen, selectedIndex: $_selectedIndex, isIndexLoaded: $_isIndexLoaded');
+    print('🏗️ Building HomeScreen, selectedIndex: $_selectedIndex');
     
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
@@ -332,38 +416,35 @@ class _HomeScreenState extends State<HomeScreen>
           _cachedDrawer = _buildDrawer(currentUser);
         }
         
-        return Scaffold(
-          key: _scaffoldKey,
-          backgroundColor: _offWhite,
-          drawer: _cachedDrawer,
-          body: shouldAnimate
-              ? FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: IndexedStack(
-                      index: _selectedIndex,
-                      children: _screens,
+        return WillPopScope(
+          onWillPop: _onWillPop,
+          child: Scaffold(
+            key: _scaffoldKey,
+            backgroundColor: _offWhite,
+            drawer: _cachedDrawer,
+            body: shouldAnimate
+                ? FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: _getCurrentScreen(),
                     ),
-                  ),
-                )
-              : IndexedStack(
-                  index: _selectedIndex,
-                  children: _screens,
-                ),
-          // Only show bottom navigation bar after index is loaded
-          bottomNavigationBar: _isIndexLoaded ? _buildPremiumBottomNavBar() : null,
+                  )
+                : _getCurrentScreen(),
+            bottomNavigationBar: _isIndexLoaded && _shouldShowBottomNav() 
+                ? _buildPremiumBottomNavBar() 
+                : null,
+          ),
         );
       },
     );
   }
 
-  // Drawer builder
   Widget _buildDrawer(UserModel? currentUser) {
     final screenSize = MediaQuery.of(context).size;
     final drawerWidth = screenSize.width * 0.6 > 280 ? 280.0 : screenSize.width * 0.6;
 
-    print('📐 Building drawer, width: $drawerWidth, screen width: ${screenSize.width}');
+    print('📐 Building drawer, width: $drawerWidth');
     
     return Drawer(
       width: drawerWidth,
@@ -380,43 +461,52 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               _buildDrawerHeader(currentUser),
               Expanded(
-                child: ListView.builder(
+                child: ListView(
                   padding: EdgeInsets.zero,
-                  itemCount: _navItems.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == _navItems.length) {
-                      return Column(
-                        children: [
-                          const Divider(
-                            indent: 20,
-                            endIndent: 20,
-                            height: 30,
-                          ),
-                          _buildDrawerItem(
-                            icon: Icons.logout_rounded,
-                            title: 'Logout',
-                            color: _primaryRed,
-                            index: index,
-                            onTap: () {
-                              Navigator.pop(context);
-                              _handleLogout();
-                            },
-                          ),
-                        ],
-                      );
-                    }
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      child: Text(
+                        'MY ITEMS',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[600],
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
                     
-                    final item = _navItems[index];
-                    return _buildDrawerItem(
-                      icon: item.icon,
-                      title: item.label,
-                      index: index,
+                    ..._drawerItems.asMap().entries.map((entry) {
+                      final drawerIndex = entry.key;
+                      final item = entry.value;
+                      final mappedIndex = 5 + drawerIndex;
+                      final isSelected = _selectedIndex == mappedIndex;
+                      
+                      return _buildDrawerItem(
+                        icon: item.icon,
+                        title: item.label,
+                        isSelected: isSelected,
+                        onTap: () {
+                          Navigator.pop(context);
+                          _onDrawerItemTapped(drawerIndex);
+                        },
+                      );
+                    }),
+                    
+                    const Divider(indent: 20, endIndent: 20, height: 30),
+                    
+                    _buildDrawerItem(
+                      icon: Icons.logout_rounded,
+                      title: 'Logout',
+                      color: _primaryRed,
+                      isSelected: false,
                       onTap: () {
                         Navigator.pop(context);
-                        _onNavItemTapped(index);
+                        _performPremiumLogout(context);
                       },
-                    );
-                  },
+                    ),
+                  ],
                 ),
               ),
               _buildDrawerFooter(),
@@ -427,7 +517,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildDrawerHeader(UserModel? currentUser) {
+/*  Widget _buildDrawerHeader(UserModel? currentUser) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -448,6 +538,13 @@ class _HomeScreenState extends State<HomeScreen>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
             child: ClipOval(
               child: _getProfileImage(currentUser, 60),
@@ -507,6 +604,118 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+*/
+
+
+Widget _buildDrawerHeader(UserModel? currentUser) {
+  final authProvider = Provider.of<AuthProvider>(context);
+  
+  return Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [_primaryGreen, _darkGreen],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: const BorderRadius.only(
+        bottomRight: Radius.circular(20),
+      ),
+    ),
+    child: Row(
+      children: [
+        ValueListenableBuilder<String?>(
+          valueListenable: authProvider.profileImageNotifier,
+          builder: (context, profileImageUrl, child) {
+            return Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: _getProfileImageWithUrl(currentUser, profileImageUrl, 60),
+              ),
+            );
+          },
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                currentUser?.fullName ?? "Guest",
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                currentUser?.email ?? "",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.9),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (currentUser?.isAdmin ?? false)
+                Container(
+                  margin: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _goldAccent.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _goldAccent),
+                  ),
+                  child: Text(
+                    'Admin',
+                    style: TextStyle(fontSize: 10, color: _goldAccent, fontWeight: FontWeight.bold),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Add helper method
+Widget _getProfileImageWithUrl(UserModel? currentUser, String? profileImageUrl, double size) {
+  if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+    return Image.network(
+      profileImageUrl,
+      fit: BoxFit.cover,
+      width: size,
+      height: size,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return _buildDefaultProfileAvatar(size);
+      },
+    );
+  }
+  return _buildDefaultProfileAvatar(size);
+}
+
   Widget _buildDrawerFooter() {
     return const Padding(
       padding: EdgeInsets.all(20),
@@ -533,59 +742,84 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _getProfileImage(UserModel? currentUser, double size) {
-    if (currentUser?.profileImageUrl == null || 
-        currentUser!.profileImageUrl!.isEmpty) {
+    // Proper null check
+    if (currentUser == null) {
       return _buildDefaultProfileAvatar(size);
     }
     
-    final imageUrl = currentUser.profileImageUrl!;
+    // Check if profileImageUrl exists and is not empty
+    final hasProfileImage = currentUser.profileImageUrl != null && 
+                            currentUser.profileImageUrl!.isNotEmpty;
     
-    if (imageUrl.startsWith('data:image/')) {
-      try {
-        final base64Data = imageUrl.split(',').last;
-        final bytes = base64Decode(base64Data);
-        return Image(
-          image: MemoryImage(bytes),
+    if (!hasProfileImage) {
+      return _buildDefaultProfileAvatar(size);
+    }
+    
+    final imageData = currentUser.profileImageUrl!;
+    
+    // Check if it's a URL
+    if (_isUrlString(imageData)) {
+      return ClipOval(
+        child: Image.network(
+          imageData,
           fit: BoxFit.cover,
-          width: double.infinity,
-          height: double.infinity,
+          width: size,
+          height: size,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            );
+          },
           errorBuilder: (context, error, stackTrace) {
+            print('Error loading profile image: $error');
             return _buildDefaultProfileAvatar(size);
           },
+        ),
+      );
+    } else {
+      // Handle Base64
+      try {
+        String base64String = imageData;
+        if (base64String.contains('base64,')) {
+          base64String = base64String.split('base64,').last;
+        }
+        base64String = base64String.replaceAll(RegExp(r'\s'), '');
+        while (base64String.length % 4 != 0) {
+          base64String += '=';
+        }
+        final bytes = base64Decode(base64String);
+        return ClipOval(
+          child: Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            width: size,
+            height: size,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildDefaultProfileAvatar(size);
+            },
+          ),
         );
       } catch (e) {
         return _buildDefaultProfileAvatar(size);
       }
     }
-    
-    return Image.network(
-      imageUrl,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: double.infinity,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Center(
-          child: CircularProgressIndicator(
-            color: Colors.white,
-            strokeWidth: 2,
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return _buildDefaultProfileAvatar(size);
-      },
-    );
   }
 
   Widget _buildDefaultProfileAvatar(double size) {
     return Container(
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [_primaryGreen, _darkGreen],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        shape: BoxShape.circle,
       ),
       child: Center(
         child: Icon(
@@ -597,66 +831,43 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  bool _isUrlString(String str) {
+    return str.startsWith('http://') || str.startsWith('https://');
+  }
+
   Widget _buildDrawerItem({
     required IconData icon,
     required String title,
     Color? color,
-    required int index,
+    bool isSelected = false,
     required VoidCallback onTap,
   }) {
-    // For navigation items (not logout)
-    if (index >= 0 && index < _navItems.length) {
-      final isSelected = _selectedIndex == index;
-      return ListTile(
-        leading: Icon(
-          icon,
-          color: isSelected ? _primaryGreen : (color ?? _darkGreen),
-          size: 24,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? _primaryGreen : (color ?? Colors.grey[800]),
-          ),
-        ),
-        trailing: isSelected
-            ? Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: _primaryGreen,
-                  shape: BoxShape.circle,
-                ),
-              )
-            : Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.grey[400],
-                size: 24,
-              ),
-        selected: isSelected,
-        selectedTileColor: _primaryGreen.withOpacity(0.05),
-        onTap: onTap,
-      );
-    }
-    
-    // For logout button
     return ListTile(
-      leading: Icon(icon, color: color, size: 24),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: color,
-        ),
-      ),
-      trailing: Icon(
-        Icons.chevron_right_rounded,
-        color: Colors.grey[400],
+      leading: Icon(
+        icon,
+        color: isSelected ? _primaryGreen : (color ?? _darkGreen),
         size: 24,
       ),
+      title: Text(
+        title,
+        style: GoogleFonts.poppins(
+          fontSize: 14,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          color: isSelected ? _primaryGreen : (color ?? Colors.grey[800]),
+        ),
+      ),
+      trailing: isSelected
+          ? Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: _primaryGreen,
+                shape: BoxShape.circle,
+              ),
+            )
+          : null,
+      selected: isSelected,
+      selectedTileColor: _primaryGreen.withOpacity(0.05),
       onTap: onTap,
     );
   }
@@ -665,15 +876,10 @@ class _HomeScreenState extends State<HomeScreen>
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenHeight < 700;
     
-    print('🏗️ Building bottom nav bar with selectedIndex: $_selectedIndex');
-    
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            _primaryGreen,
-            _darkGreen,
-          ],
+          colors: [_primaryGreen, _darkGreen],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -754,14 +960,16 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
-
-  // Helper function for min
-  double min(double a, double b) => a < b ? a : b;
 }
 
 class NavItem {
   final IconData icon;
   final String label;
-
   const NavItem({required this.icon, required this.label});
+}
+
+class DrawerItem {
+  final IconData icon;
+  final String label;
+  const DrawerItem({required this.icon, required this.label});
 }

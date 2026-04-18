@@ -946,7 +946,10 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                                     title: 'Email',
                                     value: promotion.contactEmail,
                                     isTablet: isTablet,
-                                    onTap: () => widget.onLaunchEmail(promotion.contactEmail),
+                                   // onTap: () => widget.onLaunchEmail(promotion.contactEmail),
+                                   onTap: () {
+                                     
+                                   },
                                   ),
                                   SizedBox(height: isTablet ? 14 : 12),
                                   _buildPremiumContactItem(
@@ -954,7 +957,10 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                                     title: 'Phone',
                                     value: promotion.contactPhone,
                                     isTablet: isTablet,
-                                    onTap: () => widget.onLaunchPhone(promotion.contactPhone),
+                                  //  onTap: () => widget.onLaunchPhone(promotion.contactPhone),
+                                  onTap: () {
+                                    
+                                  },
                                   ),
                                   if (promotion.website != null && promotion.website!.isNotEmpty) ...[
                                     SizedBox(height: isTablet ? 14 : 12),
@@ -984,6 +990,8 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                           
                           // Share Stats Section
                           SizedBox(height: isTablet ? 32 : 24),
+                  /*   
+                     
                           Row(
                             children: [
                               Expanded(
@@ -1077,7 +1085,105 @@ class _BusinessPromotionDetailsScreenState extends State<BusinessPromotionDetail
                               ),
                             ],
                           ),
-                          
+
+
+*/
+
+
+           
+           Row(
+  children: [
+    Expanded(
+      child: Container(
+        padding: EdgeInsets.all(isTablet ? 16 : 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(isTablet ? 14 : 12),
+          border: Border.all(color: _borderLight, width: 1),
+        ),
+        child: Column(
+          children: [
+            shouldAnimate
+                ? RotationTransition(
+                    turns: _animationController,
+                    child: Icon(
+                      Icons.remove_red_eye_rounded,
+                      color: widget.primaryOrange,
+                      size: isTablet ? 26 : 22,
+                    ),
+                  )
+                : Icon(
+                    Icons.remove_red_eye_rounded,
+                    color: widget.primaryOrange,
+                    size: isTablet ? 26 : 22,
+                  ),
+            SizedBox(height: isTablet ? 8 : 6),
+            Text(
+              '${promotion.totalViews}',
+              style: GoogleFonts.poppins(
+                fontSize: isTablet ? 22 : 18,
+                fontWeight: FontWeight.w800,
+                color: _textPrimary,
+              ),
+            ),
+            Text(
+              'Views',
+              style: GoogleFonts.inter(
+                fontSize: isTablet ? 13 : 11,
+                color: _textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    SizedBox(width: isTablet ? 14 : 10),
+  /*  Expanded(
+      child: Container(
+        padding: EdgeInsets.all(isTablet ? 16 : 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(isTablet ? 14 : 12),
+          border: Border.all(color: _borderLight, width: 1),
+        ),
+        child: Column(
+          children: [
+            shouldAnimate
+                ? RotationTransition(
+                    turns: _animationController,
+                    child: Icon(
+                      Icons.share_rounded,
+                      color: widget.greenAccent,
+                      size: isTablet ? 26 : 22,
+                    ),
+                  )
+                : Icon(
+                    Icons.share_rounded,
+                    color: widget.greenAccent,
+                    size: isTablet ? 26 : 22,
+                  ),
+            SizedBox(height: isTablet ? 8 : 6),
+            Text(
+              '${promotion.totalShares}',
+              style: GoogleFonts.poppins(
+                fontSize: isTablet ? 22 : 18,
+                fontWeight: FontWeight.w800,
+                color: _textPrimary,
+              ),
+            ),
+            Text(
+              'Shares',
+              style: GoogleFonts.inter(
+                fontSize: isTablet ? 13 : 11,
+                color: _textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),   */
+  ],
+),
                           // Premium Footer
                           SizedBox(height: isTablet ? 40 : 32),
                           

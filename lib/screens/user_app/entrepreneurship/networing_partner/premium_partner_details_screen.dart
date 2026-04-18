@@ -1025,7 +1025,7 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                                     title: 'Phone',
                                     value: partner.phone,
                                     isTablet: isTablet,
-                                    onTap: () => widget.onLaunchPhone(partner.phone),
+                                //    onTap: () => widget.onLaunchPhone(partner.phone),
                                   ),
                                   SizedBox(height: isTablet ? 14 : 12),
                                   _buildPremiumContactItem(
@@ -1033,7 +1033,7 @@ class _PremiumPartnerDetailsScreenState extends State<PremiumPartnerDetailsScree
                                     title: 'Email',
                                     value: partner.email,
                                     isTablet: isTablet,
-                                    onTap: () => widget.onLaunchEmail(partner.email),
+                                //    onTap: () => widget.onLaunchEmail(partner.email),
                                   ),
                                   if (partner.website != null && partner.website!.isNotEmpty) ...[
                                     SizedBox(height: isTablet ? 14 : 12),

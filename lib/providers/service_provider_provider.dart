@@ -16,6 +16,10 @@ class ServiceProviderProvider with ChangeNotifier {
   bool _isLoading = false;
   String _error = '';
 
+  // My Services state
+  List<ServiceProviderModel> _myApprovedServices = [];
+  List<ServiceProviderModel> _myPendingServices = [];
+
   // Stream controller for selected provider
   final StreamController<ServiceProviderModel?> _selectedProviderController = 
       StreamController<ServiceProviderModel?>.broadcast();
@@ -35,19 +39,23 @@ class ServiceProviderProvider with ChangeNotifier {
 
   // Stream subscription
   StreamSubscription<List<ServiceProviderModel>>? _streamSubscription;
+  StreamSubscription<List<ServiceProviderModel>>? _userServicesSubscription;
   
   // Flag to prevent multiple simultaneous reloads
   bool _isReloading = false;
 
   // Getters
-  List<ServiceProviderModel> get serviceProviders => _filteredProviders; // Return filtered list
-  List<ServiceProviderModel> get allProviders => _allProviders; // Return all providers
+  List<ServiceProviderModel> get serviceProviders => _filteredProviders;
+  List<ServiceProviderModel> get allProviders => _allProviders;
   ServiceProviderModel? get selectedProvider => _selectedProvider;
   bool get isLoading => _isLoading;
   String get error => _error;
+  
+  // My Services getters
+  List<ServiceProviderModel> get myApprovedServices => _myApprovedServices;
+  List<ServiceProviderModel> get myPendingServices => _myPendingServices;
 
   String? get selectedState => _selectedState;
-  // FIX: Add stateFilter getter that returns the current state filter value
   String? get stateFilter => _selectedState;
   String? get selectedCity => _selectedCity;
   ServiceCategory? get selectedCategory => _selectedCategory;
@@ -62,17 +70,13 @@ class ServiceProviderProvider with ChangeNotifier {
   void syncWithLocationFilter(LocationFilterProvider locationProvider) {
     print('📍 ServiceProvider.syncWithLocationFilter called with state: ${locationProvider.selectedState}');
     
-    // Check if the state filter has actually changed
     if (_selectedState == locationProvider.selectedState) {
       print('📍 ServiceProvider filter already in sync: $_selectedState');
       return;
     }
     
-    // Update the state filter
     _selectedState = locationProvider.selectedState;
     print('📍 ServiceProvider state filter changed to: $_selectedState');
-    
-    // Reload data with new filter
     loadServiceProviders();
   }
 
@@ -83,14 +87,14 @@ class ServiceProviderProvider with ChangeNotifier {
       if (state == null) {
         _selectedCity = null;
       }
-      loadServiceProviders(); // Reload with new filter
+      loadServiceProviders();
     }
   }
 
   void setSelectedCity(String? city) {
     if (_selectedCity != city) {
       _selectedCity = city;
-      loadServiceProviders(); // Reload with new filter
+      loadServiceProviders();
     }
   }
 
@@ -101,7 +105,7 @@ class ServiceProviderProvider with ChangeNotifier {
         _selectedServiceProvider = null;
         _selectedSubServiceProvider = null;
       }
-      loadServiceProviders(); // Reload with new filter
+      loadServiceProviders();
     }
   }
 
@@ -111,25 +115,25 @@ class ServiceProviderProvider with ChangeNotifier {
       if (serviceProvider == null) {
         _selectedSubServiceProvider = null;
       }
-      loadServiceProviders(); // Reload with new filter
+      loadServiceProviders();
     }
   }
 
   void setSelectedSubServiceProvider(String? subServiceProvider) {
     if (_selectedSubServiceProvider != subServiceProvider) {
       _selectedSubServiceProvider = subServiceProvider;
-      loadServiceProviders(); // Reload with new filter
+      loadServiceProviders();
     }
   }
 
   void setSearchQuery(String query) {
     if (_searchQuery != query) {
       _searchQuery = query;
-      _applySearchFilter(); // Only apply search filter locally
+      _applySearchFilter();
     }
   }
 
-  // Apply search filter locally (doesn't require database reload)
+  // Apply search filter locally
   void _applySearchFilter() {
     if (_allProviders.isEmpty) {
       _filteredProviders = [];
@@ -138,7 +142,6 @@ class ServiceProviderProvider with ChangeNotifier {
 
     List<ServiceProviderModel> filtered = List.from(_allProviders);
 
-    // Apply search filter
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase().trim();
       filtered = filtered.where((p) {
@@ -154,7 +157,6 @@ class ServiceProviderProvider with ChangeNotifier {
 
     _filteredProviders = filtered;
     
-    // Log active filters
     print('🎯 Active filters: State: ${_selectedState ?? "Any"}, City: ${_selectedCity ?? "Any"}, Category: ${_selectedCategory?.displayName ?? "Any"}, Service: ${_selectedServiceProvider ?? "Any"}');
     notifyListeners();
   }
@@ -172,10 +174,8 @@ class ServiceProviderProvider with ChangeNotifier {
     print('📍 Current state filter: $_selectedState');
     
     try {
-      // Cancel existing subscription
       _streamSubscription?.cancel();
       
-      // Get stream and listen for updates
       _streamSubscription = _service.getServiceProviders(
         state: _selectedState,
         city: _selectedCity,
@@ -185,8 +185,8 @@ class ServiceProviderProvider with ChangeNotifier {
         searchQuery: _searchQuery,
         adminView: adminView,
         includeDeleted: adminView,
-        onlyVerified: !adminView, // For non-admin, only show verified
-        onlyAvailable: !adminView, // For non-admin, only show available
+        onlyVerified: !adminView,
+        onlyAvailable: !adminView,
       ).listen(
         (providers) => _handleStreamUpdate(providers, adminView),
         onError: (error) {
@@ -208,7 +208,6 @@ class ServiceProviderProvider with ChangeNotifier {
 
   // Handle stream updates
   void _handleStreamUpdate(List<ServiceProviderModel> providers, bool adminView) {
-    // Apply any pending optimistic updates to the incoming data
     _allProviders = providers.map((provider) {
       final pendingLike = _pendingLikes[provider.id!];
       if (pendingLike != null) {
@@ -221,7 +220,6 @@ class ServiceProviderProvider with ChangeNotifier {
       return provider;
     }).toList();
 
-    // Apply search filter to the new data
     _applySearchFilter();
     _isLoading = false;
     _isReloading = false;
@@ -229,6 +227,147 @@ class ServiceProviderProvider with ChangeNotifier {
     print('✅ Stream received ${providers.length} providers');
     print('📊 After filtering: ${_filteredProviders.length} providers');
     notifyListeners();
+  }
+
+  // ==================== MY SERVICES METHODS ====================
+// ==================== MY SERVICES METHODS ====================
+
+// Load user's services - FIXED to show all services including pending
+Future<void> loadUserServices(String userId, {bool adminView = false}) async {
+  if (_isReloading) return;
+  
+  _isReloading = true;
+  _isLoading = true;
+  _error = '';
+  notifyListeners();
+
+  print('🔄 loadUserServices called for userId: $userId');
+  print('🔄 Admin view: $adminView');
+  
+  try {
+    _userServicesSubscription?.cancel();
+    
+    // IMPORTANT: For user's own services, we want to see ALL their services
+    // regardless of verification status. Set adminView = true to bypass filters.
+    _userServicesSubscription = _service.getUserServices(
+      userId: userId,
+      adminView: true, // Set to true to show all services including unverified
+      includeDeleted: adminView,
+      onlyVerified: false, // Don't filter by verification for user's own services
+      onlyAvailable: false, // Don't filter by availability for user's own services
+    ).listen(
+      (providers) => _handleUserServicesUpdate(providers),
+      onError: (error) {
+        print('❌ User services stream error: $error');
+        _error = 'Failed to load your services: ${error.toString()}';
+        _isLoading = false;
+        _isReloading = false;
+        notifyListeners();
+      },
+    );
+  } catch (e) {
+    print('❌ Catch error: $e');
+    _error = 'Failed to load your services: ${e.toString()}';
+    _isLoading = false;
+    _isReloading = false;
+    notifyListeners();
+  }
+}
+
+// Handle user services update
+void _handleUserServicesUpdate(List<ServiceProviderModel> providers) {
+  print('📊 Processing ${providers.length} user services');
+  
+  // Log each service for debugging
+  for (var service in providers) {
+    print('  - Service: ${service.companyName}, Verified: ${service.isVerified}, Deleted: ${service.isDeleted}');
+  }
+  
+  // Separate into approved and pending based on isVerified
+  // Show ALL services that are not deleted
+  _myApprovedServices = providers
+      .where((p) => p.isVerified == true && !p.isDeleted)
+      .toList();
+  _myPendingServices = providers
+      .where((p) => p.isVerified == false && !p.isDeleted)
+      .toList();
+
+  _isLoading = false;
+  _isReloading = false;
+  
+  print('✅ Approved services: ${_myApprovedServices.length}');
+  print('✅ Pending services: ${_myPendingServices.length}');
+  
+  // Log pending services details
+  for (var service in _myPendingServices) {
+    print('  - Pending: ${service.companyName} (ID: ${service.id})');
+  }
+  
+  notifyListeners();
+}
+
+
+  // Delete user service
+  Future<bool> deleteUserService(String id) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _service.deleteServiceProvider(id);
+      
+      // Remove from local lists
+      _myApprovedServices.removeWhere((p) => p.id == id);
+      _myPendingServices.removeWhere((p) => p.id == id);
+      _allProviders.removeWhere((p) => p.id == id);
+      _applySearchFilter();
+      
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Failed to delete service: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Update user service
+  Future<bool> updateUserService(String id, ServiceProviderModel provider) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _service.updateServiceProvider(id, provider);
+      
+      final updatedProvider = provider.copyWith(id: id);
+      
+      // Update in local lists
+      final approvedIndex = _myApprovedServices.indexWhere((p) => p.id == id);
+      if (approvedIndex != -1) {
+        _myApprovedServices[approvedIndex] = updatedProvider;
+      }
+      
+      final pendingIndex = _myPendingServices.indexWhere((p) => p.id == id);
+      if (pendingIndex != -1) {
+        _myPendingServices[pendingIndex] = updatedProvider;
+      }
+      
+      final allIndex = _allProviders.indexWhere((p) => p.id == id);
+      if (allIndex != -1) {
+        _allProviders[allIndex] = updatedProvider;
+        _applySearchFilter();
+      }
+      
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Failed to update service: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   // Clear all filters
@@ -239,7 +378,7 @@ class ServiceProviderProvider with ChangeNotifier {
     _selectedServiceProvider = null;
     _selectedSubServiceProvider = null;
     _searchQuery = '';
-    loadServiceProviders(); // Reload with cleared filters
+    loadServiceProviders();
     print('🧹 All filters cleared');
   }
 
@@ -295,7 +434,6 @@ class ServiceProviderProvider with ChangeNotifier {
     final provider = _allProviders[index];
     final wasLiked = provider.isLikedByUser(userId);
     
-    // Calculate new state
     final newLikedByUsers = List<String>.from(provider.likedByUsers);
     if (wasLiked) {
       newLikedByUsers.remove(userId);
@@ -304,7 +442,6 @@ class ServiceProviderProvider with ChangeNotifier {
     }
     final newTotalLikes = newLikedByUsers.length;
 
-    // Store optimistic state
     _pendingLikes[providerId] = OptimisticLike(
       timestamp: DateTime.now().millisecondsSinceEpoch,
       newTotalLikes: newTotalLikes,
@@ -312,7 +449,6 @@ class ServiceProviderProvider with ChangeNotifier {
       userId: userId,
     );
 
-    // Optimistic update in all providers
     final updatedProvider = provider.copyWith(
       totalLikes: newTotalLikes,
       likedByUsers: newLikedByUsers,
@@ -321,21 +457,17 @@ class ServiceProviderProvider with ChangeNotifier {
     
     _allProviders[index] = updatedProvider;
     
-    // Update filtered list if this provider is currently in it
     final filteredIndex = _filteredProviders.indexWhere((p) => p.id == providerId);
     if (filteredIndex != -1) {
       _filteredProviders[filteredIndex] = updatedProvider;
     }
     
-    // Update selected provider if needed
     if (_selectedProvider?.id == providerId) {
       _selectedProvider = updatedProvider;
       _selectedProviderController.add(updatedProvider);
     }
     
     notifyListeners();
-    
-    // Queue for batch update
     _queueLikeUpdate();
     
     return true;
@@ -439,6 +571,12 @@ class ServiceProviderProvider with ChangeNotifier {
 
     try {
       await _service.addServiceProvider(provider);
+      
+      // If user is viewing their services, refresh
+      if (provider.createdBy.isNotEmpty) {
+        await loadUserServices(provider.createdBy);
+      }
+      
       _isLoading = false;
       notifyListeners();
       return true;
@@ -464,6 +602,17 @@ class ServiceProviderProvider with ChangeNotifier {
         _applySearchFilter();
       }
       
+      // Update in user services lists
+      final approvedIndex = _myApprovedServices.indexWhere((p) => p.id == id);
+      if (approvedIndex != -1) {
+        _myApprovedServices[approvedIndex] = provider.copyWith(id: id);
+      }
+      
+      final pendingIndex = _myPendingServices.indexWhere((p) => p.id == id);
+      if (pendingIndex != -1) {
+        _myPendingServices[pendingIndex] = provider.copyWith(id: id);
+      }
+      
       _isLoading = false;
       notifyListeners();
       return true;
@@ -484,6 +633,8 @@ class ServiceProviderProvider with ChangeNotifier {
       await _service.deleteServiceProvider(id);
       
       _allProviders.removeWhere((p) => p.id == id);
+      _myApprovedServices.removeWhere((p) => p.id == id);
+      _myPendingServices.removeWhere((p) => p.id == id);
       _applySearchFilter();
       
       _isLoading = false;
@@ -548,6 +699,8 @@ class ServiceProviderProvider with ChangeNotifier {
     _allProviders.clear();
     _filteredProviders.clear();
     _selectedProvider = null;
+    _myApprovedServices.clear();
+    _myPendingServices.clear();
     _isLoading = false;
     _isReloading = false;
     _error = '';
@@ -589,8 +742,8 @@ class ServiceProviderProvider with ChangeNotifier {
       subServiceProvider: _selectedSubServiceProvider,
       searchQuery: _searchQuery,
       adminView: false,
-      onlyVerified: true, // ✅ Only show verified services
-      onlyAvailable: true, // ✅ Only show available services
+      onlyVerified: true,
+      onlyAvailable: true,
     );
   }
 
@@ -603,6 +756,7 @@ class ServiceProviderProvider with ChangeNotifier {
   void disposeProvider() {
     _batchUpdateTimer?.cancel();
     _streamSubscription?.cancel();
+    _userServicesSubscription?.cancel();
     _pendingLikes.clear();
     _selectedProviderController.close();
   }

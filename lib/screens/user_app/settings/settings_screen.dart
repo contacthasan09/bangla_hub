@@ -10,6 +10,7 @@ import 'package:bangla_hub/screens/auth/signup_screen.dart';
 import 'package:bangla_hub/screens/user_app/webview_screen.dart';
 import 'package:bangla_hub/services/cloudinary_service.dart';
 import 'package:bangla_hub/widgets/common/global_location_guard.dart';
+import 'package:bangla_hub/widgets/common/profile_image_picker.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
@@ -38,6 +39,10 @@ class _PremiumSettingsScreenState extends State<PremiumSettingsScreen>
   bool get wantKeepAlive => true;
 
     bool _isInitialized = false;
+      bool _isRefreshing = false; // Add this flag
+        bool _isUpdatingImage = false;
+
+
 
       // Add this flag
   bool _isUploading = false;
@@ -144,32 +149,16 @@ class _PremiumSettingsScreenState extends State<PremiumSettingsScreen>
   }
 
 
+// In your PremiumSettingsScreen, update the didChangeDependencies:
+
 @override
 void didChangeDependencies() {
   super.didChangeDependencies();
   
-  // Only refresh once when the screen is first loaded
+  // DO NOT auto-refresh here - it causes infinite loops
+  // Only mark as initialized
   if (!_isInitialized && mounted) {
     _isInitialized = true;
-    
-    // Refresh user data when screen becomes visible
-    final authProvider = Provider.of<AuthProvider>(context);
-    if (authProvider.user != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          authProvider.refreshUserData();
-        }
-      });
-    }
-  }
-  
-  // Handle pending upload after widget is rebuilt
-  if (_isUploading && _pendingUploadFile != null && mounted) {
-    print('📸 Processing pending upload...');
-    final file = _pendingUploadFile!;
-    _pendingUploadFile = null;
-    _isUploading = false;
-    _uploadProfileImage(file);
   }
 }
 
@@ -304,6 +293,8 @@ void didChangeDependencies() {
       ),
     );
   }
+
+
 Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context) {
   return CustomScrollView(
     physics: BouncingScrollPhysics(),
@@ -409,7 +400,7 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
               _buildPremiumProfileCard(context, currentUser, isTablet),
               
               // Refresh Button (for debugging - remove after fixing)
-              if (currentUser != null)
+          /*    if (currentUser != null)
                 Padding(
                   padding: EdgeInsets.only(top: 8),
                   child: GestureDetector(
@@ -443,7 +434,7 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
                       ),
                     ),
                   ),
-                ),
+                ), */
               
               SizedBox(height: 24),
               _buildAccountInfoCard(context, currentUser, isTablet),
@@ -467,7 +458,10 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
   );
 } 
  
-  Widget _buildPremiumProfileCard(BuildContext context, UserModel? user, bool isTablet) {
+
+/*  Widget _buildPremiumProfileCard(BuildContext context, UserModel? user, bool isTablet) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final currentUser = authProvider.user;
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 380;
     
@@ -488,78 +482,29 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
       ),
       child: Column(
         children: [
-          Stack(
-            children: [
-              Container(
-                width: isTablet ? 100 : (isSmallScreen ? 70 : 80),
-                height: isTablet ? 100 : (isSmallScreen ? 70 : 80),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [_primaryRed, _primaryGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: isTablet ? 10 : 6,
-                      offset: Offset(0, isTablet ? 3 : 2),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(isSmallScreen ? 2 : 3),
-                  child: ClipOval(
-                    child: _getPremiumProfileImage(
-                      user, 
-                      isTablet ? 92 : (isSmallScreen ? 64 : 74)
-                    ),
-                  ),
-                ),
-              ),
-          /*    if (user != null)
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: GestureDetector(
-                    onTap: () => _showImageSourceSheet(context),
-                    child: Container(
-                      width: isTablet ? 32 : (isSmallScreen ? 24 : 28),
-                      height: isTablet ? 32 : (isSmallScreen ? 24 : 28),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_primaryRed, _primaryGreen],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: isSmallScreen ? 1.5 : 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: isTablet ? 6 : 4,
-                            offset: Offset(0, isTablet ? 2 : 1),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.camera_alt_rounded,
-                        color: Colors.white,
-                        size: isTablet ? 14 : (isSmallScreen ? 10 : 12),
-                      ),
-                    ),
-                  ),
-                ),  */
-            ],
-          ),
+          // Profile Image Picker
+        ProfileImagePicker(
+          size: isTablet ? 100 : (isSmallScreen ? 80 : 90),
+          onImageUpdated: () async {
+            print('🔄 Image updated callback triggered');
+            
+            // Just refresh the user data without forcing full UI rebuild
+            if (mounted) {
+              await authProvider.refreshUserData();
+              // Only update this screen, not the entire app
+              setState(() {});
+            }
+          },
+        ),
           SizedBox(height: isTablet ? 12 : (isSmallScreen ? 8 : 10)),
+          
+          // User Info
           Column(
             children: [
               Text(
-                user?.fullName ?? "Guest User",
+                currentUser?.fullName ?? "Guest User",
                 style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 18 : (isSmallScreen ? 14 : 16),
+                  fontSize: isTablet ? 18 : (isSmallScreen ? 16 : 17),
                   fontWeight: FontWeight.w700,
                   color: _textWhite,
                   letterSpacing: 0.3,
@@ -578,9 +523,9 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
                   border: Border.all(color: _borderColor, width: 0.5),
                 ),
                 child: Text(
-                  user?.email ?? "Not signed in",
+                  currentUser?.email ?? "Not signed in",
                   style: GoogleFonts.inter(
-                    fontSize: isTablet ? 11 : (isSmallScreen ? 9 : 10),
+                    fontSize: isTablet ? 11 : (isSmallScreen ? 10 : 11),
                     color: _textLight,
                     fontWeight: FontWeight.w500,
                   ),
@@ -589,8 +534,11 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
               ),
             ],
           ),
+          
           SizedBox(height: isTablet ? 12 : (isSmallScreen ? 8 : 10)),
-          if (user == null) ...[
+          
+          // Login Button for Guest
+          if (currentUser == null) ...[
             GestureDetector(
               onTap: () => _navigateToLogin(context),
               child: Container(
@@ -624,13 +572,13 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
                     Icon(
                       Icons.login_rounded,
                       color: Colors.white,
-                      size: isTablet ? 14 : (isSmallScreen ? 11 : 12),
+                      size: isTablet ? 14 : (isSmallScreen ? 12 : 13),
                     ),
                     SizedBox(width: isTablet ? 6 : (isSmallScreen ? 4 : 5)),
                     Text(
                       'Sign In',
                       style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 12 : (isSmallScreen ? 10 : 11),
+                        fontSize: isTablet ? 12 : (isSmallScreen ? 11 : 12),
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
@@ -675,8 +623,271 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
               ),
             ),
           ],
-          if (user?.isAdmin ?? false)
+          
+          // Admin Badge
+          if (currentUser?.isAdmin ?? false)
+            Padding(
+              padding: EdgeInsets.only(top: isSmallScreen ? 6 : 8),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 12 : 14, 
+                  vertical: isSmallScreen ? 4 : 5
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_goldAccent, Color(0xFFFFC107)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _goldAccent.withOpacity(0.3),
+                      blurRadius: isTablet ? 6 : 4,
+                      offset: Offset(0, isTablet ? 2 : 1),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.verified_user_rounded, 
+                      color: Colors.white, 
+                      size: isSmallScreen ? 12 : 14
+                    ),
+                    SizedBox(width: isSmallScreen ? 4 : 6),
+                    Text(
+                      'Admin',
+                      style: GoogleFonts.notoSansBengali(
+                        fontSize: isSmallScreen ? 10 : 12,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+          // Join Date
+          if (currentUser?.createdAt != null)
+            Padding(
+              padding: EdgeInsets.only(top: isTablet ? 10 : (isSmallScreen ? 8 : 9)),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 8 : 10, 
+                  vertical: isSmallScreen ? 4 : 5
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
+                  border: Border.all(color: _borderColor, width: 0.5),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.calendar_today_rounded,
+                      color: _primaryGreen, 
+                      size: isSmallScreen ? 10 : 12
+                    ),
+                    SizedBox(width: isSmallScreen ? 4 : 6),
+                    Text(
+                      'Joined ${_formatDate(currentUser!.createdAt)}',
+                      style: GoogleFonts.poppins(
+                        fontSize: isSmallScreen ? 9 : 10,
+                        color: _textLight,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+
+*/
+
+
+
+/*Widget _buildPremiumProfileCard(BuildContext context, UserModel? user, bool isTablet) {
+  final authProvider = Provider.of<AuthProvider>(context);
+  final currentUser = authProvider.user;
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isSmallScreen = screenWidth < 380;
+  
+  return Container(
+    width: double.infinity,
+    padding: EdgeInsets.all(isTablet ? 16 : (isSmallScreen ? 12 : 14)),
+    decoration: BoxDecoration(
+      color: _cardColor,
+      borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+      border: Border.all(color: _borderColor, width: 1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          blurRadius: isTablet ? 20 : 12,
+          offset: Offset(0, isTablet ? 6 : 3),
+        ),
+      ],
+    ),
+    child: Column(
+      children: [
+        // Profile Image Picker with ValueListenableBuilder
+        ValueListenableBuilder<String?>(
+          valueListenable: authProvider.profileImageNotifier,
+          builder: (context, profileImageUrl, child) {
+            return ProfileImagePicker(
+              size: isTablet ? 100 : (isSmallScreen ? 80 : 90),
+              onImageUpdated: () async {
+                print('🔄 Image updated callback triggered');
+                // Small delay to ensure upload is complete
+                await Future.delayed(const Duration(milliseconds: 300));
+                if (mounted) {
+                  // This will only refresh the user data without full rebuild
+                  await authProvider.refreshUserData();
+                }
+              },
+            );
+          },
+        ),
+        SizedBox(height: isTablet ? 12 : (isSmallScreen ? 8 : 10)),
+        
+        // User Info
+        Column(
+          children: [
+            Text(
+              currentUser?.fullName ?? "Guest User",
+              style: GoogleFonts.poppins(
+                fontSize: isTablet ? 18 : (isSmallScreen ? 16 : 17),
+                fontWeight: FontWeight.w700,
+                color: _textWhite,
+                letterSpacing: 0.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: isSmallScreen ? 2 : 4),
             Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 8 : 10, 
+                vertical: isSmallScreen ? 4 : 5
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
+                border: Border.all(color: _borderColor, width: 0.5),
+              ),
+              child: Text(
+                currentUser?.email ?? "Not signed in",
+                style: GoogleFonts.inter(
+                  fontSize: isTablet ? 11 : (isSmallScreen ? 10 : 11),
+                  color: _textLight,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+        
+        SizedBox(height: isTablet ? 12 : (isSmallScreen ? 8 : 10)),
+        
+        // Login Button for Guest
+        if (currentUser == null) ...[
+          GestureDetector(
+            onTap: () => _navigateToLogin(context),
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 16 : (isSmallScreen ? 12 : 14),
+                vertical: isTablet ? 8 : (isSmallScreen ? 6 : 7),
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_primaryRed, _primaryGreen],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: isTablet ? 12 : 8,
+                    offset: Offset(0, isTablet ? 4 : 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.login_rounded,
+                    color: Colors.white,
+                    size: isTablet ? 14 : (isSmallScreen ? 12 : 13),
+                  ),
+                  SizedBox(width: isTablet ? 6 : (isSmallScreen ? 4 : 5)),
+                  Text(
+                    'Sign In',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 12 : (isSmallScreen ? 11 : 12),
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: isTablet ? 10 : (isSmallScreen ? 8 : 9)),
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 8 : 10, 
+              vertical: isSmallScreen ? 6 : 8
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
+              border: Border.all(color: _borderColor, width: 0.5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: _goldAccent,
+                  size: isSmallScreen ? 10 : 12,
+                ),
+                SizedBox(width: isSmallScreen ? 4 : 5),
+                Expanded(
+                  child: Text(
+                    'Sign in to access all features',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 9 : (isSmallScreen ? 8 : 9),
+                      color: _textLight,
+                      fontWeight: FontWeight.w400,
+                      height: 1.3,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        
+        // Admin Badge
+        if (currentUser?.isAdmin ?? false)
+          Padding(
+            padding: EdgeInsets.only(top: isSmallScreen ? 6 : 8),
+            child: Container(
               padding: EdgeInsets.symmetric(
                 horizontal: isSmallScreen ? 12 : 14, 
                 vertical: isSmallScreen ? 4 : 5
@@ -699,7 +910,10 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.verified_user_rounded, color: Colors.white, size: isSmallScreen ? 12 : 14),
+                  Icon(Icons.verified_user_rounded, 
+                    color: Colors.white, 
+                    size: isSmallScreen ? 12 : 14
+                  ),
                   SizedBox(width: isSmallScreen ? 4 : 6),
                   Text(
                     'Admin',
@@ -713,41 +927,377 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
                 ],
               ),
             ),
-          if (user?.createdAt != null)
-            Padding(
-              padding: EdgeInsets.only(top: isTablet ? 10 : (isSmallScreen ? 8 : 9)),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 8 : 10, 
-                  vertical: isSmallScreen ? 4 : 5
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
-                  border: Border.all(color: _borderColor, width: 0.5),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.calendar_today_rounded,
-                        color: _primaryGreen, size: isSmallScreen ? 10 : 12),
-                    SizedBox(width: isSmallScreen ? 4 : 6),
-                    Text(
-                      'Joined ${_formatDate(user!.createdAt)}',
-                      style: GoogleFonts.poppins(
-                        fontSize: isSmallScreen ? 9 : 10,
-                        color: _textLight,
-                        fontWeight: FontWeight.w500,
-                      ),
+          ),
+          
+        // Join Date
+        if (currentUser?.createdAt != null)
+          Padding(
+            padding: EdgeInsets.only(top: isTablet ? 10 : (isSmallScreen ? 8 : 9)),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 8 : 10, 
+                vertical: isSmallScreen ? 4 : 5
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
+                border: Border.all(color: _borderColor, width: 0.5),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.calendar_today_rounded,
+                    color: _primaryGreen, 
+                    size: isSmallScreen ? 10 : 12
+                  ),
+                  SizedBox(width: isSmallScreen ? 4 : 6),
+                  Text(
+                    'Joined ${_formatDate(currentUser!.createdAt)}',
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 9 : 10,
+                      color: _textLight,
+                      fontWeight: FontWeight.w500,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
+          ),
+      ],
+    ),
+  );
+}
+
+*/
+
+
+
+Widget _buildPremiumProfileCard(BuildContext context, UserModel? user, bool isTablet) {
+  final authProvider = Provider.of<AuthProvider>(context);
+  final currentUser = authProvider.user;
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isSmallScreen = screenWidth < 380;
+  
+  return Container(
+    width: double.infinity,
+    padding: EdgeInsets.all(isTablet ? 16 : (isSmallScreen ? 12 : 14)),
+    decoration: BoxDecoration(
+      color: _cardColor,
+      borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+      border: Border.all(color: _borderColor, width: 1),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          blurRadius: isTablet ? 20 : 12,
+          offset: Offset(0, isTablet ? 6 : 3),
+        ),
+      ],
+    ),
+    child: Column(
+      children: [
+        // Profile Image Picker - NO ValueListenableBuilder here to prevent rebuilds
+        // The ProfileImagePicker itself will update when onImageUpdated is called
+        ProfileImagePicker(
+          size: isTablet ? 100 : (isSmallScreen ? 80 : 90),
+          onImageUpdated: () async {
+            print('🔄 Image updated callback triggered');
+            // Small delay to ensure upload is complete
+            await Future.delayed(const Duration(milliseconds: 300));
+            // Only refresh user data - no setState needed
+            if (mounted) {
+              await authProvider.refreshUserData();
+            }
+          },
+        ),
+        SizedBox(height: isTablet ? 12 : (isSmallScreen ? 8 : 10)),
+        
+        // User Info - This will update when authProvider notifies
+        Column(
+          children: [
+            Text(
+              currentUser?.fullName ?? "Guest User",
+              style: GoogleFonts.poppins(
+                fontSize: isTablet ? 18 : (isSmallScreen ? 16 : 17),
+                fontWeight: FontWeight.w700,
+                color: _textWhite,
+                letterSpacing: 0.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: isSmallScreen ? 2 : 4),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 8 : 10, 
+                vertical: isSmallScreen ? 4 : 5
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
+                border: Border.all(color: _borderColor, width: 0.5),
+              ),
+              child: Text(
+                currentUser?.email ?? "Not signed in",
+                style: GoogleFonts.inter(
+                  fontSize: isTablet ? 11 : (isSmallScreen ? 10 : 11),
+                  color: _textLight,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+        
+        SizedBox(height: isTablet ? 12 : (isSmallScreen ? 8 : 10)),
+        
+        // Login Button for Guest
+        if (currentUser == null) ...[
+          GestureDetector(
+            onTap: () => _navigateToLogin(context),
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 16 : (isSmallScreen ? 12 : 14),
+                vertical: isTablet ? 8 : (isSmallScreen ? 6 : 7),
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_primaryRed, _primaryGreen],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: isTablet ? 12 : 8,
+                    offset: Offset(0, isTablet ? 4 : 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.login_rounded,
+                    color: Colors.white,
+                    size: isTablet ? 14 : (isSmallScreen ? 12 : 13),
+                  ),
+                  SizedBox(width: isTablet ? 6 : (isSmallScreen ? 4 : 5)),
+                  Text(
+                    'Sign In',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 12 : (isSmallScreen ? 11 : 12),
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: isTablet ? 10 : (isSmallScreen ? 8 : 9)),
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 8 : 10, 
+              vertical: isSmallScreen ? 6 : 8
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
+              border: Border.all(color: _borderColor, width: 0.5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: _goldAccent,
+                  size: isSmallScreen ? 10 : 12,
+                ),
+                SizedBox(width: isSmallScreen ? 4 : 5),
+                Expanded(
+                  child: Text(
+                    'Sign in to access all features',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 9 : (isSmallScreen ? 8 : 9),
+                      color: _textLight,
+                      fontWeight: FontWeight.w400,
+                      height: 1.3,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
-      ),
+        
+        // Admin Badge
+        if (currentUser?.isAdmin ?? false)
+          Padding(
+            padding: EdgeInsets.only(top: isSmallScreen ? 6 : 8),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 12 : 14, 
+                vertical: isSmallScreen ? 4 : 5
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_goldAccent, Color(0xFFFFC107)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 18),
+                boxShadow: [
+                  BoxShadow(
+                    color: _goldAccent.withOpacity(0.3),
+                    blurRadius: isTablet ? 6 : 4,
+                    offset: Offset(0, isTablet ? 2 : 1),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.verified_user_rounded, 
+                    color: Colors.white, 
+                    size: isSmallScreen ? 12 : 14
+                  ),
+                  SizedBox(width: isSmallScreen ? 4 : 6),
+                  Text(
+                    'Admin',
+                    style: GoogleFonts.notoSansBengali(
+                      fontSize: isSmallScreen ? 10 : 12,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+        // Join Date
+        if (currentUser?.createdAt != null)
+          Padding(
+            padding: EdgeInsets.only(top: isTablet ? 10 : (isSmallScreen ? 8 : 9)),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 8 : 10, 
+                vertical: isSmallScreen ? 4 : 5
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
+                border: Border.all(color: _borderColor, width: 0.5),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.calendar_today_rounded,
+                    color: _primaryGreen, 
+                    size: isSmallScreen ? 10 : 12
+                  ),
+                  SizedBox(width: isSmallScreen ? 4 : 6),
+                  Text(
+                    'Joined ${_formatDate(currentUser!.createdAt)}',
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 9 : 10,
+                      color: _textLight,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+
+
+
+
+// Add this debug method to test the profile image picker
+void _testProfileImagePicker() async {
+  print('🧪 [TEST] Testing ProfileImagePicker manually');
+  print('🧪 [TEST] Checking AuthProvider state...');
+  
+  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  final currentUser = authProvider.user;
+  
+  if (currentUser == null) {
+    print('❌ [TEST] No user logged in');
+    _showSnackBar('Please login first', _primaryRed);
+    return;
+  }
+  
+  print('✅ [TEST] User logged in: ${currentUser.email}');
+  print('✅ [TEST] Current profile image: ${currentUser.profileImageUrl ?? 'NULL'}');
+  
+  // Test image picker directly
+  try {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    
+    if (pickedFile != null) {
+      print('✅ [TEST] Image picked: ${pickedFile.path}');
+      
+      // Show loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Uploading...'), backgroundColor: Colors.orange),
+      );
+      
+      final file = File(pickedFile.path);
+      final userId = CloudinaryService.sanitizeEmailForFolder(currentUser.email);
+      final imageUrl = await CloudinaryService.uploadProfileImage(
+        file,
+        customFolder: 'profile_images/$userId',
+      );
+      
+      if (imageUrl != null) {
+        print('✅ [TEST] Upload successful: $imageUrl');
+        
+        final updatedUser = currentUser.copyWith(
+          profileImageUrl: imageUrl,
+          updatedAt: DateTime.now(),
+        );
+        
+        await authProvider.updateUserProfile(updatedUser);
+        await authProvider.refreshUserData();
+        
+        setState(() {});
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated!'), backgroundColor: Colors.green),
+        );
+      } else {
+        print('❌ [TEST] Upload failed');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Upload failed'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  } catch (e) {
+    print('❌ [TEST] Error: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
     );
   }
+}
 
 
   void _navigateToLogin(BuildContext context) {
@@ -2320,11 +2870,12 @@ void _showContactOptions(BuildContext context) {
               _buildContactOptionDialog(
                 icon: Icons.email_rounded,
                 title: 'Email Support',
-                subtitle: 'rif97965@gmail.com',
+              //  subtitle: 'Get help via email',
+              subtitle: 'info@banglahub.us',
                 color: _primaryGreen,
                 onTap: () {
                   Navigator.pop(context);
-                  _sendEmail('rif97965@gmail.com', 'Support Request');
+                //  _sendEmail('info@banglahub.us', 'Support Request');
                 },
                 isSmallScreen: isSmallScreen,
               ),
@@ -2490,7 +3041,7 @@ Widget _buildContactOptionDialog({
   }
 
 
-void _showReportProblemDialog(BuildContext context) {
+/*void _showReportProblemDialog(BuildContext context) {
   final problemController = TextEditingController();
   String problemType = 'Bug/Technical Issue';
   
@@ -2806,6 +3357,366 @@ void _showReportProblemDialog(BuildContext context) {
   );
 }
 
+*/
+
+
+/* void _showReportProblemDialog(BuildContext context) {
+  final problemController = TextEditingController();
+  String problemType = 'Bug/Technical Issue';
+  
+  final mediaQuery = MediaQuery.of(context);
+  final isSmallScreen = mediaQuery.size.height < 600;
+  
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        // Listen to keyboard visibility
+        final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+        
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: isKeyboardVisible ? 10 : 20,
+          ),
+          child: SingleChildScrollView(
+            // Add padding at bottom when keyboard is open
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: 450,
+                minWidth: 280,
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_bgGradient2, _primaryGreen.withOpacity(0.9)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _borderColor, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.25),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(isSmallScreen ? 16 : 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header with icon
+                    Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_primaryRed, _primaryGreen],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.report_problem_rounded, color: Colors.white, size: 18),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Report a Problem',
+                            style: GoogleFonts.poppins(
+                              fontSize: isSmallScreen ? 18 : 20,
+                              fontWeight: FontWeight.w700,
+                              color: _textWhite,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Problem Type Section
+                    Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _borderColor, width: 0.8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.category_rounded, color: _primaryRed, size: isSmallScreen ? 16 : 18),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Problem Type',
+                                style: GoogleFonts.poppins(
+                                  color: _textWhite,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              border: Border.all(color: _borderColor, width: 0.8),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: problemType,
+                                isExpanded: true,
+                                dropdownColor: _bgGradient2,
+                                style: GoogleFonts.poppins(
+                                  color: _textWhite,
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                ),
+                                items: const [
+                                  DropdownMenuItem(value: 'Bug/Technical Issue', child: Text('🐛 Bug/Technical Issue')),
+                                  DropdownMenuItem(value: 'Inappropriate Content', child: Text('🚫 Inappropriate Content')),
+                                  DropdownMenuItem(value: 'Account Issue', child: Text('👤 Account Issue')),
+                                  DropdownMenuItem(value: 'Payment Issue', child: Text('💳 Payment Issue')),
+                                  DropdownMenuItem(value: 'Other', child: Text('📝 Other')),
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    problemType = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    
+                    // Description Field
+                    Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _borderColor, width: 0.8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.description_rounded, color: _primaryGreen, size: isSmallScreen ? 16 : 18),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Describe the problem',
+                                style: GoogleFonts.poppins(
+                                  color: _textWhite,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: problemController,
+                            maxLines: 3,
+                            style: GoogleFonts.inter(
+                              color: _textWhite,
+                              fontSize: isSmallScreen ? 13 : 14,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Please provide details...',
+                              hintStyle: GoogleFonts.inter(
+                                color: _textMuted,
+                                fontSize: isSmallScreen ? 12 : 13,
+                              ),
+                              filled: true,
+                              fillColor: Colors.white.withOpacity(0.1),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: _borderColor, width: 0.8),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: _borderColor, width: 0.8),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: _primaryGreen, width: 1.5),
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: isSmallScreen ? 10 : 12,
+                              ),
+                            ),
+                            onTap: () {
+                              // Trigger rebuild to adjust scroll when keyboard opens
+                              setState(() {});
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    
+                    // Info Message
+                    Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [_primaryGreen.withOpacity(0.1), _primaryRed.withOpacity(0.05)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _primaryGreen.withOpacity(0.3), width: 0.5),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_rounded, color: _primaryGreen, size: isSmallScreen ? 14 : 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'You can also include screenshots by emailing us directly.',
+                              style: GoogleFonts.inter(
+                                fontSize: isSmallScreen ? 10 : 11,
+                                color: _textLight,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                problemController.dispose();
+                                Navigator.pop(context);
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isSmallScreen ? 10 : 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: _borderColor, width: 0.8),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Cancel',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: isSmallScreen ? 13 : 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: isSmallScreen ? 10 : 12),
+                        Expanded(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                if (problemController.text.trim().isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text('Please describe your problem'),
+                                      backgroundColor: _primaryRed,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      margin: EdgeInsets.all(12),
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                  return;
+                                }
+                                Navigator.pop(context);
+                                _submitReport(problemType, problemController.text);
+                                problemController.dispose();
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isSmallScreen ? 10 : 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [_primaryRed, _primaryGreen],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _primaryRed.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Submit Report',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: isSmallScreen ? 13 : 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    // Add extra bottom padding when keyboard is open
+                    if (isKeyboardVisible) 
+                      SizedBox(height: isSmallScreen ? 10 : 16),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
 
 
   void _submitReport(String problemType, String description) {
@@ -2822,7 +3733,7 @@ Device: ${Platform.operatingSystem}
     final Uri emailUri = Uri(
       scheme: 'mailto',
     //  path: 'support@banglahub.com',
-    path : 'sarkarsaiful128@gmail.com',
+    path : 'rif97965@gmail.com',
       query: 'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
     );
     
@@ -2831,10 +3742,407 @@ Device: ${Platform.operatingSystem}
         launchUrl(emailUri);
         _showSnackBar('Opening email client...', _primaryGreen);
       } else {
-        _showSnackBar('Please email us at support@banglahub.com', _primaryRed);
+        _showSnackBar('Please email us at rif97965@gmail.com', _primaryRed);
       }
     });
   }
+
+
+*/
+
+void _showReportProblemDialog(BuildContext context) {
+  final problemController = TextEditingController();
+  String problemType = 'Bug/Technical Issue';
+  
+  final mediaQuery = MediaQuery.of(context);
+  final isSmallScreen = mediaQuery.size.height < 600;
+  
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+        
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: isKeyboardVisible ? 10 : 20,
+          ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: 450,
+                minWidth: 280,
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_bgGradient2, _primaryGreen.withOpacity(0.9)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _borderColor, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.25),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(isSmallScreen ? 16 : 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_primaryRed, _primaryGreen],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.report_problem_rounded, color: Colors.white, size: 18),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Report a Problem',
+                            style: GoogleFonts.poppins(
+                              fontSize: isSmallScreen ? 18 : 20,
+                              fontWeight: FontWeight.w700,
+                              color: _textWhite,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Problem Type
+                    Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _borderColor, width: 0.8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.category_rounded, color: _primaryRed, size: isSmallScreen ? 16 : 18),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Problem Type',
+                                style: GoogleFonts.poppins(
+                                  color: _textWhite,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              border: Border.all(color: _borderColor, width: 0.8),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: problemType,
+                                isExpanded: true,
+                                dropdownColor: _bgGradient2,
+                                style: GoogleFonts.poppins(
+                                  color: _textWhite,
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                ),
+                                items: const [
+                                  DropdownMenuItem(value: 'Bug/Technical Issue', child: Text('🐛 Bug/Technical Issue')),
+                                  DropdownMenuItem(value: 'Inappropriate Content', child: Text('🚫 Inappropriate Content')),
+                                  DropdownMenuItem(value: 'Account Issue', child: Text('👤 Account Issue')),
+                                  DropdownMenuItem(value: 'Payment Issue', child: Text('💳 Payment Issue')),
+                                  DropdownMenuItem(value: 'Other', child: Text('📝 Other')),
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    problemType = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    
+                    // Description
+                    Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _borderColor, width: 0.8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.description_rounded, color: _primaryGreen, size: isSmallScreen ? 16 : 18),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Describe the problem',
+                                style: GoogleFonts.poppins(
+                                  color: _textWhite,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: problemController,
+                            maxLines: 3,
+                            style: GoogleFonts.inter(
+                              color: _textWhite,
+                              fontSize: isSmallScreen ? 13 : 14,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Please provide details...',
+                              hintStyle: GoogleFonts.inter(
+                                color: _textMuted,
+                                fontSize: isSmallScreen ? 12 : 13,
+                              ),
+                              filled: true,
+                              fillColor: Colors.white.withOpacity(0.1),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: _borderColor, width: 0.8),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: _borderColor, width: 0.8),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: _primaryGreen, width: 1.5),
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: isSmallScreen ? 10 : 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    
+                    // Info Message
+                    Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [_primaryGreen.withOpacity(0.1), _primaryRed.withOpacity(0.05)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _primaryGreen.withOpacity(0.3), width: 0.5),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_rounded, color: _primaryGreen, size: isSmallScreen ? 14 : 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Your report will be sent to our support team.',
+                              style: GoogleFonts.inter(
+                                fontSize: isSmallScreen ? 10 : 11,
+                                color: _textLight,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                // Dispose controller before closing
+                                problemController.dispose();
+                                Navigator.pop(context);
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isSmallScreen ? 10 : 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: _borderColor, width: 0.8),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Cancel',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: isSmallScreen ? 13 : 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: isSmallScreen ? 10 : 12),
+                        Expanded(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                final description = problemController.text.trim();
+                                if (description.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text('Please describe your problem'),
+                                      backgroundColor: _primaryRed,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      margin: EdgeInsets.all(12),
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                  return;
+                                }
+                                
+                                // Close dialog
+                                Navigator.pop(context);
+                                
+                                // Submit report
+                                _submitReport(problemType, description);
+                                
+                                // Dispose controller after dialog is closed
+                                Future.delayed(const Duration(milliseconds: 100), () {
+                                  if (!problemController.hasListeners) {
+                                    problemController.dispose();
+                                  }
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isSmallScreen ? 10 : 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [_primaryRed, _primaryGreen],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _primaryRed.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Submit Report',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: isSmallScreen ? 13 : 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    if (isKeyboardVisible) 
+                      SizedBox(height: isSmallScreen ? 10 : 16),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
+void _submitReport(String problemType, String description) {
+  final subject = 'Problem Report: $problemType';
+  final body = '''
+Problem Type: $problemType
+Description: $description
+
+---
+App Version: 1.0.0
+
+Date: ${DateTime.now().toLocal()}
+''';
+  
+  final Uri emailUri = Uri(
+    scheme: 'mailto',
+    path: 'rif97965@gmail.com',
+    query: 'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
+  );
+  
+  canLaunchUrl(emailUri).then((canLaunch) {
+    if (canLaunch) {
+      launchUrl(emailUri);
+      _showSnackBar('Opening email client...', _primaryGreen);
+    } else {
+      _showSnackBar('Please email us at info@banglahub.us', _primaryRed);
+    }
+  }).catchError((error) {
+    _showSnackBar('Could not open email client', _primaryRed);
+  });
+}
+
 
 void _showFaqDialog(BuildContext context) {
   final mediaQuery = MediaQuery.of(context);
@@ -3352,7 +4660,7 @@ void _sendFeedback(BuildContext context) {
     final Uri emailUri = Uri(
       scheme: 'mailto',
     //  path: 'feedback@banglahub.com',
-    path: ' rif97965@gmail.com',
+    path: 'info@banglahub.us',
       query: 'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
     );
     
@@ -3361,7 +4669,7 @@ void _sendFeedback(BuildContext context) {
         launchUrl(emailUri);
         _showSnackBar('Thank you for your feedback!', _primaryGreen);
       } else {
-        _showSnackBar('Please email us at rif97965@gmail.com', _primaryRed);
+        _showSnackBar('Please email us at info@banglahub.us', _primaryRed);
       }
     });
   }
@@ -5568,7 +6876,7 @@ void _showPremiumLogoutDialog(BuildContext context) {
       );
 
       final authProvider = context.read<AuthProvider>();
-      await authProvider.signOut();
+      await authProvider.signOut(context);
       
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('selected_tab_index');

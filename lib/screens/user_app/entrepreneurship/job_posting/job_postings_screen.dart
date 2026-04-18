@@ -837,7 +837,7 @@ class _JobPostingsScreenState extends State<JobPostingsScreen>
     );
   }
 
-  Widget _buildPremiumJobCard(JobPosting job, int index) {
+/*  Widget _buildPremiumJobCard(JobPosting job, int index) {
     final isDeadlineNear = job.applicationDeadline.difference(DateTime.now()).inDays <= 7;
     final isTablet = MediaQuery.of(context).size.width >= 600;
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
@@ -1017,8 +1017,10 @@ class _JobPostingsScreenState extends State<JobPostingsScreen>
       },
     );
   }
+*/
 
-  Widget _buildTag(String text, IconData icon, bool isTablet, {bool isUrgent = false}) {
+
+/*  Widget _buildTag(String text, IconData icon, bool isTablet, {bool isUrgent = false}) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: isTablet ? 10 : 8, vertical: isTablet ? 6 : 4),
       decoration: BoxDecoration(
@@ -1037,6 +1039,403 @@ class _JobPostingsScreenState extends State<JobPostingsScreen>
     );
   }
 
+  */
+
+Widget _buildPremiumJobCard(JobPosting job, int index) {
+  final isDeadlineNear = job.applicationDeadline.difference(DateTime.now()).inDays <= 7;
+  final isTablet = MediaQuery.of(context).size.width >= 600;
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Same margin as partner request card (16 for tablet, 12 for mobile)
+  final horizontalMargin = isTablet ? 16.0 : 12.0;
+  
+  // Premium gradient - Red to Purple to Gold (keeping current)
+  final LinearGradient _cardGradient = LinearGradient(
+    colors: [
+      Color(0xFFF44336), // Red
+      Color(0xFFE53935), // Light Red
+      Color(0xFFD32F2F), // Dark Red
+      Color(0xFF8E24AA), // Purple
+      Color(0xFF9C27B0), // Light Purple
+      Color(0xFF6B4E71), // Royal Purple
+      Color(0xFFFFB300), // Gold
+      Color(0xFFFF8F00), // Dark Gold
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: [0.0, 0.12, 0.25, 0.4, 0.55, 0.7, 0.85, 1.0],
+  );
+  
+  Widget cardContent = Container(
+    margin: EdgeInsets.symmetric(
+      horizontal: horizontalMargin,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.15),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+          spreadRadius: -1,
+        ),
+        BoxShadow(
+          color: Color(0xFFD32F2F).withOpacity(0.25),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _cardGradient,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.2),
+            width: 0.5,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isGuestMode) {
+                _showLoginRequiredDialog(context, 'View Job Details');
+                return;
+              }
+              _showJobDetails(job);
+            },
+            borderRadius: BorderRadius.circular(20),
+            splashColor: Colors.white.withOpacity(0.15),
+            highlightColor: Colors.transparent,
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 14 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Info Row - Compact
+                  Row(
+                    children: [
+                      Container(
+                        width: isTablet ? 44 : 38,
+                        height: isTablet ? 44 : 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFFFB300), Color(0xFFFF8F00)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFFFFB300).withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(1.5),
+                          child: ClipOval(
+                            child: _buildJobPosterImage(job),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: 10),
+                      
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              job.postedByName ?? 'Job Provider',
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 14 : 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 5,
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFFFD700),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Verified Employer',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 9,
+                                    color: Color(0xFFFFD700),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Small Urgent Button
+                      if (job.isUrgent)
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFFF44336), Color(0xFFD32F2F)],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'URGENT',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Distance Badge - Added here
+                  if (job.latitude != null && job.longitude != null)
+                    Consumer<LocationFilterProvider>(
+                      builder: (context, locationProvider, _) {
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 8),
+                          child: DistanceBadge(
+                            latitude: job.latitude!,
+                            longitude: job.longitude!,
+                            isTablet: isTablet,
+                          ),
+                        );
+                      },
+                    ),
+                  
+                  // Job Title
+                  Text(
+                    job.jobTitle,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  SizedBox(height: 6),
+                  
+                  // Company Name Badge
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      job.companyName,
+                      style: GoogleFonts.poppins(
+                        fontSize: isTablet ? 11 : 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Tags - Compact
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _buildCompactJobTag(job.jobType.displayName, Icons.schedule_rounded, isTablet),
+                      _buildCompactJobTag(job.experienceLevel.displayName, Icons.timeline_rounded, isTablet),
+                      _buildCompactJobTag('${job.city}, ${job.state}', Icons.location_on_rounded, isTablet),
+                    ],
+                  ),
+                  
+                  // Deadline Row - Compact
+                  if (isDeadlineNear) ...[
+                    SizedBox(height: 8),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.calendar_today_rounded, 
+                            size: 10,
+                            color: Color(0xFFFFD700)
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Apply by: ${DateFormat('MMM d').format(job.applicationDeadline)}',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              color: Color(0xFFFFD700),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  
+                  SizedBox(height: 10),
+                  
+                  // View Details Button - Compact
+                  GestureDetector(
+                    onTap: () {
+                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                      if (authProvider.isGuestMode) {
+                        _showLoginRequiredDialog(context, 'View Job Details');
+                        return;
+                      }
+                      _showJobDetails(job);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        vertical: isTablet ? 8 : 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'View Details',
+                            style: GoogleFonts.poppins(
+                              color: Color(0xFFD32F2F),
+                              fontSize: isTablet ? 12 : 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          shouldAnimate
+                              ? RotationTransition(
+                                  turns: _rotateController,
+                                  child: Icon(
+                                    Icons.arrow_forward_rounded,
+                                    color: Color(0xFFD32F2F),
+                                    size: isTablet ? 14 : 12,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: Color(0xFFD32F2F),
+                                  size: isTablet ? 14 : 12,
+                                ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  
+  if (shouldAnimate) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.96 + (0.04 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: cardContent,
+          ),
+        );
+      },
+    );
+  }
+  
+  return cardContent;
+}
+
+Widget _buildCompactJobTag(String text, IconData icon, [bool isTablet = false]) {
+  return Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: isTablet ? 8 : 6,
+      vertical: isTablet ? 4 : 3,
+    ),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: Colors.white.withOpacity(0.25),
+        width: 0.5,
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: isTablet ? 10 : 9, color: Colors.white),
+        SizedBox(width: isTablet ? 4 : 3),
+        Text(
+          text,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: isTablet ? 10 : 9,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    ),
+  );
+}
+ 
+ 
   Widget _buildAnimatedParticle(int index) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -1230,6 +1629,8 @@ class CommunityStates {
 // Keep your existing PremiumAddJobDialog class here
 
 // Keep your existing PremiumAddJobDialog class here (same as before)
+
+
 class PremiumAddJobDialog extends StatefulWidget {
   final VoidCallback? onJobPosted;
   final ScrollController scrollController;
@@ -1286,6 +1687,7 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
   late AnimationController _animationController;
   
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  bool _isKeyboardVisible = false;
   
   bool _isBasicInfoValid = false;
   bool _isDetailsValid = false;
@@ -1295,8 +1697,11 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     
+    _setupKeyboardListeners();
+    
     _tabController = TabController(length: 2, vsync: this);
-    _animationController = AnimationController(vsync: this, duration: Duration(milliseconds: 500))..forward();
+    _tabController.addListener(_handleTabChange);
+    _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500))..forward();
     
     _jobTitleController.addListener(_validateBasicInfo);
     _companyNameController.addListener(_validateBasicInfo);
@@ -1309,33 +1714,74 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
     _contactPhoneController.addListener(_validateDetails);
   }
   
+  void _setupKeyboardListeners() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusManager.instance.addListener(() {
+        final hasFocus = FocusManager.instance.primaryFocus != null;
+        if (mounted && _isKeyboardVisible != hasFocus) {
+          setState(() {
+            _isKeyboardVisible = hasFocus;
+          });
+          if (hasFocus) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (mounted && widget.scrollController.hasClients) {
+                widget.scrollController.animateTo(
+                  widget.scrollController.position.maxScrollExtent,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              }
+            });
+          }
+        }
+      });
+    });
+  }
+  
+  void _handleTabChange() {
+    if (mounted) {
+      setState(() {});
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+  }
+  
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     setState(() => _appLifecycleState = state);
   }
 
   void _validateBasicInfo() {
-    setState(() {
-      _isBasicInfoValid = 
-          _jobTitleController.text.isNotEmpty &&
-          _companyNameController.text.isNotEmpty &&
-          _locationController.text.isNotEmpty &&
-          _cityController.text.isNotEmpty &&
-          _selectedState != null &&
-          _jobLatitude != null &&
-          _jobLongitude != null;
-    });
+    if (mounted) {
+      setState(() {
+        _isBasicInfoValid = 
+            _jobTitleController.text.isNotEmpty &&
+            _companyNameController.text.isNotEmpty &&
+            _locationController.text.isNotEmpty &&
+            _cityController.text.isNotEmpty &&
+            _selectedState != null &&
+            _jobLatitude != null &&
+            _jobLongitude != null;
+      });
+    }
   }
 
   void _validateDetails() {
-    setState(() {
-      _isDetailsValid = 
-          _descriptionController.text.isNotEmpty &&
-          _requirementsController.text.isNotEmpty &&
-          _contactEmailController.text.isNotEmpty &&
-          _contactPhoneController.text.isNotEmpty &&
-          _selectedDeadline != null;
-    });
+    if (mounted) {
+      setState(() {
+        _isDetailsValid = 
+            _descriptionController.text.isNotEmpty &&
+            _requirementsController.text.isNotEmpty &&
+            _contactEmailController.text.isNotEmpty &&
+            _contactPhoneController.text.isNotEmpty &&
+            _selectedDeadline != null;
+      });
+    }
   }
 
   bool get _isSubmitEnabled => _isBasicInfoValid && _isDetailsValid;
@@ -1361,6 +1807,7 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
     _contactPhoneController.dispose();
     _skillsController.dispose();
     _benefitsController.dispose();
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _animationController.dispose();
     super.dispose();
@@ -1369,11 +1816,16 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth > 600;
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
-    return FadeTransition(
-      opacity: _animationController,
+    return Container(
+      height: screenHeight * 0.9,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
       child: Column(
         children: [
           Container(
@@ -1388,7 +1840,9 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
                 Container(
                   padding: EdgeInsets.all(isTablet ? 12 : 8),
                   decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-                  child: shouldAnimate ? RotationTransition(turns: _animationController, child: Icon(Icons.work_rounded, color: widget.goldAccent, size: isTablet ? 28 : 22)) : Icon(Icons.work_rounded, color: widget.goldAccent, size: isTablet ? 28 : 22),
+                  child: shouldAnimate 
+                      ? RotationTransition(turns: _animationController, child: Icon(Icons.work_rounded, color: widget.goldAccent, size: isTablet ? 28 : 22))
+                      : Icon(Icons.work_rounded, color: widget.goldAccent, size: isTablet ? 28 : 22),
                 ),
                 SizedBox(width: isTablet ? 16 : 12),
                 Expanded(
@@ -1401,7 +1855,13 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
                     ],
                   ),
                 ),
-                IconButton(onPressed: () => Navigator.pop(context), icon: Icon(Icons.close_rounded, color: Colors.white), padding: EdgeInsets.zero, constraints: BoxConstraints(), iconSize: isTablet ? 24 : 20),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.close_rounded, color: Colors.white),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  iconSize: isTablet ? 24 : 20,
+                ),
               ],
             ),
           ),
@@ -1421,7 +1881,7 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
               key: _formKey,
               child: TabBarView(
                 controller: _tabController,
-                physics: NeverScrollableScrollPhysics(),
+                physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _buildPremiumBasicInfoTab(isTablet),
                   _buildPremiumDetailsTab(isTablet),
@@ -1431,14 +1891,36 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
           ),
           Container(
             padding: EdgeInsets.all(isTablet ? 20 : 16),
-            decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: Offset(0, -5))]),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: Offset(0, -5))],
+            ),
             child: Row(
               children: [
-                if (_tabController.index > 0) Expanded(child: _buildPremiumNavButton(label: 'Previous', onPressed: () => _tabController.animateTo(0), isPrimary: false, isTablet: isTablet)),
-                if (_tabController.index > 0) SizedBox(width: 12),
+                if (_tabController.index > 0)
+                  Expanded(
+                    child: _buildPremiumNavButton(
+                      label: 'Previous',
+                      onPressed: () => _tabController.animateTo(0),
+                      isPrimary: false,
+                      isTablet: isTablet,
+                    ),
+                  ),
+                if (_tabController.index > 0) const SizedBox(width: 12),
                 Expanded(
                   child: _tabController.index < 1
-                      ? _buildPremiumNavButton(label: 'Next', onPressed: () { if (_isBasicInfoValid) _tabController.animateTo(1); else _showErrorSnackBar('Please complete all required fields'); }, isPrimary: true, isTablet: isTablet)
+                      ? _buildPremiumNavButton(
+                          label: 'Next',
+                          onPressed: () {
+                            if (_isBasicInfoValid) {
+                              _tabController.animateTo(1);
+                            } else {
+                              _showErrorSnackBar('Please complete all required fields');
+                            }
+                          },
+                          isPrimary: true,
+                          isTablet: isTablet,
+                        )
                       : _buildPremiumSubmitButton(isTablet),
                 ),
               ],
@@ -1456,9 +1938,13 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          if (index == 0) _tabController.animateTo(0);
-          else if (index == 1 && _isBasicInfoValid) _tabController.animateTo(1);
-          else if (index == 1) _showErrorSnackBar('Complete previous steps first');
+          if (index == 0) {
+            _tabController.animateTo(0);
+          } else if (index == 1 && _isBasicInfoValid) {
+            _tabController.animateTo(1);
+          } else if (index == 1) {
+            _showErrorSnackBar('Complete previous steps first');
+          }
         },
         child: Container(
           height: screenWidth > 600 ? 60 : 50,
@@ -1474,11 +1960,32 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
               Container(
                 width: isTablet ? 24 : 20,
                 height: isTablet ? 24 : 20,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: isValid ? widget.primaryRed : (isSelected ? Colors.white : Colors.grey[400])),
-                child: isValid ? Icon(Icons.check, color: Colors.white, size: isTablet ? 14 : 12) : Center(child: Text('${index + 1}', style: TextStyle(color: isSelected ? widget.primaryRed : Colors.white, fontSize: isTablet ? 12 : 10, fontWeight: FontWeight.bold))),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isValid ? widget.primaryRed : (isSelected ? Colors.white : Colors.grey[400]),
+                ),
+                child: isValid
+                    ? Icon(Icons.check, color: Colors.white, size: isTablet ? 14 : 12)
+                    : Center(
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            color: isSelected ? widget.primaryRed : Colors.white,
+                            fontSize: isTablet ? 12 : 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
               ),
-              SizedBox(height: 2),
-              Text(label, style: TextStyle(color: isSelected ? Colors.white : (isValid ? widget.primaryRed : Colors.grey[600]), fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal, fontSize: isTablet ? 10 : 9)),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : (isValid ? widget.primaryRed : Colors.grey[600]),
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: isTablet ? 10 : 9,
+                ),
+              ),
             ],
           ),
         ),
@@ -1490,12 +1997,22 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
     return Container(
       width: isTablet ? 20 : 12,
       height: 2,
-      margin: EdgeInsets.symmetric(horizontal: 2),
-      decoration: BoxDecoration(gradient: isCompleted ? LinearGradient(colors: [widget.primaryRed, widget.goldAccent]) : LinearGradient(colors: [Colors.grey[300]!, Colors.grey[400]!]), borderRadius: BorderRadius.circular(2)),
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      decoration: BoxDecoration(
+        gradient: isCompleted
+            ? LinearGradient(colors: [widget.primaryRed, widget.goldAccent])
+            : LinearGradient(colors: [Colors.grey[300]!, Colors.grey[400]!]),
+        borderRadius: BorderRadius.circular(2),
+      ),
     );
   }
 
-  Widget _buildPremiumNavButton({required String label, required VoidCallback onPressed, required bool isPrimary, required bool isTablet}) {
+  Widget _buildPremiumNavButton({
+    required String label,
+    required VoidCallback onPressed,
+    required bool isPrimary,
+    required bool isTablet,
+  }) {
     final screenWidth = MediaQuery.of(context).size.width;
     return Container(
       height: screenWidth > 600 ? 50 : 44,
@@ -1504,14 +2021,25 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
         color: isPrimary ? null : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: isPrimary ? null : Border.all(color: widget.primaryRed),
-        boxShadow: isPrimary ? [BoxShadow(color: widget.primaryRed.withOpacity(0.3), blurRadius: 8, offset: Offset(0, 4))] : null,
+        boxShadow: isPrimary
+            ? [BoxShadow(color: widget.primaryRed.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+            : null,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(12),
-          child: Center(child: Text(label, style: GoogleFonts.poppins(color: isPrimary ? Colors.white : widget.primaryRed, fontWeight: FontWeight.w600, fontSize: screenWidth > 600 ? 15 : 13))),
+          child: Center(
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: isPrimary ? Colors.white : widget.primaryRed,
+                fontWeight: FontWeight.w600,
+                fontSize: screenWidth > 600 ? 15 : 13,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1522,17 +2050,30 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
     return Container(
       height: screenWidth > 600 ? 50 : 44,
       decoration: BoxDecoration(
-        gradient: _isSubmitEnabled ? LinearGradient(colors: [widget.goldAccent, widget.primaryRed, widget.purpleAccent]) : null,
+        gradient: _isSubmitEnabled
+            ? LinearGradient(colors: [widget.goldAccent, widget.primaryRed, widget.purpleAccent])
+            : null,
         color: _isSubmitEnabled ? null : Colors.grey[300],
         borderRadius: BorderRadius.circular(12),
-        boxShadow: _isSubmitEnabled ? [BoxShadow(color: widget.primaryRed.withOpacity(0.3), blurRadius: 8, offset: Offset(0, 4))] : null,
+        boxShadow: _isSubmitEnabled
+            ? [BoxShadow(color: widget.primaryRed.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+            : null,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: _isSubmitEnabled ? _submitForm : null,
           borderRadius: BorderRadius.circular(12),
-          child: Center(child: Text('Post Job', style: GoogleFonts.poppins(color: _isSubmitEnabled ? Colors.white : Colors.grey[600], fontWeight: FontWeight.w700, fontSize: screenWidth > 600 ? 15 : 13))),
+          child: Center(
+            child: Text(
+              'Post Job',
+              style: GoogleFonts.poppins(
+                color: _isSubmitEnabled ? Colors.white : Colors.grey[600],
+                fontWeight: FontWeight.w700,
+                fontSize: screenWidth > 600 ? 15 : 13,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1568,25 +2109,50 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
       child: Container(
         padding: EdgeInsets.all(isTablet ? 16 : 12),
         decoration: BoxDecoration(
-          border: Border.all(color: _jobLatitude != null ? widget.primaryRed : Colors.grey.shade300, width: _jobLatitude != null ? 2 : 1),
+          border: Border.all(
+            color: _jobLatitude != null ? widget.primaryRed : Colors.grey.shade300,
+            width: _jobLatitude != null ? 2 : 1,
+          ),
           borderRadius: BorderRadius.circular(12),
           color: _jobLatitude != null ? widget.lightRed.withOpacity(0.1) : null,
         ),
         child: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(gradient: LinearGradient(colors: [widget.primaryRed, widget.purpleAccent]), borderRadius: BorderRadius.circular(10)),
-              child: Icon(_jobLatitude != null ? Icons.location_on : Icons.add_location, color: Colors.white, size: isTablet ? 20 : 18),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [widget.primaryRed, widget.purpleAccent]),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                _jobLatitude != null ? Icons.location_on : Icons.add_location,
+                color: Colors.white,
+                size: isTablet ? 20 : 18,
+              ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Location *', style: GoogleFonts.poppins(fontSize: isTablet ? 14 : 12, fontWeight: FontWeight.w600, color: widget.primaryRed)),
-                  SizedBox(height: 2),
-                  Text(_jobFullAddress ?? 'Tap to select location on map', style: GoogleFonts.inter(fontSize: isTablet ? 14 : 12, color: _jobFullAddress != null ? Colors.black87 : Colors.grey[600]), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(
+                    'Location *',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 14 : 12,
+                      fontWeight: FontWeight.w600,
+                      color: widget.primaryRed,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _jobFullAddress ?? 'Tap to select location on map',
+                    style: GoogleFonts.inter(
+                      fontSize: isTablet ? 14 : 12,
+                      color: _jobFullAddress != null ? Colors.black87 : Colors.grey[600],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -1600,32 +2166,69 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
   Widget _buildPremiumBasicInfoTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildPremiumSectionHeader('Job Information', Icons.work_rounded, isTablet),
-          SizedBox(height: 16),
-          _buildPremiumTextField(controller: _jobTitleController, label: 'Job Title *', icon: Icons.title_rounded, isTablet: isTablet),
-          SizedBox(height: 12),
-          _buildPremiumTextField(controller: _companyNameController, label: 'Company Name *', icon: Icons.business_rounded, isTablet: isTablet),
-          SizedBox(height: 12),
-          StatefulBuilder(builder: (context, setState) => _buildLocationPickerField(setState, isTablet)),
-          SizedBox(height: 12),
+          const SizedBox(height: 16),
+          _buildPremiumTextField(
+            controller: _jobTitleController,
+            label: 'Job Title *',
+            icon: Icons.title_rounded,
+            isTablet: isTablet,
+          ),
+          const SizedBox(height: 12),
+          _buildPremiumTextField(
+            controller: _companyNameController,
+            label: 'Company Name *',
+            icon: Icons.business_rounded,
+            isTablet: isTablet,
+          ),
+          const SizedBox(height: 12),
+          StatefulBuilder(
+            builder: (context, setState) => _buildLocationPickerField(setState, isTablet),
+          ),
+          const SizedBox(height: 12),
           _buildPremiumDropdown<JobType>(
             value: _selectedJobType,
             hint: 'Job Type *',
-            items: JobType.values.map((type) => DropdownMenuItem<JobType>(value: type, child: Text(type.displayName))).toList(),
-            onChanged: (value) => setState(() { _selectedJobType = value; _validateBasicInfo(); }),
+            items: JobType.values.map((type) => DropdownMenuItem<JobType>(
+              value: type,
+              child: Text(type.displayName),
+            )).toList(),
+            onChanged: (value) {
+              if (mounted) {
+                setState(() {
+                  _selectedJobType = value;
+                  _validateBasicInfo();
+                });
+              }
+            },
             icon: Icons.schedule_rounded,
             isTablet: isTablet,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _buildPremiumDropdown<ExperienceLevel>(
             value: _selectedExperienceLevel,
             hint: 'Experience Level *',
-            items: ExperienceLevel.values.map((level) => DropdownMenuItem<ExperienceLevel>(value: level, child: Text(level.displayName))).toList(),
-            onChanged: (value) => setState(() { _selectedExperienceLevel = value; _validateBasicInfo(); }),
+            items: ExperienceLevel.values.map((level) => DropdownMenuItem<ExperienceLevel>(
+              value: level,
+              child: Text(level.displayName),
+            )).toList(),
+            onChanged: (value) {
+              if (mounted) {
+                setState(() {
+                  _selectedExperienceLevel = value;
+                  _validateBasicInfo();
+                });
+              }
+            },
             icon: Icons.timeline_rounded,
             isTablet: isTablet,
           ),
@@ -1637,47 +2240,127 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
   Widget _buildPremiumDetailsTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildPremiumSectionHeader('Description & Requirements', Icons.description_rounded, isTablet),
-          SizedBox(height: 16),
-          _buildPremiumTextField(controller: _descriptionController, label: 'Job Description *', icon: Icons.description_rounded, maxLines: 4, isTablet: isTablet),
-          SizedBox(height: 12),
-          _buildPremiumTextField(controller: _requirementsController, label: 'Requirements *', icon: Icons.checklist_rounded, maxLines: 3, isTablet: isTablet),
-          SizedBox(height: 12),
+          const SizedBox(height: 16),
+          _buildPremiumTextField(
+            controller: _descriptionController,
+            label: 'Job Description *',
+            icon: Icons.description_rounded,
+            maxLines: 4,
+            isTablet: isTablet,
+          ),
+          const SizedBox(height: 12),
+          _buildPremiumTextField(
+            controller: _requirementsController,
+            label: 'Requirements *',
+            icon: Icons.checklist_rounded,
+            maxLines: 3,
+            isTablet: isTablet,
+          ),
+          const SizedBox(height: 12),
           _buildPremiumSectionHeader('Skills (Optional)', Icons.code_rounded, isTablet),
-          SizedBox(height: 16),
-          _buildPremiumTagInput(controller: _skillsController, tags: _skillsRequired, hint: 'Add required skill', onAdd: () { if (_skillsController.text.trim().isNotEmpty) setState(() { _skillsRequired.add(_skillsController.text.trim()); _skillsController.clear(); }); }, onRemove: (index) => setState(() => _skillsRequired.removeAt(index)), isTablet: isTablet),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
+          _buildPremiumTagInput(
+            controller: _skillsController,
+            tags: _skillsRequired,
+            hint: 'Add required skill',
+            onAdd: () {
+              if (mounted && _skillsController.text.trim().isNotEmpty) {
+                setState(() {
+                  _skillsRequired.add(_skillsController.text.trim());
+                  _skillsController.clear();
+                });
+              }
+            },
+            onRemove: (index) {
+              if (mounted) {
+                setState(() => _skillsRequired.removeAt(index));
+              }
+            },
+            isTablet: isTablet,
+          ),
+          const SizedBox(height: 16),
           _buildPremiumSectionHeader('Benefits (Optional)', Icons.card_giftcard_rounded, isTablet),
-          SizedBox(height: 16),
-          _buildPremiumTagInput(controller: _benefitsController, tags: _benefits, hint: 'Add benefit', onAdd: () { if (_benefitsController.text.trim().isNotEmpty) setState(() { _benefits.add(_benefitsController.text.trim()); _benefitsController.clear(); }); }, onRemove: (index) => setState(() => _benefits.removeAt(index)), isTablet: isTablet),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
+          _buildPremiumTagInput(
+            controller: _benefitsController,
+            tags: _benefits,
+            hint: 'Add benefit',
+            onAdd: () {
+              if (mounted && _benefitsController.text.trim().isNotEmpty) {
+                setState(() {
+                  _benefits.add(_benefitsController.text.trim());
+                  _benefitsController.clear();
+                });
+              }
+            },
+            onRemove: (index) {
+              if (mounted) {
+                setState(() => _benefits.removeAt(index));
+              }
+            },
+            isTablet: isTablet,
+          ),
+          const SizedBox(height: 16),
           _buildPremiumSectionHeader('Contact Information', Icons.contact_mail_rounded, isTablet),
-          SizedBox(height: 16),
-          _buildPremiumTextField(controller: _contactEmailController, label: 'Contact Email *', icon: Icons.email_rounded, keyboardType: TextInputType.emailAddress, isTablet: isTablet),
-          SizedBox(height: 12),
-          _buildPremiumTextField(controller: _contactPhoneController, label: 'Contact Phone *', icon: Icons.phone_rounded, keyboardType: TextInputType.phone, isTablet: isTablet),
-          SizedBox(height: 12),
+          const SizedBox(height: 16),
+          _buildPremiumTextField(
+            controller: _contactEmailController,
+            label: 'Contact Email *',
+            icon: Icons.email_rounded,
+            keyboardType: TextInputType.emailAddress,
+            isTablet: isTablet,
+          ),
+          const SizedBox(height: 12),
+          _buildPremiumTextField(
+            controller: _contactPhoneController,
+            label: 'Contact Phone *',
+            icon: Icons.phone_rounded,
+            keyboardType: TextInputType.phone,
+            isTablet: isTablet,
+          ),
+          const SizedBox(height: 12),
           _buildPremiumSectionHeader('Deadline', Icons.calendar_today_rounded, isTablet),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           InkWell(
             onTap: () => _selectDeadline(context),
             child: Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey[300]!),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Row(
                 children: [
                   Icon(Icons.calendar_today_rounded, color: widget.primaryRed),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Application Deadline *', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                        Text(_selectedDeadline != null ? DateFormat('MMMM d, yyyy').format(_selectedDeadline!) : 'Select application deadline', style: TextStyle(color: _selectedDeadline != null ? Colors.black : Colors.grey[600], fontWeight: _selectedDeadline != null ? FontWeight.w500 : FontWeight.normal, fontSize: 14)),
+                        Text(
+                          'Application Deadline *',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                        Text(
+                          _selectedDeadline != null
+                              ? DateFormat('MMMM d, yyyy').format(_selectedDeadline!)
+                              : 'Select application deadline',
+                          style: TextStyle(
+                            color: _selectedDeadline != null ? Colors.black : Colors.grey[600],
+                            fontWeight: _selectedDeadline != null ? FontWeight.w500 : FontWeight.normal,
+                            fontSize: 14,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1686,14 +2369,44 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
               ),
             ),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(color: _isUrgent ? widget.primaryRed.withOpacity(0.1) : Colors.grey[50], borderRadius: BorderRadius.circular(12), border: Border.all(color: _isUrgent ? widget.primaryRed : Colors.grey[200]!)),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _isUrgent ? widget.primaryRed.withOpacity(0.1) : Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _isUrgent ? widget.primaryRed : Colors.grey[200]!),
+            ),
             child: Row(
               children: [
-                Checkbox(value: _isUrgent, onChanged: (value) => setState(() => _isUrgent = value ?? false), activeColor: widget.primaryRed, checkColor: Colors.white),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Mark as Urgent', style: TextStyle(fontWeight: FontWeight.w600, color: _isUrgent ? widget.primaryRed : Colors.black87)), Text('Urgent jobs will be highlighted after approval', style: TextStyle(fontSize: 12, color: Colors.grey[600]))])),
+                Checkbox(
+                  value: _isUrgent,
+                  onChanged: (value) {
+                    if (mounted) {
+                      setState(() => _isUrgent = value ?? false);
+                    }
+                  },
+                  activeColor: widget.primaryRed,
+                  checkColor: Colors.white,
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Mark as Urgent',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: _isUrgent ? widget.primaryRed : Colors.black87,
+                        ),
+                      ),
+                      Text(
+                        'Urgent jobs will be highlighted after approval',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -1705,24 +2418,52 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
   Widget _buildPremiumSectionHeader(String title, IconData icon, bool isTablet) {
     return Row(
       children: [
-        Container(padding: EdgeInsets.all(6), decoration: BoxDecoration(gradient: LinearGradient(colors: [widget.primaryRed, widget.purpleAccent]), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: Colors.white, size: 16)),
-        SizedBox(width: 10),
-        Text(title, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E2A3A))),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [widget.primaryRed, widget.purpleAccent]),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: Colors.white, size: 16),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF1E2A3A),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildPremiumTextField({required TextEditingController controller, required String label, required IconData icon, TextInputType keyboardType = TextInputType.text, int maxLines = 1, required bool isTablet}) {
+  Widget _buildPremiumTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+    required bool isTablet,
+  }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
         prefixIcon: Icon(icon, color: widget.primaryRed, size: 18),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: widget.primaryRed, width: 2)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: widget.primaryRed, width: 2),
+        ),
         filled: true,
         fillColor: Colors.white,
         contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: maxLines > 1 ? 14 : 12),
@@ -1731,26 +2472,49 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
     );
   }
 
-  Widget _buildPremiumDropdown<T>({required T? value, required String hint, required List<DropdownMenuItem<T>> items, required void Function(T?) onChanged, required IconData icon, required bool isTablet}) {
+  Widget _buildPremiumDropdown<T>({
+    required T? value,
+    required String hint,
+    required List<DropdownMenuItem<T>> items,
+    required void Function(T?) onChanged,
+    required IconData icon,
+    required bool isTablet,
+  }) {
     return DropdownButtonFormField<T>(
       value: value,
       decoration: InputDecoration(
         labelText: hint,
         labelStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
         prefixIcon: Icon(icon, color: widget.primaryRed, size: 18),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: widget.primaryRed, width: 2)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: widget.primaryRed, width: 2),
+        ),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       ),
       items: items,
-      onChanged: (value) { onChanged(value); _validateBasicInfo(); },
+      onChanged: (value) {
+        onChanged(value);
+        _validateBasicInfo();
+      },
       validator: (value) => value == null && hint.contains('*') ? 'Required' : null,
     );
   }
 
-  Widget _buildPremiumTagInput({required TextEditingController controller, required List<String> tags, required VoidCallback onAdd, required Function(int) onRemove, String hint = 'Add item', required bool isTablet}) {
+  Widget _buildPremiumTagInput({
+    required TextEditingController controller,
+    required List<String> tags,
+    required VoidCallback onAdd,
+    required Function(int) onRemove,
+    String hint = 'Add item',
+    required bool isTablet,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1759,33 +2523,67 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
             Expanded(
               child: TextField(
                 controller: controller,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => onAdd(),
                 decoration: InputDecoration(
                   hintText: hint,
                   hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: widget.primaryRed, width: 2)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: widget.primaryRed, width: 2),
+                  ),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
               ),
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Container(
-              decoration: BoxDecoration(gradient: LinearGradient(colors: [widget.primaryRed, widget.purpleAccent]), borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: widget.primaryRed.withOpacity(0.3), blurRadius: 6)]),
-              child: IconButton(onPressed: onAdd, icon: Icon(Icons.add_rounded, color: Colors.white, size: 20), padding: EdgeInsets.all(10), constraints: BoxConstraints()),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [widget.primaryRed, widget.purpleAccent]),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [BoxShadow(color: widget.primaryRed.withOpacity(0.3), blurRadius: 6)],
+              ),
+              child: IconButton(
+                onPressed: onAdd,
+                icon: Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                padding: const EdgeInsets.all(10),
+                constraints: const BoxConstraints(),
+              ),
             ),
           ],
         ),
         if (tags.isNotEmpty) ...[
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: List.generate(tags.length, (index) => Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(gradient: LinearGradient(colors: [widget.lightRed, Colors.white]), borderRadius: BorderRadius.circular(20), border: Border.all(color: widget.primaryRed.withOpacity(0.3))),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [Text(tags[index], style: TextStyle(color: widget.primaryRed, fontSize: 11, fontWeight: FontWeight.w500)), SizedBox(width: 4), GestureDetector(onTap: () => onRemove(index), child: Icon(Icons.close_rounded, color: widget.primaryRed, size: 14))]),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [widget.lightRed, Colors.white]),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: widget.primaryRed.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    tags[index],
+                    style: TextStyle(color: widget.primaryRed, fontSize: 11, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => onRemove(index),
+                    child: Icon(Icons.close_rounded, color: widget.primaryRed, size: 14),
+                  ),
+                ],
+              ),
             )),
           ),
         ],
@@ -1796,22 +2594,49 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
   Future<void> _selectDeadline(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(Duration(days: 30)),
+      initialDate: DateTime.now().add(const Duration(days: 30)),
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(Duration(days: 365)),
-      builder: (context, child) => Theme(data: Theme.of(context).copyWith(colorScheme: ColorScheme.light(primary: widget.primaryRed, onPrimary: Colors.white, surface: Colors.white, onSurface: Colors.black)), child: child!),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: ColorScheme.light(
+            primary: widget.primaryRed,
+            onPrimary: Colors.white,
+            surface: Colors.white,
+            onSurface: Colors.black,
+          ),
+        ),
+        child: child!,
+      ),
     );
-    if (picked != null) setState(() { _selectedDeadline = picked; _validateDetails(); });
+    if (picked != null && mounted) {
+      setState(() {
+        _selectedDeadline = picked;
+        _validateDetails();
+      });
+    }
   }
 
   void _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedState == null || _selectedDeadline == null) { _showErrorSnackBar('Please fill all required fields'); return; }
-    if (_jobLatitude == null || _jobLongitude == null) { _showErrorSnackBar('Please select a location on the map'); return; }
+    
+    if (_selectedState == null || _selectedDeadline == null) {
+      _showErrorSnackBar('Please fill all required fields');
+      return;
+    }
+    
+    if (_jobLatitude == null || _jobLongitude == null) {
+      _showErrorSnackBar('Please select a location on the map');
+      return;
+    }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUser = authProvider.user;
-    if (currentUser == null) { _showErrorSnackBar('You must be logged in to post a job'); return; }
+    
+    if (currentUser == null) {
+      _showErrorSnackBar('You must be logged in to post a job');
+      return;
+    }
 
     final provider = Provider.of<EntrepreneurshipProvider>(context, listen: false);
     String? userProfileImage = currentUser.profileImageUrl?.isNotEmpty == true ? currentUser.profileImageUrl : null;
@@ -1848,18 +2673,83 @@ class _PremiumAddJobDialogState extends State<PremiumAddJobDialog>
       updatedAt: DateTime.now(),
     );
 
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 50,
+                height: 50,
+                child: CircularProgressIndicator(color: widget.primaryRed),
+              ),
+              const SizedBox(height: 20),
+              Text('Posting job...', style: GoogleFonts.poppins()),
+            ],
+          ),
+        ),
+      ),
+    );
+
     final success = await provider.addJobPosting(newJob);
-    if (success) {
+    
+    if (mounted) {
+      Navigator.pop(context); // Close loading
+    }
+    
+    if (success && mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [Icon(Icons.check_circle_rounded, color: Colors.white, size: 20), SizedBox(width: 10), Expanded(child: Text('Job posted successfully! It will be visible after admin approval.', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13)))]), backgroundColor: widget.primaryRed, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), margin: EdgeInsets.all(12)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Job posted successfully! It will be visible after admin approval.',
+                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: widget.primaryRed,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(12),
+        ),
+      );
       widget.onJobPosted?.call();
-    } else {
+    } else if (mounted) {
       _showErrorSnackBar('Failed to post job. Please try again.');
     }
   }
 
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [Icon(Icons.error_rounded, color: Colors.white, size: 20), SizedBox(width: 10), Expanded(child: Text(message, style: TextStyle(fontSize: 13)))]), backgroundColor: widget.primaryRed, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), margin: EdgeInsets.all(12)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.error_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message, style: const TextStyle(fontSize: 13))),
+          ],
+        ),
+        backgroundColor: widget.primaryRed,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(12),
+      ),
+    );
   }
 }

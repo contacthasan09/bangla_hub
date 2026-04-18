@@ -1877,7 +1877,7 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     );
   }
 
-  Widget _buildPremiumRequestCard(BusinessPartnerRequest request, int index) {
+ /* Widget _buildPremiumRequestCard(BusinessPartnerRequest request, int index) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
@@ -2276,8 +2276,10 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
     return cardContent;
   }
 
+*/
+
   // Compact Tag
-  Widget _buildCompactTag(String text, IconData icon, [bool isTablet = false]) {
+/*  Widget _buildCompactTag(String text, IconData icon, [bool isTablet = false]) {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: isTablet ? 8 : 6,
@@ -2310,6 +2312,487 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
       ),
     );
   }
+
+*/
+
+
+Widget _buildPremiumRequestCard(BusinessPartnerRequest request, int index) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isTablet = screenWidth >= 600;
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Same margin as original
+  final horizontalMargin = isTablet ? 16.0 : 12.0;
+  
+  // Premium gradient - Green to Teal
+  final LinearGradient _cardGradient = LinearGradient(
+    colors: [
+      Color(0xFF1B5E20), // Deep Forest Green
+      Color(0xFF2E7D32), // Dark Green
+      Color(0xFF388E3C), // Medium Green
+      Color(0xFF43A047), // Vibrant Green
+      Color(0xFF4CAF50), // Classic Green
+      Color(0xFF66BB6A), // Light Green
+      Color(0xFF00897B), // Teal Green
+      Color(0xFF00796B), // Deep Teal
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: [0.0, 0.12, 0.25, 0.38, 0.5, 0.62, 0.75, 1.0],
+  );
+  
+  Widget cardContent = Container(
+    margin: EdgeInsets.symmetric(
+      horizontal: horizontalMargin,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+          spreadRadius: -1,
+        ),
+        BoxShadow(
+          color: Color(0xFF2E7D32).withOpacity(0.3),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _cardGradient,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.2),
+            width: 0.5,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isGuestMode) {
+                _showLoginRequiredDialog(context, 'View Business Partner Request');
+                return;
+              }
+              _showRequestDetails(request);
+            },
+            borderRadius: BorderRadius.circular(20),
+            splashColor: Colors.white.withOpacity(0.15),
+            highlightColor: Colors.transparent,
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 14 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Info Row - Compact
+                  Row(
+                    children: [
+                      Container(
+                        width: isTablet ? 44 : 38,
+                        height: isTablet ? 44 : 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFF66BB6A).withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(1.5),
+                          child: ClipOval(
+                            child: _buildRequesterPosterImage(request),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: 10),
+                      
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              request.postedByName ?? 'Business Seeker',
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 14 : 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 5,
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFA5D6A7),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Looking for Partner',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 9,
+                                    color: Color(0xFFA5D6A7),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      if (request.isVerified)
+                        Container(
+                          padding: EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: shouldAnimate
+                              ? RotationTransition(
+                                  turns: _rotateController,
+                                  child: Icon(
+                                    Icons.verified_rounded, 
+                                    color: Colors.white, 
+                                    size: isTablet ? 14 : 12,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.verified_rounded, 
+                                  color: Colors.white, 
+                                  size: isTablet ? 14 : 12,
+                                ),
+                        ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Partner Type and Business Type - Compact
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          request.partnerType.displayName,
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      
+                      if (request.isUrgent)
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFFE53935), Color(0xFFD32F2F)],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'URGENT',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 6),
+                  
+                  // Business Type Badge - Compact
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      request.businessType.displayName,
+                      style: GoogleFonts.poppins(
+                        fontSize: isTablet ? 11 : 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Tags - Compact
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _buildPremiumCompactTag(request.city, Icons.location_on_rounded, isTablet),
+                      if (request.industry != null && request.industry!.isNotEmpty && request.industry != 'Not specified')
+                        _buildPremiumCompactTag(request.industry!, Icons.category_rounded, isTablet),
+                    ],
+                  ),
+                  
+                  // Distance Badge - Compact
+                  if (request.latitude != null && request.longitude != null)
+                    Consumer<LocationFilterProvider>(
+                      builder: (context, locationProvider, _) {
+                        return Padding(
+                          padding: EdgeInsets.only(top: 8),
+                          child: DistanceBadge(
+                            latitude: request.latitude!,
+                            longitude: request.longitude!,
+                            isTablet: isTablet,
+                          ),
+                        );
+                      },
+                    ),
+                  
+                  SizedBox(height: 8),
+                  
+                  // Budget and Duration Row - Compact
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            vertical: 4,
+                            horizontal: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Budget',
+                                style: GoogleFonts.inter(
+                                  fontSize: 8,
+                                  color: Color(0xFFA5D6A7),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                '\$${request.budgetMin.toStringAsFixed(0)}-\$${request.budgetMax.toStringAsFixed(0)}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: isTablet ? 11 : 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            vertical: 4,
+                            horizontal: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Duration',
+                                style: GoogleFonts.inter(
+                                  fontSize: 8,
+                                  color: Color(0xFFA5D6A7),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                request.investmentDuration,
+                                style: GoogleFonts.poppins(
+                                  fontSize: isTablet ? 10 : 9,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // View Details Button - Compact
+                  GestureDetector(
+                    onTap: () {
+                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                      if (authProvider.isGuestMode) {
+                        _showLoginRequiredDialog(context, 'View Business Partner Request');
+                        return;
+                      }
+                      _showRequestDetails(request);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        vertical: isTablet ? 8 : 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'View Details',
+                            style: GoogleFonts.poppins(
+                              color: Color(0xFF2E7D32),
+                              fontSize: isTablet ? 12 : 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          shouldAnimate
+                              ? RotationTransition(
+                                  turns: _rotateController,
+                                  child: Icon(
+                                    Icons.arrow_forward_rounded,
+                                    color: Color(0xFF2E7D32),
+                                    size: isTablet ? 14 : 12,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: Color(0xFF2E7D32),
+                                  size: isTablet ? 14 : 12,
+                                ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  
+  if (shouldAnimate) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.96 + (0.04 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: cardContent,
+          ),
+        );
+      },
+    );
+  }
+  
+  return cardContent;
+}
+
+Widget _buildPremiumCompactTag(String text, IconData icon, [bool isTablet = false]) {
+  return Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: isTablet ? 8 : 6,
+      vertical: isTablet ? 4 : 3,
+    ),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: Colors.white.withOpacity(0.25),
+        width: 0.5,
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: isTablet ? 10 : 9, color: Colors.white),
+        SizedBox(width: isTablet ? 4 : 3),
+        Text(
+          text,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: isTablet ? 10 : 9,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    ),
+  );
+}
+
+
+
+
+
+
 
   void _showRequestDetails(BusinessPartnerRequest request) async {
     HapticFeedback.mediumImpact();
@@ -2387,6 +2870,9 @@ class _BusinessPartnerRequestsScreenState extends State<BusinessPartnerRequestsS
   }
 }
 
+
+
+
 // Helper class for states list
 class CommunityStates {
   static const List<String> states = [
@@ -2404,6 +2890,8 @@ class CommunityStates {
 }
 
 // ====================== ADD PARTNER REQUEST DIALOG ======================
+
+
 class AddPartnerRequestDialog extends StatefulWidget {
   final ScrollController scrollController;
   final VoidCallback? onRequestAdded;
@@ -2428,7 +2916,9 @@ class AddPartnerRequestDialog extends StatefulWidget {
   _AddPartnerRequestDialogState createState() => _AddPartnerRequestDialogState();
 }
 
-class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with TickerProviderStateMixin {
+class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> 
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  
   final _formKey = GlobalKey<FormState>();
   
   // Controllers
@@ -2454,7 +2944,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
   List<String> _responsibilities = [];
   bool _isUrgent = false;
   
-  // Location picking for partner request - ADDED
+  // Location picking for partner request
   double? _partnerLatitude;
   double? _partnerLongitude;
   String? _partnerFullAddress;
@@ -2464,6 +2954,10 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
   late TabController _tabController;
   late AnimationController _animationController;
   
+  // Track keyboard and lifecycle
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  bool _isKeyboardVisible = false;
+  
   // Track completed tabs
   bool _isBasicInfoValid = false;
   bool _isDetailsValid = false;
@@ -2471,10 +2965,16 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
   @override
   void initState() {
     super.initState();
+    
+    WidgetsBinding.instance.addObserver(this);
+    
+    _setupKeyboardListeners();
+    
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_handleTabChange);
     _animationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 500),
     );
     _animationController.forward();
     
@@ -2489,33 +2989,81 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
     _budgetMaxController.addListener(_validateDetails);
     _investmentDurationController.addListener(_validateDetails);
   }
-
-  void _validateBasicInfo() {
+  
+  void _setupKeyboardListeners() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusManager.instance.addListener(() {
+        final hasFocus = FocusManager.instance.primaryFocus != null;
+        if (mounted && _isKeyboardVisible != hasFocus) {
+          setState(() {
+            _isKeyboardVisible = hasFocus;
+          });
+          if (hasFocus) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (mounted && widget.scrollController.hasClients) {
+                widget.scrollController.animateTo(
+                  widget.scrollController.position.maxScrollExtent,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              }
+            });
+          }
+        }
+      });
+    });
+  }
+  
+  void _handleTabChange() {
+    if (mounted) {
+      setState(() {});
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     setState(() {
-      _isBasicInfoValid = 
-          _selectedPartnerType != null &&
-          _selectedBusinessType != null &&
-          _locationController.text.isNotEmpty &&
-          _cityController.text.isNotEmpty &&
-          _selectedState != null &&
-          _contactNameController.text.isNotEmpty &&
-          _contactEmailController.text.isNotEmpty &&
-          _contactPhoneController.text.isNotEmpty &&
-          _partnerLatitude != null && // ADDED: Check location coordinates
-          _partnerLongitude != null; // ADDED: Check location coordinates
+      _appLifecycleState = state;
     });
   }
 
+  void _validateBasicInfo() {
+    if (mounted) {
+      setState(() {
+        _isBasicInfoValid = 
+            _selectedPartnerType != null &&
+            _selectedBusinessType != null &&
+            _locationController.text.isNotEmpty &&
+            _cityController.text.isNotEmpty &&
+            _selectedState != null &&
+            _contactNameController.text.isNotEmpty &&
+            _contactEmailController.text.isNotEmpty &&
+            _contactPhoneController.text.isNotEmpty &&
+            _partnerLatitude != null &&
+            _partnerLongitude != null;
+      });
+    }
+  }
+
   void _validateDetails() {
-    setState(() {
-      _isDetailsValid = 
-          _descriptionController.text.isNotEmpty &&
-          _budgetMinController.text.isNotEmpty &&
-          _budgetMaxController.text.isNotEmpty &&
-          _investmentDurationController.text.isNotEmpty &&
-          _skillsRequired.isNotEmpty &&
-          _responsibilities.isNotEmpty;
-    });
+    if (mounted) {
+      setState(() {
+        _isDetailsValid = 
+            _descriptionController.text.isNotEmpty &&
+            _budgetMinController.text.isNotEmpty &&
+            _budgetMaxController.text.isNotEmpty &&
+            _investmentDurationController.text.isNotEmpty &&
+            _skillsRequired.isNotEmpty &&
+            _responsibilities.isNotEmpty;
+      });
+    }
   }
 
   bool get _isSubmitEnabled => _isBasicInfoValid && _isDetailsValid;
@@ -2523,21 +3071,37 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
   void _goToPreviousTab() {
     if (_tabController.index > 0) {
       _tabController.animateTo(_tabController.index - 1);
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     }
   }
 
   void _goToNextTab() {
     if (_tabController.index < 1) {
       if (_tabController.index == 0 && !_isBasicInfoValid) {
-        _showErrorSnackBar('Please complete all required fields');
+        _showErrorSnackBar('Please complete all required fields including location');
         return;
       }
       _tabController.animateTo(_tabController.index + 1);
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    
     _descriptionController.removeListener(_validateDetails);
     _locationController.removeListener(_validateBasicInfo);
     _cityController.removeListener(_validateBasicInfo);
@@ -2562,6 +3126,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
     _responsibilityController.dispose();
     _preferredMeetingController.dispose();
     
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _animationController.dispose();
     super.dispose();
@@ -2570,14 +3135,20 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isTablet = screenWidth > 600;
     
-    return FadeTransition(
-      opacity: _animationController,
+    return Container(
+      height: screenHeight * 0.9,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
       child: Column(
         children: [
           // Premium Header
           Container(
-            padding: EdgeInsets.all(screenWidth > 600 ? 24 : 16),
+            padding: EdgeInsets.all(isTablet ? 24 : 16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [widget.primaryGreen, widget.primaryGreen.withOpacity(0.8)],
@@ -2596,14 +3167,14 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
             child: Row(
               children: [
                 Container(
-                  padding: EdgeInsets.all(screenWidth > 600 ? 12 : 8),
+                  padding: EdgeInsets.all(isTablet ? 12 : 8),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.person_add_rounded, color: widget.secondaryGold, size: screenWidth > 600 ? 28 : 22),
+                  child: Icon(Icons.person_add_rounded, color: widget.secondaryGold, size: isTablet ? 28 : 22),
                 ),
-                SizedBox(width: screenWidth > 600 ? 16 : 12),
+                SizedBox(width: isTablet ? 16 : 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2611,7 +3182,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                       Text(
                         'Find a Business Partner',
                         style: GoogleFonts.poppins(
-                          fontSize: screenWidth > 600 ? 20 : 18,
+                          fontSize: isTablet ? 20 : 18,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                           letterSpacing: -0.5,
@@ -2620,7 +3191,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                       const SizedBox(height: 4),
                       Text(
                         'Describe what you\'re looking for',
-                        style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: screenWidth > 600 ? 13 : 12),
+                        style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: isTablet ? 13 : 12),
                       ),
                     ],
                   ),
@@ -2630,7 +3201,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                   icon: const Icon(Icons.close_rounded, color: Colors.white),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  iconSize: screenWidth > 600 ? 24 : 20,
+                  iconSize: isTablet ? 24 : 20,
                 ),
               ],
             ),
@@ -2638,13 +3209,13 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
           
           // Premium Tab Indicators
           Container(
-            margin: EdgeInsets.symmetric(horizontal: screenWidth > 600 ? 20 : 16, vertical: 16),
-            height: screenWidth > 600 ? 60 : 50,
+            margin: EdgeInsets.symmetric(horizontal: isTablet ? 20 : 16, vertical: 16),
+            height: isTablet ? 60 : 50,
             child: Row(
               children: [
-                _buildPremiumTabIndicator(0, 'Basic Info', _isBasicInfoValid),
-                _buildPremiumTabConnector(_isBasicInfoValid),
-                _buildPremiumTabIndicator(1, 'Details', _isDetailsValid),
+                _buildPremiumTabIndicator(0, 'Basic Info', _isBasicInfoValid, isTablet),
+                _buildPremiumTabConnector(_isBasicInfoValid, isTablet),
+                _buildPremiumTabIndicator(1, 'Details', _isDetailsValid, isTablet),
               ],
             ),
           ),
@@ -2657,8 +3228,8 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                 controller: _tabController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  _buildPremiumBasicInfoTab(),
-                  _buildPremiumDetailsTab(),
+                  _buildPremiumBasicInfoTab(isTablet),
+                  _buildPremiumDetailsTab(isTablet),
                 ],
               ),
             ),
@@ -2666,7 +3237,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
           
           // Navigation Buttons
           Container(
-            padding: EdgeInsets.all(screenWidth > 600 ? 20 : 16),
+            padding: EdgeInsets.all(isTablet ? 20 : 16),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: const [
@@ -2685,6 +3256,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                       label: 'Previous',
                       onPressed: _goToPreviousTab,
                       isPrimary: false,
+                      isTablet: isTablet,
                     ),
                   ),
                 if (_tabController.index > 0) const SizedBox(width: 12),
@@ -2694,8 +3266,9 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                           label: 'Next',
                           onPressed: _goToNextTab,
                           isPrimary: true,
+                          isTablet: isTablet,
                         )
-                      : _buildPremiumSubmitButton(),
+                      : _buildPremiumSubmitButton(isTablet),
                 ),
               ],
             ),
@@ -2704,81 +3277,80 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
       ),
     );
   }
-
-  Widget _buildPremiumTabIndicator(int index, String label, bool isValid) {
-    final isSelected = _tabController.index == index;
-    final screenWidth = MediaQuery.of(context).size.width;
-    
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          if (index == 0) {
-            _tabController.animateTo(0);
-          } else if (index == 1 && _isBasicInfoValid) {
-            _tabController.animateTo(1);
-          } else {
-            _showErrorSnackBar('Complete previous steps first');
-          }
-        },
-        child: Container(
-          height: screenWidth > 600 ? 60 : 50,
-          decoration: BoxDecoration(
-            gradient: isSelected
-                ? LinearGradient(
-                    colors: [widget.secondaryGold, widget.primaryGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: isSelected ? null : Colors.grey[100],
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isValid ? widget.primaryGreen : Colors.grey[300]!,
-              width: isValid ? 2 : 1,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: screenWidth > 600 ? 24 : 20,
-                height: screenWidth > 600 ? 24 : 20,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isValid ? widget.primaryGreen : (isSelected ? Colors.white : Colors.grey[400]),
-                ),
-                child: isValid
-                    ? Icon(Icons.check, color: Colors.white, size: screenWidth > 600 ? 14 : 12)
-                    : Center(
-                        child: Text(
-                          '${index + 1}',
-                          style: TextStyle(
-                            color: isSelected ? widget.primaryGreen : Colors.white,
-                            fontSize: screenWidth > 600 ? 12 : 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : (isValid ? widget.primaryGreen : Colors.grey[600]),
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  fontSize: screenWidth > 600 ? 10 : 9,
-                ),
-              ),
-            ],
+Widget _buildPremiumTabIndicator(int index, String label, bool isValid, bool isTablet) {
+  final isSelected = _tabController.index == index;
+  final screenWidth = MediaQuery.of(context).size.width;
+  
+  return Expanded(
+    child: GestureDetector(
+      onTap: () {
+        if (index == 0) {
+          _tabController.animateTo(0);
+        } else if (index == 1 && _isBasicInfoValid) {
+          _tabController.animateTo(1);
+        } else {
+          _showErrorSnackBar('Complete previous steps first');
+        }
+      },
+      child: Container(  // Fixed: Removed the comma and added opening parenthesis
+        height: screenWidth > 600 ? 60 : 50,
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [widget.secondaryGold, widget.primaryGreen],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isSelected ? null : Colors.grey[100],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isValid ? widget.primaryGreen : Colors.grey[300]!,
+            width: isValid ? 2 : 1,
           ),
         ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: isTablet ? 24 : 20,
+              height: isTablet ? 24 : 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isValid ? widget.primaryGreen : (isSelected ? Colors.white : Colors.grey[400]),
+              ),
+              child: isValid
+                  ? Icon(Icons.check, color: Colors.white, size: isTablet ? 14 : 12)
+                  : Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          color: isSelected ? widget.primaryGreen : Colors.white,
+                          fontSize: isTablet ? 12 : 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : (isValid ? widget.primaryGreen : Colors.grey[600]),
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontSize: isTablet ? 10 : 9,
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildPremiumTabConnector(bool isCompleted) {
+  Widget _buildPremiumTabConnector(bool isCompleted, bool isTablet) {
     return Container(
-      width: MediaQuery.of(context).size.width > 600 ? 20 : 12,
+      width: isTablet ? 20 : 12,
       height: 2,
       margin: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
@@ -2798,6 +3370,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
     required String label,
     required VoidCallback onPressed,
     required bool isPrimary,
+    required bool isTablet,
   }) {
     final screenWidth = MediaQuery.of(context).size.width;
     
@@ -2833,7 +3406,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
               style: GoogleFonts.poppins(
                 color: isPrimary ? Colors.white : widget.primaryGreen,
                 fontWeight: FontWeight.w600,
-                fontSize: screenWidth > 600 ? 15 : 13,
+                fontSize: isTablet ? 15 : 13,
               ),
             ),
           ),
@@ -2842,7 +3415,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
     );
   }
 
-  Widget _buildPremiumSubmitButton() {
+  Widget _buildPremiumSubmitButton(bool isTablet) {
     final screenWidth = MediaQuery.of(context).size.width;
     
     return Container(
@@ -2876,7 +3449,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
               style: GoogleFonts.poppins(
                 color: _isSubmitEnabled ? Colors.white : Colors.grey[600],
                 fontWeight: FontWeight.w700,
-                fontSize: screenWidth > 600 ? 15 : 13,
+                fontSize: isTablet ? 15 : 13,
               ),
             ),
           ),
@@ -2885,7 +3458,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
     );
   }
 
-  // ADDED: Location Picker Field similar to CommunityServicesListScreen
+  // Location Picker Field
   Widget _buildLocationPickerField(StateSetter setState, bool isTablet) {
     return GestureDetector(
       onTap: () async {
@@ -2976,13 +3549,15 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
     );
   }
 
-  Widget _buildPremiumBasicInfoTab() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-    
+  Widget _buildPremiumBasicInfoTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -3033,7 +3608,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
           
           const SizedBox(height: 20),
           
-          _buildPremiumSectionHeader('Partner Information', Icons.people_rounded),
+          _buildPremiumSectionHeader('Partner Information', Icons.people_rounded, isTablet),
           const SizedBox(height: 16),
           
           _buildPremiumDropdown<PartnerType>(
@@ -3052,6 +3627,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
               });
             },
             icon: Icons.person_rounded,
+            isTablet: isTablet,
           ),
           const SizedBox(height: 12),
           
@@ -3071,6 +3647,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
               });
             },
             icon: Icons.business_rounded,
+            isTablet: isTablet,
           ),
           const SizedBox(height: 12),
           
@@ -3078,14 +3655,16 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
             controller: _industryController,
             label: 'Industry (Optional)',
             icon: Icons.category_rounded,
+            isRequired: false,
+            isTablet: isTablet,
           ),
           
           const SizedBox(height: 20),
           
-          _buildPremiumSectionHeader('Location', Icons.location_on_rounded),
+          _buildPremiumSectionHeader('Location', Icons.location_on_rounded, isTablet),
           const SizedBox(height: 16),
           
-          // REPLACED: Street name field with location picker
+          // Location picker
           StatefulBuilder(
             builder: (context, setState) {
               return _buildLocationPickerField(setState, isTablet);
@@ -3095,13 +3674,15 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
           
           const SizedBox(height: 20),
           
-          _buildPremiumSectionHeader('Contact Information', Icons.contact_phone_rounded),
+          _buildPremiumSectionHeader('Contact Information', Icons.contact_phone_rounded, isTablet),
           const SizedBox(height: 16),
           
           _buildPremiumTextField(
             controller: _contactNameController,
             label: 'Your Name *',
             icon: Icons.person_rounded,
+            isRequired: true,
+            isTablet: isTablet,
           ),
           const SizedBox(height: 12),
           
@@ -3110,6 +3691,8 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
             label: 'Your Email *',
             icon: Icons.email_rounded,
             keyboardType: TextInputType.emailAddress,
+            isRequired: true,
+            isTablet: isTablet,
           ),
           const SizedBox(height: 12),
           
@@ -3118,6 +3701,8 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
             label: 'Your Phone *',
             icon: Icons.phone_rounded,
             keyboardType: TextInputType.phone,
+            isRequired: true,
+            isTablet: isTablet,
           ),
           const SizedBox(height: 12),
           
@@ -3125,6 +3710,8 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
             controller: _preferredMeetingController,
             label: 'Preferred Meeting Method (Optional)',
             icon: Icons.video_call_rounded,
+            isRequired: false,
+            isTablet: isTablet,
           ),
           const SizedBox(height: 4),
           Text(
@@ -3136,14 +3723,19 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
     );
   }
 
-  Widget _buildPremiumDetailsTab() {
+  Widget _buildPremiumDetailsTab(bool isTablet) {
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        left: isTablet ? 24 : 16,
+        right: isTablet ? 24 : 16,
+        top: isTablet ? 24 : 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildPremiumSectionHeader('Description', Icons.description_rounded),
+          _buildPremiumSectionHeader('Description', Icons.description_rounded, isTablet),
           const SizedBox(height: 16),
           
           _buildPremiumTextField(
@@ -3151,11 +3743,13 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
             label: 'Description *',
             icon: Icons.description_rounded,
             maxLines: 4,
+            isRequired: true,
+            isTablet: isTablet,
           ),
           
           const SizedBox(height: 24),
           
-          _buildPremiumSectionHeader('Budget & Duration', Icons.attach_money_rounded),
+          _buildPremiumSectionHeader('Budget & Duration', Icons.attach_money_rounded, isTablet),
           const SizedBox(height: 16),
           
           Row(
@@ -3166,6 +3760,8 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                   label: 'Min Budget *',
                   icon: Icons.attach_money_rounded,
                   keyboardType: TextInputType.number,
+                  isRequired: true,
+                  isTablet: isTablet,
                 ),
               ),
               const SizedBox(width: 12),
@@ -3175,6 +3771,8 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                   label: 'Max Budget *',
                   icon: Icons.attach_money_rounded,
                   keyboardType: TextInputType.number,
+                  isRequired: true,
+                  isTablet: isTablet,
                 ),
               ),
             ],
@@ -3185,11 +3783,13 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
             controller: _investmentDurationController,
             label: 'Investment Duration *',
             icon: Icons.schedule_rounded,
+            isRequired: true,
+            isTablet: isTablet,
           ),
           
           const SizedBox(height: 24),
           
-          _buildPremiumSectionHeader('Skills Required *', Icons.code_rounded),
+          _buildPremiumSectionHeader('Skills Required *', Icons.code_rounded, isTablet),
           const SizedBox(height: 8),
           Text(
             'Add at least one required skill',
@@ -3216,11 +3816,12 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                 _validateDetails();
               });
             },
+            isTablet: isTablet,
           ),
           
           const SizedBox(height: 24),
           
-          _buildPremiumSectionHeader('Responsibilities *', Icons.task_rounded),
+          _buildPremiumSectionHeader('Responsibilities *', Icons.task_rounded, isTablet),
           const SizedBox(height: 8),
           Text(
             'Add at least one responsibility',
@@ -3247,32 +3848,31 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                 _validateDetails();
               });
             },
+            isTablet: isTablet,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPremiumSectionHeader(String title, IconData icon) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    
+  Widget _buildPremiumSectionHeader(String title, IconData icon, bool isTablet) {
     return Row(
       children: [
         Container(
-          padding: EdgeInsets.all(screenWidth > 600 ? 8 : 6),
+          padding: EdgeInsets.all(isTablet ? 8 : 6),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [widget.primaryGreen, widget.secondaryGold],
             ),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: Colors.white, size: screenWidth > 600 ? 18 : 16),
+          child: Icon(icon, color: Colors.white, size: isTablet ? 18 : 16),
         ),
         const SizedBox(width: 10),
         Text(
           title,
           style: GoogleFonts.poppins(
-            fontSize: screenWidth > 600 ? 16 : 14,
+            fontSize: isTablet ? 16 : 14,
             fontWeight: FontWeight.w600,
             color: widget.primaryGreen,
           ),
@@ -3287,45 +3887,44 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
+    required bool isRequired,
+    required bool isTablet,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
+      style: GoogleFonts.inter(
+        fontSize: isTablet ? 16 : 14,
+        color: Colors.grey[800],
+        fontWeight: FontWeight.w500,
       ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: GoogleFonts.inter(color: Colors.grey[600], fontSize: 13),
-          prefixIcon: Icon(icon, color: widget.primaryGreen, size: 18),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: widget.primaryGreen, width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: maxLines > 1 ? 14 : 12),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.inter(color: Colors.grey[600], fontSize: isTablet ? 13 : 12),
+        prefixIcon: Icon(icon, color: widget.primaryGreen, size: isTablet ? 20 : 18),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
         ),
-        validator: (value) {
-          if (label.contains('*') && (value == null || value.isEmpty)) {
-            return 'Required';
-          }
-          return null;
-        },
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: widget.primaryGreen, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: isTablet ? 16 : 14,
+          vertical: maxLines > 1 ? (isTablet ? 16 : 14) : (isTablet ? 14 : 12),
+        ),
       ),
+      validator: (value) {
+        if (isRequired && (value == null || value.isEmpty)) {
+          return 'Required';
+        }
+        return null;
+      },
     );
   }
 
@@ -3335,48 +3934,37 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
     required List<DropdownMenuItem<T>> items,
     required Function(T?) onChanged,
     required IconData icon,
+    required bool isTablet,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: DropdownButtonFormField<T>(
-        value: value,
-        decoration: InputDecoration(
-          labelText: hint,
-          labelStyle: GoogleFonts.inter(color: Colors.grey[600], fontSize: 13),
-          prefixIcon: Icon(icon, color: widget.primaryGreen, size: 18),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: widget.primaryGreen, width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+    return DropdownButtonFormField<T>(
+      value: value,
+      decoration: InputDecoration(
+        labelText: hint,
+        labelStyle: GoogleFonts.inter(color: Colors.grey[600], fontSize: isTablet ? 13 : 12),
+        prefixIcon: Icon(icon, color: widget.primaryGreen, size: isTablet ? 20 : 18),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
         ),
-        items: items,
-        onChanged: (value) {
-          onChanged(value);
-          _validateBasicInfo();
-        },
-        validator: (value) {
-          if (value == null && hint.contains('*')) {
-            return 'Required';
-          }
-          return null;
-        },
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: widget.primaryGreen, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: EdgeInsets.symmetric(horizontal: isTablet ? 16 : 14, vertical: 6),
       ),
+      items: items,
+      onChanged: (value) {
+        onChanged(value);
+        _validateBasicInfo();
+      },
+      validator: (value) {
+        if (value == null && hint.contains('*')) {
+          return 'Required';
+        }
+        return null;
+      },
     );
   }
 
@@ -3386,6 +3974,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
     required VoidCallback onAdd,
     required Function(int) onRemove,
     String hint = 'Add item',
+    required bool isTablet,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3395,9 +3984,11 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
             Expanded(
               child: TextField(
                 controller: controller,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => onAdd(),
                 decoration: InputDecoration(
                   hintText: hint,
-                  hintStyle: GoogleFonts.inter(color: Colors.grey[400], fontSize: 13),
+                  hintStyle: GoogleFonts.inter(color: Colors.grey[400], fontSize: isTablet ? 13 : 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: Colors.grey[300]!),
@@ -3408,7 +3999,10 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                   ),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 16 : 14,
+                    vertical: isTablet ? 14 : 12,
+                  ),
                 ),
               ),
             ),
@@ -3429,7 +4023,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
               child: IconButton(
                 onPressed: onAdd,
                 icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(isTablet ? 12 : 10),
                 constraints: const BoxConstraints(),
               ),
             ),
@@ -3442,7 +4036,10 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
             runSpacing: 8,
             children: List.generate(tags.length, (index) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 14 : 12,
+                  vertical: isTablet ? 8 : 6,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [widget.lightGreen, Colors.white],
@@ -3457,7 +4054,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                       tags[index],
                       style: GoogleFonts.inter(
                         color: widget.primaryGreen,
-                        fontSize: 11,
+                        fontSize: isTablet ? 12 : 11,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -3467,7 +4064,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
                       child: Icon(
                         Icons.close_rounded,
                         color: widget.accentRed,
-                        size: 14,
+                        size: isTablet ? 16 : 14,
                       ),
                     ),
                   ],
@@ -3488,7 +4085,6 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
       return;
     }
 
-    // ADDED: Check location coordinates
     if (_partnerLatitude == null || _partnerLongitude == null) {
       _showErrorSnackBar('Please select a location on the map');
       return;
@@ -3549,7 +4145,7 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
       postedByEmail: currentUser.email,
       postedByProfileImageBase64: userProfileImage,
       
-      // ADDED: Location coordinates
+      // Location coordinates
       latitude: _partnerLatitude,
       longitude: _partnerLongitude,
       
@@ -3563,9 +4159,40 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
       additionalInfo: {},
     );
 
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 50,
+                height: 50,
+                child: CircularProgressIndicator(color: widget.primaryGreen),
+              ),
+              const SizedBox(height: 20),
+              Text('Posting request...', style: GoogleFonts.poppins()),
+            ],
+          ),
+        ),
+      ),
+    );
+
     final success = await provider.addPartnerRequest(newRequest);
     
-    if (success) {
+    if (mounted) {
+      Navigator.pop(context); // Close loading
+    }
+    
+    if (success && mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -3591,12 +4218,13 @@ class _AddPartnerRequestDialogState extends State<AddPartnerRequestDialog> with 
       if (widget.onRequestAdded != null) {
         widget.onRequestAdded!();
       }
-    } else {
+    } else if (mounted) {
       _showErrorSnackBar('Failed to post request. Please try again.');
     }
   }
 
   void _showErrorSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(

@@ -193,6 +193,76 @@ class ServiceProviderService {
     }
   }
 
+
+
+// In service_provider_service.dart
+// In service_provider_service.dart
+// Get user's services
+// In service_provider_service.dart
+// Get user's services
+Stream<List<ServiceProviderModel>> getUserServices({
+  required String userId,
+  bool includeDeleted = false,
+  bool adminView = false,
+  bool onlyVerified = true,
+  bool onlyAvailable = true,
+}) {
+  try {
+    print('🔍 Getting user services for userId: $userId');
+    print('🔍 Admin view: $adminView, Only verified: $onlyVerified, Only available: $onlyAvailable');
+    
+    Query query = _firestore
+        .collection(_collectionName)
+        .where('createdBy', isEqualTo: userId);
+
+    // Apply isDeleted filter
+    if (!includeDeleted) {
+      query = query.where('isDeleted', isEqualTo: false);
+      print('🔍 Filter: isDeleted = false');
+    }
+
+    // For user's own services (adminView = true), don't filter by verification
+    // This ensures pending services are shown in the user's pending tab
+    if (!adminView) {
+      if (onlyVerified) {
+        query = query.where('isVerified', isEqualTo: true);
+        print('🔍 Filter: isVerified = true');
+      }
+      if (onlyAvailable) {
+        query = query.where('isAvailable', isEqualTo: true);
+        print('🔍 Filter: isAvailable = true');
+      }
+    } else {
+      print('🔍 Admin view enabled - showing ALL user services regardless of verification');
+    }
+
+    // Order by creation date (newest first)
+    query = query.orderBy('createdAt', descending: true);
+
+    return query.snapshots().map((snapshot) {
+      print('📊 Found ${snapshot.docs.length} services for user $userId');
+      
+      // Log each service's verification status for debugging
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data != null) {
+          print('  - Service: ${data['companyName']}, Verified: ${data['isVerified']}, Status: ${data['isDeleted'] ? 'Deleted' : 'Active'}');
+        }
+      }
+      
+      return snapshot.docs
+          .map((doc) => ServiceProviderModel.fromFirestore(doc))
+          .toList();
+    }).handleError((error, stackTrace) {
+      print('❌ Firestore query error: $error');
+      throw error;
+    });
+  } catch (e, stackTrace) {
+    print('❌ Exception in getUserServices: $e');
+    throw e;
+  }
+}
+
   // Get unique cities for a state - UPDATED to only count verified & available
   Future<List<String>> getCitiesByState(String state) async {
     try {

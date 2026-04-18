@@ -451,30 +451,49 @@ class EventProvider with ChangeNotifier {
     }
   }
   
-  Future<void> loadUserEvents(String userId) async {
-    if (_isDisposed) return;
+// In EventProvider class
+Future<void> loadUserEvents(String userId) async {
+  if (_isDisposed) return;
+  
+  try {
+    _safeSetLoading(true);
     
-    try {
-      _safeSetLoading(true);
-      
-      _userEventsSubscription?.cancel();
-      
-      _userEventsSubscription = _firestoreService.getUserEvents(userId).listen((events) {
-        _safeUpdate(() {
-          _myEvents = events;
-          notifyListeners();
-        });
-      }, onError: (error) {
-        _safeSetError(error.toString());
+    _userEventsSubscription?.cancel();
+    
+    _userEventsSubscription = _firestoreService.getUserEvents(userId).listen((events) {
+      _safeUpdate(() {
+        // Use a Set to track unique event IDs
+        final Set<String> seenIds = {};
+        
+        // Filter approved events without duplicates
+        _myEvents = events
+            .where((event) => event.status == 'approved')
+            .where((event) => seenIds.add(event.id))
+            .toList();
+        
+        // Clear the set for pending events
+        seenIds.clear();
+        
+        // Filter pending events without duplicates
+        _pendingEvents = events
+            .where((event) => event.status == 'pending')
+            .where((event) => seenIds.add(event.id))
+            .toList();
+        
+        notifyListeners();
       });
-      
-    } catch (e) {
-      _safeSetError(e.toString());
-    } finally {
-      _safeSetLoading(false);
-    }
+    }, onError: (error) {
+      _safeSetError(error.toString());
+    });
+    
+  } catch (e) {
+    _safeSetError(e.toString());
+  } finally {
+    _safeSetLoading(false);
   }
-
+}
+ 
+ 
   Future<void> createEvent({
     required String title,
     required String organizer,
@@ -581,6 +600,37 @@ class EventProvider with ChangeNotifier {
       _safeSetLoading(false);
     }
   }
+
+
+  Future<void> deleteUserEvent(String eventId) async {
+  if (_isDisposed) return;
+  
+  try {
+    _safeSetLoading(true);
+    
+    // Delete from Firestore
+    await _firestoreService.deleteEvent(eventId);
+    
+    // Remove from all local lists
+    _safeUpdate(() {
+      _myEvents.removeWhere((event) => event.id == eventId);
+      _pendingEvents.removeWhere((event) => event.id == eventId);
+      _upcomingEvents.removeWhere((event) => event.id == eventId);
+      _pastEvents.removeWhere((event) => event.id == eventId);
+      _searchedEvents.removeWhere((event) => event.id == eventId);
+      _interestedEvents.removeWhere((event) => event.id == eventId);
+      _userInterestedEventIds.remove(eventId);
+      notifyListeners();
+    });
+    
+  } catch (e) {
+    print('❌ Error deleting event: $e');
+    _safeSetError(e.toString());
+    rethrow;
+  } finally {
+    _safeSetLoading(false);
+  }
+}
   
   Future<void> updateEventStatus(String eventId, String status) async {
     if (_isDisposed) return;

@@ -93,6 +93,8 @@ class FirestoreService {
     }
   }
 
+
+
   // Event Operations
   Future<void> createEvent(EventModel event) async {
     try {
@@ -294,6 +296,11 @@ class FirestoreService {
       return null;
     }
   }
+
+
+  // In FirestoreService class, make sure you have this method:
+
+
 
   // Interested Users Operations
   Future<void> addInterestedUser(String eventId, String userId) async {

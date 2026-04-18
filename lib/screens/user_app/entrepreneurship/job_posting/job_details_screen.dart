@@ -935,7 +935,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen>
                                   title: 'Email',
                                   value: job.contactEmail,
                                   isTablet: isTablet,
-                                  onTap: () => widget.onLaunchEmail(job.contactEmail),
+                              //    onTap: () => widget.onLaunchEmail(job.contactEmail),
                                 ),
                                 SizedBox(height: isTablet ? 14 : 12),
                                 _buildPremiumContactItem(
@@ -943,7 +943,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen>
                                   title: 'Phone',
                                   value: job.contactPhone,
                                   isTablet: isTablet,
-                                  onTap: () => widget.onLaunchPhone(job.contactPhone),
+                              //    onTap: () => widget.onLaunchPhone(job.contactPhone),
                                 ),
                               ],
                             ),

@@ -1,3 +1,5 @@
+// providers/auth_provider.dart - Complete updated version
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -21,27 +23,28 @@ class AuthProvider with ChangeNotifier {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Uuid _uuid = const Uuid();
+
+  // Separate ValueNotifier for profile image (does NOT trigger full rebuilds)
+  final ValueNotifier<String?> _profileImageNotifier = ValueNotifier<String?>(null);
+  ValueNotifier<String?> get profileImageNotifier => _profileImageNotifier;
   
   UserModel? _user;
   bool _isLoading = false;
   String? _error;
+  String? _errorMessage;
   bool _isAdminMode = false;
-    bool _isGuestMode = false; // Add guest mode flag
-
+  bool _isGuestMode = false;
   
-  // Colors for dialogs
-  final Color _bangladeshGreen = Color(0xFF006A4E);
-  final Color _bangladeshRed = Color(0xFFF42A41);
+  final Color _bangladeshGreen = const Color(0xFF006A4E);
+  final Color _bangladeshRed = const Color(0xFFF42A41);
   
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAdminMode => _isAdminMode;
   bool get isLoggedIn => _user != null;
-    bool get isGuestMode => _isGuestMode; // Getter for guest mode
-
+  bool get isGuestMode => _isGuestMode;
   
-  // Add userStream getter for auth state changes
   Stream<User?> get userStream => _firebaseAuth.authStateChanges();
   
   AuthProvider() {
@@ -49,14 +52,11 @@ class AuthProvider with ChangeNotifier {
     _setupAuthListener();
   }
   
-  // Set up auth state listener
   void _setupAuthListener() {
     userStream.listen((User? firebaseUser) {
       if (firebaseUser != null) {
-        // Firebase user is logged in, load user data from Firestore
         _loadUserData(firebaseUser.uid);
       } else {
-        // Firebase user logged out
         _user = null;
         _isAdminMode = false;
         notifyListeners();
@@ -69,6 +69,7 @@ class AuthProvider with ChangeNotifier {
       final userData = await _firestoreService.getUser(userId);
       if (userData != null) {
         _user = userData;
+        _profileImageNotifier.value = _user?.profileImageUrl;
         _isAdminMode = userData.isAdmin;
         notifyListeners();
       }
@@ -77,15 +78,14 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
-    Future<void> _loadStoredUser() async {
+  Future<void> _loadStoredUser() async {
     try {
       _isLoading = true;
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-      final isGuest = prefs.getBool('isGuestMode') ?? false; // Check guest mode
+      final isGuest = prefs.getBool('isGuestMode') ?? false;
       
       if (isGuest) {
-        // Guest mode was active
         _isGuestMode = true;
         _user = null;
         _isAdminMode = false;
@@ -96,6 +96,9 @@ class AuthProvider with ChangeNotifier {
         
         if (userId != null) {
           _user = await _firestoreService.getUser(userId);
+          if (_user != null) {
+            _profileImageNotifier.value = _user?.profileImageUrl;
+          }
           _isAdminMode = isAdmin;
           notifyListeners();
         }
@@ -105,109 +108,173 @@ class AuthProvider with ChangeNotifier {
     } finally {
       _isLoading = false;
     }
-  }  
-
-    // Continue as guest method
-/*  Future<void> continueAsGuest(BuildContext context) async {
+  }
+  
+  // ✅ NEW: Update ONLY profile image - NO notifyListeners()
+  Future<void> updateProfileImageOnly(String imageUrl) async {
+    if (_user == null) return;
+    
+    try {
+      final updatedUser = _user!.copyWithProfileImage(imageUrl);
+      await _firestoreService.updateUser(updatedUser);
+      _user = updatedUser;
+      
+      // Only update the ValueNotifier - NO notifyListeners()
+      _profileImageNotifier.value = imageUrl;
+      
+      final firebaseUser = _firebaseAuth.currentUser;
+      if (firebaseUser != null) {
+        await firebaseUser.updatePhotoURL(imageUrl);
+      }
+      
+      print('✅ Profile image updated silently (no rebuild)');
+    } catch (e) {
+      print('❌ Error updating profile image: $e');
+      rethrow;
+    }
+  }
+  
+  // ✅ MODIFIED: Update user profile with minimal rebuilds
+  Future<void> updateUserProfile(UserModel updatedUser) async {
     try {
       _isLoading = true;
-      notifyListeners();
       
-      // Set guest mode
+      // Check if only profile image changed
+      final bool onlyImageChanged = 
+          _user?.profileImageUrl != updatedUser.profileImageUrl &&
+          _user?.firstName == updatedUser.firstName &&
+          _user?.lastName == updatedUser.lastName &&
+          _user?.phoneNumber == updatedUser.phoneNumber &&
+          _user?.location == updatedUser.location;
+      
+      // Only notify main listeners if non-image data changed
+      if (!onlyImageChanged) {
+        notifyListeners();
+      }
+      
+      await _firestoreService.updateUser(updatedUser);
+      _user = updatedUser;
+      
+      // Always update the profile image notifier
+      _profileImageNotifier.value = _user?.profileImageUrl;
+      
+      final firebaseUser = _firebaseAuth.currentUser;
+      if (firebaseUser != null && updatedUser.profileImageUrl != null) {
+        await firebaseUser.updatePhotoURL(updatedUser.profileImageUrl);
+      }
+      
+      print('✅ User profile updated${onlyImageChanged ? " (image only, no rebuild)" : ""}');
+    } catch (e) {
+      _errorMessage = e.toString();
+      print('❌ Error updating user profile: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      if (_user?.profileImageUrl != updatedUser?.profileImageUrl) {
+        // Don't notify again
+      } else {
+        notifyListeners();
+      }
+    }
+  }
+  
+  // ✅ MODIFIED: Refresh user data without full rebuild for image changes
+  Future<void> refreshUserData() async {
+    if (_user != null) {
+      try {
+        print('🔄 Refreshing user data...');
+        final refreshedUser = await _firestoreService.getUser(_user!.id);
+        if (refreshedUser != null) {
+          final oldImageUrl = _user?.profileImageUrl;
+          final newImageUrl = refreshedUser.profileImageUrl;
+          
+          // Check if non-image data changed
+          final bool nonImageDataChanged = 
+              _user?.firstName != refreshedUser.firstName ||
+              _user?.lastName != refreshedUser.lastName ||
+              _user?.phoneNumber != refreshedUser.phoneNumber ||
+              _user?.location != refreshedUser.location;
+          
+          // Update user object
+          _user = refreshedUser;
+          
+          // Update profile image notifier if image changed
+          if (oldImageUrl != newImageUrl) {
+            _profileImageNotifier.value = newImageUrl;
+            print('✅ Profile image updated in notifier');
+          }
+          
+          // Only call notifyListeners() if non-image data changed
+          if (nonImageDataChanged) {
+            notifyListeners();
+            print('✅ Non-image data changed, notified listeners');
+          } else {
+            print('✅ Only image changed or no changes, no full rebuild');
+          }
+        }
+      } catch (e) {
+        print('❌ Error refreshing user data: $e');
+      }
+    }
+  }
+  
+  // Continue as guest method
+  Future<void> continueAsGuest(BuildContext context) async {
+    try {
       _isGuestMode = true;
       _user = null;
       _isAdminMode = false;
       
-      // Store guest mode in SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isGuestMode', true);
-      await prefs.setBool('isLoggedIn', false);
+      unawaited(_storeGuestModeInBackground());
       
-      // Try to get location for guest
       final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
-      await locationProvider.getUserLocation(showLoading: false);
+      unawaited(locationProvider.getUserLocation(showLoading: false));
       
       notifyListeners();
       
-      // Navigate to home screen
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => HomeScreen()),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
-      
     } catch (e) {
       _error = e.toString();
       print('Error in guest mode: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFFF42A41),
+          content: Text('Could not continue as guest: $e'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
-  }  */
-
-  // Continue as guest method - UPDATED for instant navigation
-Future<void> continueAsGuest(BuildContext context) async {
-  try {
-    // Remove loading state - instant navigation
-    _isGuestMode = true;
-    _user = null;
-    _isAdminMode = false;
-    
-    // Store guest mode in SharedPreferences (do this in background)
-    unawaited(_storeGuestModeInBackground());
-    
-    // Try to get location for guest (do this in background)
-    final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
-    unawaited(locationProvider.getUserLocation(showLoading: false));
-    
-    notifyListeners();
-    
-    // Navigate to home screen instantly
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => HomeScreen()),
-    );
-    
-  } catch (e) {
-    _error = e.toString();
-    print('Error in guest mode: $e');
-    // Don't show loading, just show error if needed
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: Color(0xFFF42A41),
-        content: Text('Could not continue as guest: $e'),
-        duration: Duration(seconds: 2),
-      ),
-    );
   }
-}
-
-// Helper method to store guest mode in background
-Future<void> _storeGuestModeInBackground() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isGuestMode', true);
-    await prefs.setBool('isLoggedIn', false);
-  } catch (e) {
-    print('Error storing guest mode: $e');
-  }
-}
-
-Future<UserModel?> getUserById(String userId) async {
-  try {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .get();
-    
-    if (doc.exists) {
-      return UserModel.fromMap(doc.data()!, doc.id);
+  
+  Future<void> _storeGuestModeInBackground() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isGuestMode', true);
+      await prefs.setBool('isLoggedIn', false);
+    } catch (e) {
+      print('Error storing guest mode: $e');
     }
-    return null;
-  } catch (e) {
-    print('Error getting user by id: $e');
-    return null;
   }
-}
+  
+  Future<UserModel?> getUserById(String userId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (doc.exists) {
+        return UserModel.fromMap(doc.data()!, doc.id);
+      }
+      return null;
+    } catch (e) {
+      print('Error getting user by id: $e');
+      return null;
+    }
+  }
   
   Future<void> signIn({
     required String email,
@@ -219,7 +286,6 @@ Future<UserModel?> getUserById(String userId) async {
       _error = null;
       notifyListeners();
 
-      // Check if admin login
       if (email == AuthService.adminEmail && password == AuthService.adminPassword) {
         await _handleAdminLogin(email);
       } else {
@@ -227,23 +293,6 @@ Future<UserModel?> getUserById(String userId) async {
       }
     } catch (e) {
       _error = e.toString();
-      
-      // Check if error is about email verification
-    /*  if (e.toString().startsWith('EMAIL_NOT_VERIFIED:')) {
-        final parts = e.toString().split(':');
-        if (parts.length >= 3) {
-          final userId = parts[1];
-          final userEmail = parts[2];
-          
-          // Wait 2 seconds then show verification dialog
-          await Future.delayed(Duration(seconds: 2));
-          
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showVerificationRequiredDialog(context, userId, userEmail);
-          });  
-        }
-      }  */
-      
       rethrow;
     } finally {
       _isLoading = false;
@@ -262,7 +311,6 @@ Future<UserModel?> getUserById(String userId) async {
       _user = UserModel.fromMap(adminQuery.docs.first.data(), adminQuery.docs.first.id);
       _isAdminMode = true;
     } else {
-      // Create admin user if not exists
       final adminUser = UserModel(
         id: 'admin_${DateTime.now().millisecondsSinceEpoch}',
         email: AuthService.adminEmail,
@@ -280,14 +328,16 @@ Future<UserModel?> getUserById(String userId) async {
       _isAdminMode = true;
     }
     
-    // Store admin session
+    if (_user != null) {
+      _profileImageNotifier.value = _user?.profileImageUrl;
+    }
+    
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userId', _user!.id);
     await prefs.setString('userEmail', email);
     await prefs.setBool('isLoggedIn', true);
     await prefs.setBool('isAdmin', true);
-    await prefs.setBool('isGuestMode', false); // Clear guest mode
-
+    await prefs.setBool('isGuestMode', false);
     
     notifyListeners();
   }
@@ -299,7 +349,6 @@ Future<UserModel?> getUserById(String userId) async {
     );
     
     if (firebaseUser != null) {
-      // Get user data from Firestore
       _user = await _firestoreService.getUser(firebaseUser.uid);
       
       if (_user == null) {
@@ -307,11 +356,11 @@ Future<UserModel?> getUserById(String userId) async {
         throw 'User data not found. Please contact support.';
       }
       
-      // 🔥 Get user location on login
+      _profileImageNotifier.value = _user?.profileImageUrl;
+      
       final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
       await locationProvider.getUserLocation();
       
-      // If location obtained, update user model
       if (locationProvider.currentUserLocation != null) {
         final updatedUser = _user!.copyWith(
           latitude: locationProvider.currentUserLocation!.latitude,
@@ -322,13 +371,12 @@ Future<UserModel?> getUserById(String userId) async {
         _user = updatedUser;
       }
       
-      // Store user session
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('userId', firebaseUser.uid);
       await prefs.setString('userEmail', email);
       await prefs.setBool('isLoggedIn', true);
       await prefs.setBool('isAdmin', false);
-      await prefs.setBool('isGuestMode', false); // Clear guest mode
+      await prefs.setBool('isGuestMode', false);
       
       _isAdminMode = false;
       _isGuestMode = false;
@@ -336,14 +384,14 @@ Future<UserModel?> getUserById(String userId) async {
     }
   }
   
-/*  Future<void> signUp({
+  Future<void> signUp({
     required String email,
     required String password,
     required String firstName,
     required String lastName,
     required String phoneNumber,
     required String location,
-    File? profileImageFile,
+    String? profileImageUrl,
     String? country,
     String? countryCode,
     double? latitude,
@@ -355,112 +403,6 @@ Future<UserModel?> getUserById(String userId) async {
       _error = null;
       notifyListeners();
 
-      // Convert image to base64 if exists
-      String? base64Image;
-      if (profileImageFile != null) {
-        try {
-          final bytes = await profileImageFile.readAsBytes();
-          base64Image = base64Encode(bytes);
-          // Add data URL prefix for web compatibility
-          base64Image = 'data:image/jpeg;base64,$base64Image';
-        } catch (e) {
-          print('Error converting image: $e');
-          // Don't throw error, just continue without image
-        }
-      }
-
-      // Create user data
-      final userData = UserModel(
-        id: _uuid.v4(),
-        email: email,
-        firstName: firstName,
-        lastName: lastName,
-        phoneNumber: phoneNumber,
-        location: location,
-        profileImageUrl: base64Image,
-        role: 'user',
-        isEmailVerified: true,
-        isActive: true,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        country: country,
-        countryCode: countryCode,
-        latitude: latitude,
-        longitude: longitude,
-      );
-
-      // Sign up with Firebase Auth
-      final firebaseUser = await _authService.signUpWithEmail(
-        email: email,
-        password: password,
-        userData: userData,
-      );
-
-      if (firebaseUser != null) {
-        _user = userData.copyWith(id: firebaseUser.uid);
-        
-        // Store user session
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('userId', firebaseUser.uid);
-        await prefs.setString('userEmail', email);
-        await prefs.setBool('isLoggedIn', true);
-        await prefs.setBool('isAdmin', false);
-        
-        _isAdminMode = false;
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: _bangladeshGreen,
-            content: Text('✅ Account created successfully!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-        
-        // Show verification dialog after a delay
-        await Future.delayed(Duration(seconds: 2));
-      //  _showVerificationSuccessDialog(context, firebaseUser.uid, email);
-
-        // 👉 NAVIGATE TO REGISTER SCREEN
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const HomeScreen(),
-    ),
-  );
-
-
-      }
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }   */
-
- // In your AuthProvider class
-/*  Future<void> signUp({
-    required String email,
-    required String password,
-    required String firstName,
-    required String lastName,
-    required String phoneNumber,
-    required String location,
-    File? profileImageFile,
-    String? country,
-    String? countryCode,
-    double? latitude,
-    double? longitude,
-    required BuildContext context,
-  }) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      // Get user location first if not provided
       if (latitude == null || longitude == null) {
         final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
         await locationProvider.getUserLocation();
@@ -471,19 +413,6 @@ Future<UserModel?> getUserById(String userId) async {
         }
       }
 
-      // Convert image to base64 if exists
-      String? base64Image;
-      if (profileImageFile != null) {
-        try {
-          final bytes = await profileImageFile.readAsBytes();
-          base64Image = base64Encode(bytes);
-          base64Image = 'data:image/jpeg;base64,$base64Image';
-        } catch (e) {
-          print('Error converting image: $e');
-        }
-      }
-
-      // Create user data
       final userData = UserModel(
         id: _uuid.v4(),
         email: email,
@@ -491,7 +420,7 @@ Future<UserModel?> getUserById(String userId) async {
         lastName: lastName,
         phoneNumber: phoneNumber,
         location: location,
-        profileImageUrl: base64Image,
+        profileImageUrl: profileImageUrl,
         role: 'user',
         isEmailVerified: true,
         isActive: true,
@@ -503,7 +432,6 @@ Future<UserModel?> getUserById(String userId) async {
         longitude: longitude,
       );
 
-      // Sign up with Firebase Auth
       final firebaseUser = await _authService.signUpWithEmail(
         email: email,
         password: password,
@@ -512,8 +440,8 @@ Future<UserModel?> getUserById(String userId) async {
 
       if (firebaseUser != null) {
         _user = userData.copyWith(id: firebaseUser.uid);
+        _profileImageNotifier.value = _user?.profileImageUrl;
         
-        // Store user session
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('userId', firebaseUser.uid);
         await prefs.setString('userEmail', email);
@@ -525,25 +453,11 @@ Future<UserModel?> getUserById(String userId) async {
         _isGuestMode = false;
         notifyListeners();
 
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: _bangladeshGreen,
-            content: Text('✅ Account created successfully!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-
-        // 👉 NAVIGATE TO WELCOME SCREEN
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => WelcomeScreen(
-              onComplete: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => HomeScreen()),
-                );
-              },
-            ),
+            content: const Text('✅ Account created successfully!'),
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -554,290 +468,73 @@ Future<UserModel?> getUserById(String userId) async {
       _isLoading = false;
       notifyListeners();
     }
-  } 
-
-*/
-
-
-// In your AuthProvider class
-/*Future<void> signUp({
-  required String email,
-  required String password,
-  required String firstName,
-  required String lastName,
-  required String phoneNumber,
-  required String location,
-  String? profileImageUrl, // Changed from File? to String?
-  String? country,
-  String? countryCode,
-  double? latitude,
-  double? longitude,
-  required BuildContext context,
-}) async {
-  try {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    // Get user location first if not provided
-    if (latitude == null || longitude == null) {
-      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
-      await locationProvider.getUserLocation();
-      
-      if (locationProvider.currentUserLocation != null) {
-        latitude = locationProvider.currentUserLocation!.latitude;
-        longitude = locationProvider.currentUserLocation!.longitude;
-      }
-    }
-
-    // Create user data with Cloudinary URL
-    final userData = UserModel(
-      id: _uuid.v4(),
-      email: email,
-      firstName: firstName,
-      lastName: lastName,
-      phoneNumber: phoneNumber,
-      location: location,
-      profileImageUrl: profileImageUrl, // Store Cloudinary URL directly
-      role: 'user',
-      isEmailVerified: true,
-      isActive: true,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      country: country,
-      countryCode: countryCode,
-      latitude: latitude,
-      longitude: longitude,
-    );
-
-    // Sign up with Firebase Auth
-    final firebaseUser = await _authService.signUpWithEmail(
-      email: email,
-      password: password,
-      userData: userData,
-    );
-
-    if (firebaseUser != null) {
-      _user = userData.copyWith(id: firebaseUser.uid);
-      
-      // Store user session
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userId', firebaseUser.uid);
-      await prefs.setString('userEmail', email);
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setBool('isAdmin', false);
-      await prefs.setBool('isGuestMode', false);
-      
-      _isAdminMode = false;
-      _isGuestMode = false;
-      notifyListeners();
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: _bangladeshGreen,
-          content: Text('✅ Account created successfully!'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-
-      // Navigate to Welcome Screen
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => WelcomeScreen(
-            onComplete: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => HomeScreen()),
-              );
-            },
-          ),
-        ),
-      );
-    }
-  } catch (e) {
-    _error = e.toString();
-    rethrow;
-  } finally {
-    _isLoading = false;
-    notifyListeners();
   }
-}
-
-
-*/
-
-
-// In your AuthProvider class - REMOVE navigation from here
-Future<void> signUp({
-  required String email,
-  required String password,
-  required String firstName,
-  required String lastName,
-  required String phoneNumber,
-  required String location,
-  String? profileImageUrl,
-  String? country,
-  String? countryCode,
-  double? latitude,
-  double? longitude,
-  required BuildContext context,
-}) async {
-  try {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    // Get user location first if not provided
-    if (latitude == null || longitude == null) {
-      final locationProvider = Provider.of<LocationFilterProvider>(context, listen: false);
-      await locationProvider.getUserLocation();
-      
-      if (locationProvider.currentUserLocation != null) {
-        latitude = locationProvider.currentUserLocation!.latitude;
-        longitude = locationProvider.currentUserLocation!.longitude;
-      }
-    }
-
-    // Create user data with Cloudinary URL
-    final userData = UserModel(
-      id: _uuid.v4(),
-      email: email,
-      firstName: firstName,
-      lastName: lastName,
-      phoneNumber: phoneNumber,
-      location: location,
-      profileImageUrl: profileImageUrl,
-      role: 'user',
-      isEmailVerified: true,
-      isActive: true,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      country: country,
-      countryCode: countryCode,
-      latitude: latitude,
-      longitude: longitude,
-    );
-
-    // Sign up with Firebase Auth
-    final firebaseUser = await _authService.signUpWithEmail(
-      email: email,
-      password: password,
-      userData: userData,
-    );
-
-    if (firebaseUser != null) {
-      _user = userData.copyWith(id: firebaseUser.uid);
-      
-      // Store user session
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userId', firebaseUser.uid);
-      await prefs.setString('userEmail', email);
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setBool('isAdmin', false);
-      await prefs.setBool('isGuestMode', false);
-      
-      _isAdminMode = false;
-      _isGuestMode = false;
-      notifyListeners();
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: _bangladeshGreen,
-          content: Text('✅ Account created successfully!'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      
-      // ✅ DO NOT NAVIGATE HERE - Let RegisterScreen handle it
-    }
-  } catch (e) {
-    _error = e.toString();
-    rethrow;
-  } finally {
-    _isLoading = false;
-    notifyListeners();
-  }
-}
-
-
-Future<void> updatePassword({
-  required String currentPassword,
-  required String newPassword,
-  required BuildContext context,
-}) async {
-  try {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    // Validate password requirements
-    if (newPassword.length < 8) {
-      throw 'Password must be at least 8 characters long';
-    }
-
-    // Check if user is logged in
-    final user = _firebaseAuth.currentUser;
-    if (user == null) {
-      throw 'User not logged in';
-    }
-
-    // Re-authenticate user with current password
-    final credential = EmailAuthProvider.credential(
-      email: user.email!,
-      password: currentPassword,
-    );
-
+  
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+    required BuildContext context,
+  }) async {
     try {
-      await user.reauthenticateWithCredential(credential);
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'wrong-password') {
-        throw 'Current password is incorrect';
-      } else if (e.code == 'user-mismatch') {
-        throw 'Invalid credentials';
-      } else if (e.code == 'invalid-credential') {
-        throw 'Invalid password';
-      } else if (e.code == 'too-many-requests') {
-        throw 'Too many attempts. Try again later.';
-      } else {
-        throw 'Authentication failed: ${e.message}';
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      if (newPassword.length < 8) {
+        throw 'Password must be at least 8 characters long';
       }
-    }
 
-    // Update to new password
-    await user.updatePassword(newPassword);
+      final user = _firebaseAuth.currentUser;
+      if (user == null) {
+        throw 'User not logged in';
+      }
 
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: Colors.white),
-            SizedBox(width: 8),
-            Text('Password updated successfully!'),
-          ],
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+
+      try {
+        await user.reauthenticateWithCredential(credential);
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'wrong-password') {
+          throw 'Current password is incorrect';
+        } else if (e.code == 'user-mismatch') {
+          throw 'Invalid credentials';
+        } else if (e.code == 'invalid-credential') {
+          throw 'Invalid password';
+        } else if (e.code == 'too-many-requests') {
+          throw 'Too many attempts. Try again later.';
+        } else {
+          throw 'Authentication failed: ${e.message}';
+        }
+      }
+
+      await user.updatePassword(newPassword);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.check_circle_rounded, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Password updated successfully!'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
         ),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 3),
-      ),
-    );
-
-    // Clear all password fieldss
-  //  _currentPasswordController.clear();
-  //  _newPasswordController.clear();
-  //  _confirmPasswordController.clear();
-
-  } catch (e) {
-    _error = e.toString();
-    rethrow;
-  } finally {
-    _isLoading = false;
-    notifyListeners();
+      );
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
-}
-
-
-  Future<void> signOut() async {
+  
+  Future<void> signOut(BuildContext context) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -847,16 +544,21 @@ Future<void> updatePassword({
       _user = null;
       _isAdminMode = false;
       _isGuestMode = false;
+      _profileImageNotifier.value = null;
       
-      // Clear stored session
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('userId');
       await prefs.remove('userEmail');
       await prefs.setBool('isLoggedIn', false);
       await prefs.setBool('isAdmin', false);
       await prefs.setBool('isGuestMode', false);
-          await prefs.remove('selected_tab_index'); // ✅ Add this line
-
+      await prefs.remove('selected_tab_index');
+      
+      final locationProvider = Provider.of<LocationFilterProvider>(
+        context,
+        listen: false,
+      );
+      locationProvider.clearForLogout();
       
       notifyListeners();
     } catch (e) {
@@ -867,61 +569,53 @@ Future<void> updatePassword({
       notifyListeners();
     }
   }
-
-  // Add this method to AuthProvider class
-// Add this method to AuthProvider class
-Future<void> deleteAccount() async {
-  try {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-    
-    print('🗑️ AuthProvider: Starting account deletion...');
-    
-    // Get current user before deletion
-    final user = _firebaseAuth.currentUser;
-    if (user == null) {
-      throw 'No user logged in';
+  
+  Future<void> deleteAccount() async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+      
+      print('🗑️ AuthProvider: Starting account deletion...');
+      
+      final user = _firebaseAuth.currentUser;
+      if (user == null) {
+        throw 'No user logged in';
+      }
+      
+      final userId = user.uid;
+      print('📧 Deleting account for user: $userId');
+      
+      await _authService.deleteAccount();
+      
+      _user = null;
+      _isAdminMode = false;
+      _isGuestMode = false;
+      _profileImageNotifier.value = null;
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('userId');
+      await prefs.remove('userEmail');
+      await prefs.setBool('isLoggedIn', false);
+      await prefs.setBool('isAdmin', false);
+      await prefs.setBool('isGuestMode', false);
+      await prefs.remove('selected_tab_index');
+      await prefs.remove('user_location');
+      await prefs.remove('user_latitude');
+      await prefs.remove('user_longitude');
+      
+      notifyListeners();
+      
+      print('✅ AuthProvider: Account deleted successfully');
+    } catch (e) {
+      _error = e.toString();
+      print('❌ AuthProvider error deleting account: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    
-    final userId = user.uid;
-    print('📧 Deleting account for user: $userId');
-    
-    // Show loading dialog (will be handled by UI)
-    
-    // Call AuthService to delete all data
-    await _authService.deleteAccount();
-    
-    // Clear local state
-    _user = null;
-    _isAdminMode = false;
-    _isGuestMode = false;
-    
-    // Clear all stored session data from SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('userId');
-    await prefs.remove('userEmail');
-    await prefs.setBool('isLoggedIn', false);
-    await prefs.setBool('isAdmin', false);
-    await prefs.setBool('isGuestMode', false);
-    await prefs.remove('selected_tab_index');
-    await prefs.remove('user_location');
-    await prefs.remove('user_latitude');
-    await prefs.remove('user_longitude');
-    
-    notifyListeners();
-    
-    print('✅ AuthProvider: Account deleted successfully');
-    
-  } catch (e) {
-    _error = e.toString();
-    print('❌ AuthProvider error deleting account: $e');
-    rethrow;
-  } finally {
-    _isLoading = false;
-    notifyListeners();
   }
-}
   
   Future<void> resetPassword(String email) async {
     try {
@@ -962,48 +656,6 @@ Future<void> deleteAccount() async {
     }
   }
   
-// In your AuthProvider class
-Future<void> updateUserProfile(UserModel updatedUser) async {
-  try {
-    _isLoading = true;
-    notifyListeners();
-    
-    print('🔄 Updating user profile in Firestore...');
-    await _firestoreService.updateUser(updatedUser);
-    
-    // Update local user
-    _user = updatedUser;
-    notifyListeners();
-    
-    print('✅ User profile updated successfully');
-  } catch (e) {
-    _error = e.toString();
-    print('❌ Error updating user profile: $e');
-    rethrow;
-  } finally {
-    _isLoading = false;
-    notifyListeners();
-  }
-}
-
-Future<void> refreshUserData() async {
-  if (_user == null) return;
-  
-  try {
-    print('🔄 Refreshing user data...');
-    final userData = await _firestoreService.getUser(_user!.id);
-    if (userData != null) {
-      _user = userData;
-      notifyListeners();
-      print('✅ User data refreshed. Profile image exists: ${_user!.profileImageUrl != null}');
-    }
-  } catch (e) {
-    print('❌ Error refreshing user data: $e');
-  }
-}
- 
- 
-  // Add method to check current authentication status
   Future<bool> checkCurrentAuthStatus() async {
     try {
       final user = _firebaseAuth.currentUser;
@@ -1011,6 +663,7 @@ Future<void> refreshUserData() async {
         final userData = await _firestoreService.getUser(user.uid);
         if (userData != null) {
           _user = userData;
+          _profileImageNotifier.value = _user?.profileImageUrl;
           _isAdminMode = userData.isAdmin;
           notifyListeners();
           return true;
@@ -1023,14 +676,12 @@ Future<void> refreshUserData() async {
     }
   }
   
-  // NEW: Check email verification on startup
   Future<void> checkEmailVerificationOnStartup() async {
     try {
       final user = _firebaseAuth.currentUser;
       if (user != null) {
         await user.reload();
         if (user.emailVerified) {
-          // Update Firestore if verified
           await _firestore
               .collection('users')
               .doc(user.uid)
@@ -1039,7 +690,6 @@ Future<void> refreshUserData() async {
                 'updatedAt': FieldValue.serverTimestamp(),
               });
           
-          // Update local state
           if (_user != null) {
             _user = _user!.copyWith(isEmailVerified: true);
             notifyListeners();
@@ -1051,17 +701,14 @@ Future<void> refreshUserData() async {
     }
   }
   
-  // NEW: Check and sync email verification
   Future<bool> checkAndSyncEmailVerification(String userId) async {
     try {
-      // Check Firebase Auth verification status
       final user = _firebaseAuth.currentUser;
       if (user != null) {
         await user.reload();
         final isVerified = user.emailVerified;
         
         if (isVerified) {
-          // Update Firestore
           await _firestore
               .collection('users')
               .doc(userId)
@@ -1070,7 +717,6 @@ Future<void> refreshUserData() async {
                 'updatedAt': FieldValue.serverTimestamp(),
               });
           
-          // Update local user data
           if (_user != null) {
             _user = _user!.copyWith(isEmailVerified: true);
             notifyListeners();
@@ -1091,196 +737,9 @@ Future<void> refreshUserData() async {
     notifyListeners();
   }
   
-  // Verification dialog methods
-/*  void _showVerificationSuccessDialog(BuildContext context, String userId, String email) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.verified_user_rounded, color: _bangladeshGreen),
-            SizedBox(width: 10),
-            Text(
-              'Verify Your Email',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('🎉 Account created successfully!'),
-            SizedBox(height: 15),
-            Text('A verification link has been sent to:'),
-            SizedBox(height: 8),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _bangladeshGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _bangladeshGreen.withOpacity(0.3)),
-              ),
-              child: Text(
-                email,
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            SizedBox(height: 15),
-            Text(
-              '📨 Please check your inbox and click the verification link to activate your account.',
-              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-            ),
-            SizedBox(height: 10),
-            Text(
-              '⚠️ You must verify your email before logging in.',
-              style: TextStyle(fontSize: 14, color: Colors.orange[800]),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              // Navigate to login screen
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => LoginScreen()),
-                (route) => false,
-              );
-            },
-            child: Text('Go to Login'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await _authService.sendEmailVerification();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: _bangladeshGreen,
-                    content: Text('✅ Verification email sent again!'),
-                  ),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: _bangladeshRed,
-                    content: Text('❌ Failed to send email'),
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _bangladeshGreen,
-            ),
-            child: Text('Resend Email'),
-          ),
-        ],
-      ),
-    );
+  @override
+  void dispose() {
+    _profileImageNotifier.dispose();
+    super.dispose();
   }
-  
-  void _showVerificationRequiredDialog(BuildContext context, String userId, String email) async {
-    // First check current verification status
-    final isVerified = await checkAndSyncEmailVerification(userId);
-    
-    if (isVerified) {
-      // If already verified, show success message and return
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: _bangladeshGreen,
-          content: Text('✅ Email verified! You can now login.'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      
-      // Close the dialog if it's open
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-      return;
-    }
-    
-    // If not verified, show the dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.email_rounded, color: _bangladeshGreen),
-            SizedBox(width: 10),
-            Text('Email Verification Required'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Please verify your email address before logging in.'),
-            SizedBox(height: 10),
-            Text('Verification link was sent to:'),
-            SizedBox(height: 5),
-            Container(
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: _bangladeshGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(email),
-            ),
-            SizedBox(height: 10),
-            Text('Check your inbox and spam folder.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                // Get the current user and resend verification
-                final user = _firebaseAuth.currentUser;
-                if (user != null && user.email == email) {
-                  await user.sendEmailVerification();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: _bangladeshGreen,
-                      content: Text('✅ Verification email sent!'),
-                    ),
-                  );
-                } else {
-                  // If no user is logged in, use the service
-                  await _authService.sendEmailVerification();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: _bangladeshGreen,
-                      content: Text('✅ Verification email sent!'),
-                    ),
-                  );
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: _bangladeshRed,
-                    content: Text('❌ Failed to send email'),
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _bangladeshGreen,
-            ),
-            child: Text('Resend Email'),
-          ),
-        ],
-      ),
-    );
-  }  */
 }

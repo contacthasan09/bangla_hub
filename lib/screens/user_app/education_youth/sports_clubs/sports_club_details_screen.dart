@@ -1097,9 +1097,9 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                           
                           SizedBox(height: isTablet ? 32 : 24),
                           
-                          // Contact Information
+                          // Contact Information Section
                           _buildPremiumSection(
-                            title: 'Contact',
+                            title: 'Contact Information',
                             icon: Icons.contact_phone_rounded,
                             color: widget.primaryRed,
                             child: Container(
@@ -1123,7 +1123,10 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                                     label: 'Email',
                                     value: club.email,
                                     color: widget.primaryRed,
-                                    onTap: () => _launchEmail(club.email),
+                                  //  onTap: () => _launchEmail(club.email),
+                                  onTap: () {
+                                    
+                                  },
                                     isTablet: isTablet,
                                   ),
                                   SizedBox(height: isTablet ? 16 : 12),
@@ -1132,7 +1135,10 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                                     label: 'Phone',
                                     value: club.phone,
                                     color: widget.successGreen,
-                                    onTap: () => _launchPhone(club.phone),
+                                  //  onTap: () => _launchPhone(club.phone),
+                                  onTap: () {
+                                    
+                                  },
                                     isTablet: isTablet,
                                   ),
                                 ],
@@ -1142,6 +1148,39 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                           ),
                           
                           SizedBox(height: isTablet ? 40 : 32),
+                          
+                          // Action Buttons (Email & Call)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildPremiumActionButton(
+                                  icon: Icons.email_rounded,
+                                  label: 'Email',
+                                  gradient: LinearGradient(
+                                    colors: [widget.primaryRed, widget.purpleAccent],
+                                  ),
+                                  onPressed: () => _launchEmail(club.email),
+                                  isTablet: isTablet,
+                                  shouldAnimate: shouldAnimate,
+                                ),
+                              ),
+                              SizedBox(width: isTablet ? 16 : 12),
+                              Expanded(
+                                child: _buildPremiumActionButton(
+                                  icon: Icons.phone_rounded,
+                                  label: 'Call',
+                                  gradient: LinearGradient(
+                                    colors: [widget.successGreen, widget.tealAccent],
+                                  ),
+                                  onPressed: () => _launchPhone(club.phone),
+                                  isTablet: isTablet,
+                                  shouldAnimate: shouldAnimate,
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          SizedBox(height: isTablet ? 16 : 12),
                           
                           // Premium Footer
                           Container(
@@ -1229,7 +1268,7 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                           
                           SizedBox(height: isTablet ? 24 : 20),
                           
-                          Center(
+                      /*    Center(
                             child: Text(
                               '${club.currentMembers} active members',
                               style: GoogleFonts.inter(
@@ -1237,7 +1276,7 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
                                 color: _textSecondary,
                               ),
                             ),
-                          ),
+                          ), */
                         ],
                       ),
                     ),
@@ -1277,7 +1316,7 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
         Text(
           value,
           style: GoogleFonts.poppins(
-            fontSize: isTablet ? 22 : 18,
+            fontSize: isTablet ? 18 : 14,
             fontWeight: FontWeight.w800,
             color: Colors.grey[800],
           ),
@@ -1406,6 +1445,59 @@ class _SportsClubDetailsScreenState extends State<SportsClubDetailsScreen>
               size: isTablet ? 20 : 18,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumActionButton({
+    required IconData icon,
+    required String label,
+    required Gradient gradient,
+    required VoidCallback onPressed,
+    required bool isTablet,
+    required bool shouldAnimate,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: (gradient.colors.first as Color).withOpacity(0.3),
+            blurRadius: 15,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                shouldAnimate
+                    ? RotationTransition(
+                        turns: _animationController,
+                        child: Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
+                      )
+                    : Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
+                SizedBox(width: isTablet ? 10 : 8),
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: isTablet ? 16 : 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

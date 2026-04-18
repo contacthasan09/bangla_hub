@@ -868,6 +868,89 @@ Future<void> _loadAllUserProfiles(List<NetworkingBusinessPartner> partners) asyn
 
   // ====================== UTILITY METHODS ======================
 
+
+  // Add these methods to EntrepreneurshipProvider class
+
+Future<bool> deleteBusinessPartner(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.deleteBusinessPartner(id);
+    
+    _businessPartners.removeWhere((p) => p.id == id);
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to delete business partner: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> deleteJobPosting(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.deleteJobPosting(id);
+    
+    _jobPostings.removeWhere((j) => j.id == id);
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to delete job posting: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> deleteBusinessPromotion(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.deleteBusinessPromotion(id);
+    
+    _businessPromotions.removeWhere((p) => p.id == id);
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to delete business promotion: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> deletePartnerRequest(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.deletePartnerRequest(id);
+    
+    _partnerRequests.removeWhere((r) => r.id == id);
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to delete partner request: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
   Future<void> incrementViewCount(EntrepreneurshipCategory category, String id) async {
     try {
       await _service.incrementViewCount(category, id);
@@ -1050,4 +1133,111 @@ Future<void> _loadAllUserProfiles(List<NetworkingBusinessPartner> partners) asyn
         return _selectedPartnerRequest;
     }
   }
+
+
+  // ====================== PERMANENT DELETE METHODS (ADMIN ONLY) ======================
+
+Future<bool> permanentDeleteBusinessPartner(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.permanentlyDeleteBusinessPartner(id);
+    
+    _businessPartners.removeWhere((p) => p.id == id);
+    
+    if (_selectedBusinessPartner?.id == id) {
+      _selectedBusinessPartner = null;
+      _selectedBusinessPartnerController.add(null);
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to permanently delete business partner: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> permanentDeleteJobPosting(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.permanentlyDeleteJobPosting(id);
+    
+    _jobPostings.removeWhere((j) => j.id == id);
+    
+    if (_selectedJobPosting?.id == id) {
+      _selectedJobPosting = null;
+      _selectedJobPostingController.add(null);
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to permanently delete job posting: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> permanentDeleteBusinessPromotion(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.permanentlyDeleteBusinessPromotion(id);
+    
+    _businessPromotions.removeWhere((p) => p.id == id);
+    
+    if (_selectedBusinessPromotion?.id == id) {
+      _selectedBusinessPromotion = null;
+      _selectedBusinessPromotionController.add(null);
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to permanently delete business promotion: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> permanentDeletePartnerRequest(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.permanentlyDeletePartnerRequest(id);
+    
+    _partnerRequests.removeWhere((r) => r.id == id);
+    
+    if (_selectedPartnerRequest?.id == id) {
+      _selectedPartnerRequest = null;
+      _selectedPartnerRequestController.add(null);
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to permanently delete partner request: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+
+
+
 }

@@ -195,7 +195,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         onTap: () async {
                           Navigator.pop(context);
                           try {
-                            await authProvider.signOut();
+                            await authProvider.signOut(context);
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(builder: (_) => LoginScreen()),

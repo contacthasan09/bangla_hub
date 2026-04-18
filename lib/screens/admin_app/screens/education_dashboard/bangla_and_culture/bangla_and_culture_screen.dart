@@ -61,6 +61,50 @@ class _AdminBanglaClassesScreenState extends State<AdminBanglaClassesScreen> wit
     }
   }
 
+  Future<void> _permanentDeleteClass(String id) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Permanent Delete'),
+      content: const Text(
+        'Are you sure you want to permanently delete this Bangla class? This action cannot be undone.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Delete Permanently'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed == true) {
+    final provider = Provider.of<EducationProvider>(context, listen: false);
+    final success = await provider.permanentDeleteBanglaClass(id);
+    
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bangla class permanently deleted'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete: ${provider.error}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
   @override
   void dispose() {
     _tabController.removeListener(_handleTabChange);
@@ -792,10 +836,8 @@ class _AdminBanglaClassesScreenState extends State<AdminBanglaClassesScreen> wit
               SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-              //    onPressed: () => _permanentDeleteClass(banglaClass),
-              onPressed: () {
-                
-              },
+                  onPressed: () => _permanentDeleteClass(banglaClass.id!),
+              
                   icon: Icon(Icons.delete_forever_rounded, size: isSmallScreen ? 14 : 18),
                   label: Text(
                     'Delete\nPermanently',

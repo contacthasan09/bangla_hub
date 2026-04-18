@@ -23,19 +23,19 @@ class LocationFilterProvider extends ChangeNotifier {
   bool get isLoadingLocation => _isLoadingLocation;
   String? get locationErrorMessage => _locationErrorMessage;
   
-  // ✅ New: Check if state is selected
+  // Check if state is selected
   bool get isStateSelected => _selectedState != null && _selectedState!.isNotEmpty;
   
-  // ✅ New: Get selected state display name
+  // Get selected state display name
   String get selectedStateDisplay => _selectedState ?? 'Not Selected';
   
-  // ✅ New: Get formatted location for display
+  // Get formatted location for display
   String get formattedLocation {
     if (!isStateSelected) return 'No location selected';
     return _selectedState!;
   }
   
-  // ✅ New: Require state selection (triggers guard screen)
+  // Require state selection (triggers guard screen)
   void requireStateSelection() {
     if (!isStateSelected) {
       notifyListeners();
@@ -60,6 +60,16 @@ class LocationFilterProvider extends ChangeNotifier {
     _isFilterAppliedFromEvents = false;
     notifyListeners();
     print('📍 LocationFilterProvider: Filter cleared');
+  }
+  
+  // ✅ NEW: Clear filter specifically for logout (same as clear but with distinct logging)
+  void clearForLogout() {
+    print('📍 LocationFilterProvider: Clearing filter for logout');
+    _selectedState = null;
+    _isFilterActive = false;
+    _isFilterAppliedFromEvents = false;
+    // Don't clear location data as it's user device specific
+    notifyListeners();
   }
   
   // Get user location on login or when requested
@@ -177,7 +187,7 @@ class LocationFilterProvider extends ChangeNotifier {
     notifyListeners();
   }
   
-  // ✅ New: Get all US states (useful for location selection)
+  // Get all US states (useful for location selection)
   List<String> get usStates {
     return const [
       'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
@@ -193,7 +203,7 @@ class LocationFilterProvider extends ChangeNotifier {
     ];
   }
   
-  // ✅ New: Get state abbreviation (optional)
+  // Get state abbreviation (optional)
   String getStateAbbreviation(String state) {
     const abbreviations = {
       'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
@@ -213,12 +223,12 @@ class LocationFilterProvider extends ChangeNotifier {
     return abbreviations[state] ?? state.substring(0, 2).toUpperCase();
   }
   
-  // ✅ New: Validate if a state is valid
+  // Validate if a state is valid
   bool isValidState(String state) {
     return usStates.contains(state);
   }
   
-  // ✅ New: Auto-detect state from user location (optional feature)
+  // Auto-detect state from user location (optional feature)
   Future<String?> detectStateFromLocation() async {
     final hasLocation = await getUserLocation(showLoading: false);
     if (!hasLocation || _currentUserLocation == null) {
@@ -236,7 +246,7 @@ class LocationFilterProvider extends ChangeNotifier {
     }
   }
   
-  // ✅ New: Suggest states based on user's location (optional)
+  // Suggest states based on user's location (optional)
   Future<List<String>> getSuggestedStates() async {
     final detectedState = await detectStateFromLocation();
     if (detectedState != null) {

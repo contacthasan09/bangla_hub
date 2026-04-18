@@ -1,4 +1,5 @@
-// services/cloudinary_service.dart
+// services/cloudinary_service.dart - Updated with better error handling
+
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -14,6 +15,9 @@ class CloudinaryService {
   
   // Upload profile image (for registration and profile updates)
   static Future<String?> uploadProfileImage(File imageFile, {String? customFolder}) async {
+    print('📸 Starting profile image upload...');
+    print('📸 Cloud name: $cloudName');
+    print('📸 Upload preset: $uploadPreset');
     return await _uploadToCloudinary(imageFile, customFolder ?? profileFolder);
   }
   
@@ -37,9 +41,11 @@ class CloudinaryService {
       
       // Check if file exists
       if (!await imageFile.exists()) {
-        print('❌ File does not exist');
+        print('❌ File does not exist at path: ${imageFile.path}');
         return null;
       }
+      
+      print('📸 File exists, size: ${await imageFile.length()} bytes');
       
       // Compress image
       compressedFile = await _compressImage(imageFile);
@@ -53,9 +59,8 @@ class CloudinaryService {
       );
       
       // Add file
-      request.files.add(
-        await http.MultipartFile.fromPath('file', compressedFile.path),
-      );
+      final multipartFile = await http.MultipartFile.fromPath('file', compressedFile.path);
+      request.files.add(multipartFile);
       
       // Add upload preset and folder
       request.fields['upload_preset'] = uploadPreset;
@@ -63,35 +68,48 @@ class CloudinaryService {
       request.fields['quality'] = 'auto:good';
       request.fields['fetch_format'] = 'auto';
       
-      print('📸 Sending request...');
+      print('📸 Request fields: ${request.fields}');
+      print('📸 Sending request to Cloudinary...');
       
       // Send with timeout
       final response = await request.send().timeout(const Duration(seconds: 30));
       
+      // Read response
+      final responseData = await response.stream.bytesToString();
+      print('📸 Response status code: ${response.statusCode}');
+      print('📸 Response body: $responseData');
+      
       if (response.statusCode != 200) {
-        final responseData = await response.stream.bytesToString();
-        print('❌ Upload failed: ${response.statusCode}');
-        print('Response: $responseData');
+        print('❌ Upload failed with status: ${response.statusCode}');
+        print('❌ Response: $responseData');
+        
+        // Try to parse error message
+        try {
+          final errorJson = json.decode(responseData);
+          final errorMessage = errorJson['error']['message'];
+          print('❌ Cloudinary error: $errorMessage');
+        } catch (_) {}
+        
         return null;
       }
       
-      final responseData = await response.stream.bytesToString();
       final jsonData = json.decode(responseData);
-      
       final imageUrl = jsonData['secure_url'];
-      print('✅ Upload success: $imageUrl');
+      print('✅ Upload success!');
+      print('✅ Image URL: $imageUrl');
       
       return imageUrl;
       
     } catch (e) {
       print('❌ Upload error: $e');
+      print('❌ Error type: ${e.runtimeType}');
       return null;
     } finally {
       // Clean up temp file
       try {
         if (compressedFile != null && await compressedFile.exists()) {
           await compressedFile.delete();
-          print('🧹 Temp file deleted');
+          print('🧹 Temp file deleted: ${compressedFile.path}');
         }
       } catch (_) {}
     }
@@ -128,14 +146,14 @@ class CloudinaryService {
       
       if (result != null) {
         final compressedSize = await File(result.path).length();
-        print('📸 Compression: ${originalSize ~/ 1024}KB -> ${compressedSize ~/ 1024}KB');
+        print('📸 Compression successful: ${originalSize ~/ 1024}KB -> ${compressedSize ~/ 1024}KB');
         return File(result.path);
       }
       
       print('⚠️ Compression failed, using original file');
       return file;
     } catch (e) {
-      print('Compression error: $e');
+      print('❌ Compression error: $e');
       return file;
     }
   }
@@ -149,12 +167,9 @@ class CloudinaryService {
   // Helper to get optimized URL for different sizes
   static String getOptimizedUrl(String url, {int width = 800, int height = 400, String crop = 'fill'}) {
     try {
-      // Cloudinary transformation URL
-      // https://res.cloudinary.com/cloud_name/image/upload/w_800,h_400,c_fill,q_auto,f_auto/v.../path.jpg
       final uri = Uri.parse(url);
       final pathParts = uri.path.split('/');
       
-      // Insert transformation before the upload version
       final uploadIndex = pathParts.indexOf('upload');
       if (uploadIndex != -1 && uploadIndex + 1 < pathParts.length) {
         pathParts.insert(uploadIndex + 1, 'w_$width,h_$height,c_$crop,q_auto,f_auto');
@@ -169,17 +184,14 @@ class CloudinaryService {
     }
   }
   
-  // Helper to get thumbnail URL
   static String getThumbnailUrl(String url) {
     return getOptimizedUrl(url, width: 200, height: 150, crop: 'thumb');
   }
   
-  // Helper to get card URL
   static String getCardUrl(String url) {
     return getOptimizedUrl(url, width: 400, height: 250, crop: 'fill');
   }
   
-  // Helper to get full quality URL
   static String getFullQualityUrl(String url) {
     return getOptimizedUrl(url, width: 1200, height: 600, crop: 'limit');
   }

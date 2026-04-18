@@ -989,7 +989,8 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
                                     label: 'Email',
                                     value: service.email,
                                     color: widget.primaryBlue,
-                                    onTap: () => _launchEmail(service.email),
+                                 //   onTap: () => _launchEmail(service.email),
+                                 onTap  : (){},
                                     isTablet: isTablet,
                                   ),
                                   SizedBox(height: isTablet ? 16 : 12),
@@ -998,7 +999,8 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
                                     label: 'Phone',
                                     value: service.phone,
                                     color: widget.successGreen,
-                                    onTap: () => _launchPhone(service.phone),
+                                  //  onTap: () => _launchPhone(service.phone),
+                                  onTap  : (){} ,
                                     isTablet: isTablet,
                                   ),
                                 ],
@@ -1037,6 +1039,8 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
                               ),
                             ],
                           ),
+                          
+                          
                           
                           SizedBox(height: isTablet ? 16 : 12),
                           
@@ -1221,6 +1225,8 @@ class _TutoringDetailsScreenState extends State<TutoringDetailsScreen>
       ],
     );
   }
+
+
 
   Widget _buildPremiumContactItem({
     required IconData icon,

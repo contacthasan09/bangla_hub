@@ -1050,7 +1050,7 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
                       
                       SizedBox(height: isTablet ? 32 : 24),
                       
-                      // Contact Information
+                      // Contact Information Section
                       _buildPremiumSection(
                         title: 'Contact Information',
                         icon: Icons.contact_phone_rounded,
@@ -1076,7 +1076,10 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
                                 label: 'Email',
                                 value: banglaClass.email,
                                 color: widget.primaryOrange,
-                                onTap: () => _launchEmail(banglaClass.email),
+                              //  onTap: () => _launchEmail(banglaClass.email),
+                              onTap: () {
+                                
+                              },
                                 isTablet: isTablet,
                               ),
                               SizedBox(height: isTablet ? 16 : 12),
@@ -1085,7 +1088,10 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
                                 label: 'Phone',
                                 value: banglaClass.phone,
                                 color: widget.successGreen,
-                                onTap: () => _launchPhone(banglaClass.phone),
+                              //  onTap: () => _launchPhone(banglaClass.phone),
+                              onTap: () {
+                                
+                              },
                                 isTablet: isTablet,
                               ),
                             ],
@@ -1097,6 +1103,39 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
                       ),
                       
                       SizedBox(height: isTablet ? 40 : 32),
+                      
+                      // Action Buttons (Email & Call)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildPremiumActionButton(
+                              icon: Icons.email_rounded,
+                              label: 'Email',
+                              gradient: LinearGradient(
+                                colors: [widget.primaryOrange, widget.redAccent],
+                              ),
+                              onPressed: () => _launchEmail(banglaClass.email),
+                              isTablet: isTablet,
+                              shouldAnimate: shouldAnimate,
+                            ),
+                          ),
+                          SizedBox(width: isTablet ? 16 : 12),
+                          Expanded(
+                            child: _buildPremiumActionButton(
+                              icon: Icons.phone_rounded,
+                              label: 'Call',
+                              gradient: LinearGradient(
+                                colors: [widget.successGreen, widget.greenAccent],
+                              ),
+                              onPressed: () => _launchPhone(banglaClass.phone),
+                              isTablet: isTablet,
+                              shouldAnimate: shouldAnimate,
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      SizedBox(height: isTablet ? 16 : 12),
                       
                       // Premium Footer
                       Container(
@@ -1421,6 +1460,59 @@ class _BanglaClassDetailsScreenState extends State<BanglaClassDetailsScreen>
               size: isTablet ? 20 : 18,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumActionButton({
+    required IconData icon,
+    required String label,
+    required Gradient gradient,
+    required VoidCallback onPressed,
+    required bool isTablet,
+    required bool shouldAnimate,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: (gradient.colors.first as Color).withOpacity(0.3),
+            blurRadius: 15,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                shouldAnimate
+                    ? RotationTransition(
+                        turns: _animationController,
+                        child: Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
+                      )
+                    : Icon(icon, color: Colors.white, size: isTablet ? 22 : 18),
+                SizedBox(width: isTablet ? 10 : 8),
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: isTablet ? 16 : 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

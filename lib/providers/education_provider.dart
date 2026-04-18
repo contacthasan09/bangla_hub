@@ -928,4 +928,180 @@ class EducationProvider with ChangeNotifier {
   List<String> getAvailableSportsTypes() {
     return SportsType.values.map((s) => s.displayName).toList();
   }
+
+
+  // Add to EducationProvider class
+
+Future<bool> deleteTutoringService(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.deleteTutoringService(id);
+    _tutoringServices.removeWhere((s) => s.id == id);
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to delete tutoring service: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> deleteAdmissionsGuidance(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.deleteAdmissionsGuidance(id);
+    _admissionsGuidance.removeWhere((g) => g.id == id);
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to delete admissions guidance: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> deleteBanglaClass(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.deleteBanglaClass(id);
+    _banglaClasses.removeWhere((c) => c.id == id);
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to delete Bangla class: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> deleteSportsClub(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.deleteSportsClub(id);
+    _sportsClubs.removeWhere((c) => c.id == id);
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to delete sports club: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+
+// ====================== PERMANENT DELETE METHODS ======================
+
+Future<bool> permanentDeleteTutoringService(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.permanentDeleteTutoringService(id);
+    _tutoringServices.removeWhere((s) => s.id == id);
+    
+    if (_selectedTutoringService?.id == id) {
+      _selectedTutoringService = null;
+      _selectedTutoringController.add(null);
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to permanently delete tutoring service: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> permanentDeleteAdmissionsGuidance(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.permanentDeleteAdmissionsGuidance(id);
+    _admissionsGuidance.removeWhere((g) => g.id == id);
+    
+    if (_selectedAdmissionsGuidance?.id == id) {
+      _selectedAdmissionsGuidance = null;
+      _selectedAdmissionsController.add(null);
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to permanently delete admissions guidance: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> permanentDeleteBanglaClass(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.permanentDeleteBanglaClass(id);
+    _banglaClasses.removeWhere((c) => c.id == id);
+    
+    if (_selectedBanglaClass?.id == id) {
+      _selectedBanglaClass = null;
+      _selectedBanglaClassController.add(null);
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to permanently delete Bangla class: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+Future<bool> permanentDeleteSportsClub(String id) async {
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    await _service.permanentDeleteSportsClub(id);
+    _sportsClubs.removeWhere((c) => c.id == id);
+    
+    if (_selectedSportsClub?.id == id) {
+      _selectedSportsClub = null;
+      _selectedSportsClubController.add(null);
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } catch (e) {
+    _error = 'Failed to permanently delete sports club: $e';
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+}
+
+
 }

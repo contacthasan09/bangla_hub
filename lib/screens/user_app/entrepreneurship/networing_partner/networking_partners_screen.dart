@@ -315,133 +315,6 @@ class _NetworkingPartnersScreenState extends State<NetworkingPartnersScreen>
 
   // Show location filter dialog
  
- 
- /* void _showLocationFilterDialog(BuildContext context) {
-    final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
-    
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Filter by State', 
-                  style: GoogleFonts.poppins(
-                    fontSize: 20, 
-                    fontWeight: FontWeight.w700, 
-                    color: _primaryGreen
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close), 
-                  onPressed: () => Navigator.pop(context)
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            
-            GestureDetector(
-              onTap: () {
-                filterProvider.clearLocationFilter();
-                _loadData();
-                Navigator.pop(context);
-                
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Showing partners from all states'),
-                    backgroundColor: Color(0xFF2E7D32),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.public, color: _primaryGreen),
-                    const SizedBox(width: 15),
-                    Text(
-                      'All States', 
-                      style: GoogleFonts.poppins(
-                        fontSize: 16, 
-                        fontWeight: FontWeight.w600
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            Container(
-              height: 300,
-              child: ListView.builder(
-                itemCount: CommunityStates.states.length,
-                itemBuilder: (context, index) {
-                  final state = CommunityStates.states[index];
-                  final isSelected = filterProvider.selectedState == state;
-                  
-                  return GestureDetector(
-                    onTap: () {
-                      filterProvider.setLocationFilter(state, fromEvents: true);
-                      _loadData();
-                      Navigator.pop(context);
-                      
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Showing partners in $state'),
-                          backgroundColor: _primaryGreen,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected ? _primaryGreen.withOpacity(0.1) : null,
-                        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.location_on, color: isSelected ? _primaryGreen : Colors.grey),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Text(
-                              state,
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: isSelected ? _primaryGreen : Colors.black87,
-                              ),
-                            ),
-                          ),
-                          if (isSelected) Icon(Icons.check_circle, color: _primaryGreen),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
- */
- 
 
 void _showLocationFilterDialog(BuildContext context) {
   final filterProvider = Provider.of<LocationFilterProvider>(context, listen: false);
@@ -647,232 +520,6 @@ void _showLocationFilterDialog(BuildContext context) {
       },
     );
   }
-
-/*  void _showLoginRequiredDialog(BuildContext context, String feature) {
-    final Color _primaryRed = Color(0xFFE03C32);
-    final Color _primaryGreen = Color(0xFF006A4E);
-    final Color _goldAccent = Color(0xFFFFD700);
-    final Color _deepRed = Color(0xFFC62828);
-    
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.85,
-          constraints: BoxConstraints(maxWidth: 320),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_primaryGreen, _primaryRed],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 20,
-                offset: Offset(0, 10),
-              ),
-              BoxShadow(
-                color: _primaryRed.withOpacity(0.3),
-                blurRadius: 30,
-                offset: Offset(0, 0),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_primaryRed, _primaryGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_goldAccent, Color(0xFFFFC107)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: _goldAccent.withOpacity(0.4),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.lock_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Login Required',
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'to access $feature',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
-                      ),
-                      child: Text(
-                        'Create an account or sign in to access full details',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.9),
-                          height: 1.4,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => LoginScreen(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: _primaryGreen,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 3,
-                          shadowColor: Colors.white.withOpacity(0.3),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.login_rounded, size: 18),
-                            SizedBox(width: 8),
-                            Text(
-                              'Login',
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RegisterScreen(role: 'user'),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: BorderSide(color: Colors.white, width: 1.5),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.person_add_rounded, size: 18),
-                            SizedBox(width: 8),
-                            Text(
-                              'Create Account',
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                      ),
-                      child: Text(
-                        'Continue Browsing',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: Colors.white.withOpacity(0.7),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-
-*/
-
-
 
 
   void _showLoginRequiredDialog(BuildContext context, String feature) {
@@ -2301,7 +1948,9 @@ SliverAppBar _buildPremiumAppBar(bool isTablet) {
   }
 
   // KEPT ORIGINAL - No changes to card
-  Widget _buildPremiumPartnerCard(NetworkingBusinessPartner partner, int index) {
+
+
+/*  Widget _buildPremiumPartnerCard(NetworkingBusinessPartner partner, int index) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
@@ -2709,53 +2358,1007 @@ SliverAppBar _buildPremiumAppBar(bool isTablet) {
       },
     );
   }
+*/
 
 
 
-/*  Widget _buildPartnerPosterImage(NetworkingBusinessPartner partner) {
-    if (partner.postedByProfileImageBase64 != null && partner.postedByProfileImageBase64!.isNotEmpty) {
-      try {
-        String base64String = partner.postedByProfileImageBase64!;
-        
-        if (base64String.contains('base64,')) {
-          base64String = base64String.split('base64,').last;
-        }
-        
-        base64String = base64String.replaceAll(RegExp(r'\s'), '');
-        
-        while (base64String.length % 4 != 0) {
-          base64String += '=';
-        }
-        
-        final bytes = base64Decode(base64String);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultProfileImage();
-          },
-        );
-      } catch (e) {
-        return _buildDefaultProfileImage();
-      }
-    }
-    return _buildDefaultProfileImage();
-  }
+/*Widget _buildPremiumPartnerCard(NetworkingBusinessPartner partner, int index) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isTablet = screenWidth >= 600;
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Premium eye-catching gradient for all cards (same for consistency)
+  final LinearGradient _cardGradient = LinearGradient(
+    colors: [
+      Color(0xFF1A237E), // Deep Indigo
+      Color(0xFF283593), // Dark Indigo
+      Color(0xFF3949AB), // Indigo
+      Color(0xFF5C6BC0), // Light Indigo
+      Color(0xFF7986CB), // Lighter Indigo
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: [0.0, 0.25, 0.5, 0.75, 1.0],
+  );
+  
+  // Subtle overlay gradient for depth
+  final LinearGradient _overlayGradient = LinearGradient(
+    colors: [
+      Colors.white.withOpacity(0.15),
+      Colors.white.withOpacity(0.05),
+      Colors.transparent,
+      Colors.white.withOpacity(0.08),
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  
+  return TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: 1),
+    duration: Duration(milliseconds: 500 + (index * 100)),
+    curve: Curves.elasticOut,
+    builder: (context, value, child) {
+      final clampedValue = value.clamp(0.0, 1.0);
+      return Transform.scale(
+        scale: 0.92 + (0.08 * clampedValue),
+        child: Opacity(
+          opacity: clampedValue,
+          child: Container(
+            margin: EdgeInsets.symmetric(
+              horizontal: isTablet ? 16 : 12,
+              vertical: 8,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 25,
+                  offset: Offset(0, 12),
+                  spreadRadius: -2,
+                ),
+                BoxShadow(
+                  color: _secondaryGold.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: _cardGradient,
+                ),
+                child: Stack(
+                  children: [
+                    // Decorative pattern overlay
+                    Positioned.fill(
+                      child: Opacity(
+                        opacity: 0.05,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: _overlayGradient,
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // Animated shine effect on hover
+                    Positioned(
+                      top: 0,
+                      left: -100,
+                      right: -100,
+                      height: 2,
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: -1.0, end: 1.0),
+                        duration: Duration(milliseconds: 3000 + (index * 200)),
+                        curve: Curves.easeInOut,
+                        builder: (context, slideValue, child) {
+                          return Transform.translate(
+                            offset: Offset(slideValue * 300, 0),
+                            child: Container(
+                              height: 2,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.transparent,
+                                    _secondaryGold.withOpacity(0.6),
+                                    _softGold.withOpacity(0.8),
+                                    _secondaryGold.withOpacity(0.6),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                          if (authProvider.isGuestMode) {
+                            _showLoginRequiredDialog(context, 'View Networking Partner Details');
+                            return;
+                          }
+                          _showPartnerDetails(partner);
+                        },
+                        borderRadius: BorderRadius.circular(30),
+                        splashColor: _secondaryGold.withOpacity(0.2),
+                        highlightColor: Colors.white.withOpacity(0.05),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.all(isTablet ? 20 : 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Decorative gold accent line
+                                  Container(
+                                    height: 3,
+                                    width: 50,
+                                    margin: EdgeInsets.only(bottom: 12),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [_secondaryGold, _softGold, _secondaryGold],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                  ),
+                                  
+                                  // User Info Row
+                                  Row(
+                                    children: [
+                                      TweenAnimationBuilder<double>(
+                                        tween: Tween(begin: 0, end: 1),
+                                        duration: Duration(milliseconds: 700 + (index * 80)),
+                                        curve: Curves.elasticOut,
+                                        builder: (context, value, child) {
+                                          final nestedClampedValue = value.clamp(0.0, 1.0);
+                                          return Transform.scale(
+                                            scale: 0.85 + (0.15 * nestedClampedValue),
+                                            child: Container(
+                                              width: isTablet ? 55 : 45,
+                                              height: isTablet ? 55 : 45,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                gradient: LinearGradient(
+                                                  colors: [_secondaryGold, _softGold],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ),
+                                                border: Border.all(
+                                                  color: Colors.white,
+                                                  width: 2.5,
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: _secondaryGold.withOpacity(0.5),
+                                                    blurRadius: 15,
+                                                    spreadRadius: 2,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Padding(
+                                                padding: EdgeInsets.all(2),
+                                                child: ClipOval(
+                                                  child: _buildPartnerPosterImage(partner),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      
+                                      SizedBox(width: 12),
+                                      
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              partner.postedByName ?? 'Business Owner',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: isTablet ? 16 : 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
+                                                shadows: [
+                                                  Shadow(
+                                                    color: Colors.black.withOpacity(0.2),
+                                                    blurRadius: 4,
+                                                    offset: Offset(0, 1),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.verified_rounded,
+                                                  size: 12,
+                                                  color: _secondaryGold,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Verified Owner',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 10,
+                                                    color: _secondaryGold.withOpacity(0.9),
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      
+                                      Container(
+                                        padding: EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [_secondaryGold, _softGold],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: _secondaryGold.withOpacity(0.5),
+                                              blurRadius: 10,
+                                              spreadRadius: 1,
+                                            ),
+                                          ],
+                                        ),
+                                        child: shouldAnimate
+                                            ? RotationTransition(
+                                                turns: _rotateController,
+                                                child: Icon(
+                                                  Icons.star_rounded, 
+                                                  color: Colors.white, 
+                                                  size: isTablet ? 16 : 14,
+                                                ),
+                                              )
+                                            : Icon(
+                                                Icons.star_rounded, 
+                                                color: Colors.white, 
+                                                size: isTablet ? 16 : 14,
+                                              ),
+                                      ),
+                                    ],
+                                  ),
+                                  
+                                  SizedBox(height: 16),
+                                  
+                                  // Distance Badge
+                                  if (partner.latitude != null && partner.longitude != null)
+                                    Consumer<LocationFilterProvider>(
+                                      builder: (context, locationProvider, _) {
+                                        return Padding(
+                                          padding: EdgeInsets.only(bottom: 12),
+                                          child: DistanceBadge(
+                                            latitude: partner.latitude!,
+                                            longitude: partner.longitude!,
+                                            isTablet: isTablet,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  
+                                  // Business Name
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              partner.businessName,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: isTablet ? 22 : 20,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white,
+                                                letterSpacing: -0.5,
+                                                shadows: [
+                                                  Shadow(
+                                                    color: Colors.black.withOpacity(0.25),
+                                                    blurRadius: 6,
+                                                    offset: Offset(0, 2),
+                                                  ),
+                                                ],
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            SizedBox(height: 8),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    Colors.white.withOpacity(0.25),
+                                                    Colors.white.withOpacity(0.15),
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ),
+                                                borderRadius: BorderRadius.circular(20),
+                                                border: Border.all(
+                                                  color: _secondaryGold.withOpacity(0.4),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                partner.industry,
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: isTablet ? 14 : 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: _secondaryGold,
+                                                ),
+                                              ),
+                                            ),
+                                            if (partner.ownerName.isNotEmpty) ...[
+                                              SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  Icon(Icons.person_outline_rounded, 
+                                                    size: 14,
+                                                    color: Colors.white.withOpacity(0.7)
+                                                  ),
+                                                  SizedBox(width: 6),
+                                                  Text(
+                                                    'Owner: ${partner.ownerName}',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: isTablet ? 13 : 12,
+                                                      color: Colors.white.withOpacity(0.8),
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      
+                                      if (partner.rating > 0)
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [_secondaryGold, _softGold],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius: BorderRadius.circular(30),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: _secondaryGold.withOpacity(0.4),
+                                                blurRadius: 12,
+                                                spreadRadius: 1,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.star_rounded, 
+                                                color: Colors.white, 
+                                                size: 20,
+                                              ),
+                                              SizedBox(width: 5),
+                                              Text(
+                                                partner.rating.toStringAsFixed(1),
+                                                style: GoogleFonts.poppins(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  
+                                  SizedBox(height: 20),
+                                  
+                                  // Tags
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      _buildPremiumTag(partner.businessType.displayName, Icons.business_rounded, isTablet),
+                                      _buildPremiumTag('${partner.city}, ${partner.state}', Icons.location_on_rounded, isTablet),
+                                      _buildPremiumTag('${partner.yearsInBusiness} years', Icons.calendar_today_rounded, isTablet),
+                                    ],
+                                  ),
+                                  
+                                  SizedBox(height: 24),
+                                  
+                                  // View Details Button
+                                  TweenAnimationBuilder<double>(
+                                    tween: Tween(begin: 0, end: 1),
+                                    duration: Duration(milliseconds: 800),
+                                    curve: Curves.elasticOut,
+                                    builder: (context, value, child) {
+                                      final buttonClampedValue = value.clamp(0.0, 1.0);
+                                      return Transform.scale(
+                                        scale: 0.92 + (0.08 * buttonClampedValue),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                                            if (authProvider.isGuestMode) {
+                                              _showLoginRequiredDialog(context, 'View Networking Partner Details');
+                                              return;
+                                            }
+                                            _showPartnerDetails(partner);
+                                          },
+                                          child: Container(
+                                            width: double.infinity,
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: isTablet ? 14 : 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  _secondaryGold,
+                                                  _softGold,
+                                                  _secondaryGold,
+                                                ],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              borderRadius: BorderRadius.circular(28),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: _secondaryGold.withOpacity(0.4),
+                                                  blurRadius: 15,
+                                                  offset: Offset(0, 6),
+                                                  spreadRadius: 1,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  'View Details',
+                                                  style: GoogleFonts.poppins(
+                                                    color: Color(0xFF1A237E), // Deep Indigo to match card
+                                                    fontSize: isTablet ? 16 : 14,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 10),
+                                                shouldAnimate
+                                                    ? RotationTransition(
+                                                        turns: _rotateController,
+                                                        child: Icon(
+                                                          Icons.arrow_forward_rounded,
+                                                          color: Color(0xFF1A237E),
+                                                          size: isTablet ? 18 : 16,
+                                                        ),
+                                                      )
+                                                    : Icon(
+                                                        Icons.arrow_forward_rounded,
+                                                        color: Color(0xFF1A237E),
+                                                        size: isTablet ? 18 : 16,
+                                                      ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  
+                                  SizedBox(height: 8),
+                                  
+                                  // Decorative bottom line
+                                  Container(
+                                    height: 1,
+                                    margin: EdgeInsets.only(top: 8),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.transparent,
+                                          _secondaryGold.withOpacity(0.5),
+                                          _softGold.withOpacity(0.3),
+                                          Colors.transparent,
+                                        ],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
 
-  Widget _buildDefaultProfileImage() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: _gemstoneGradient,
+*/
+
+
+/* Widget _buildPremiumTag(String text, IconData icon, [bool isTablet = false]) {
+  return Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: isTablet ? 12 : 10,
+      vertical: isTablet ? 6 : 5,
+    ),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.white.withOpacity(0.25),
+          Colors.white.withOpacity(0.15),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
-      child: Center(
-        child: Icon(
-          Icons.person_rounded,
-          color: Colors.white,
-          size: 30,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color: _secondaryGold.withOpacity(0.3),
+        width: 0.8,
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon, 
+          size: isTablet ? 12 : 11,
+          color: _secondaryGold
+        ),
+        SizedBox(width: isTablet ? 6 : 5),
+        Text(
+          text,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: isTablet ? 12 : 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
+}   */
+
+
+Widget _buildPremiumPartnerCard(NetworkingBusinessPartner partner, int index) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isTablet = screenWidth >= 600;
+  final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
+  
+  // Same margin as job card and partner request card (16 for tablet, 12 for mobile)
+  final horizontalMargin = isTablet ? 16.0 : 12.0;
+  
+  // Premium gradient - Green to Deep Teal (keeping same colors)
+  final LinearGradient _cardGradient = LinearGradient(
+    colors: [
+      Color(0xFF1B5E20), // Deep Forest Green
+      Color(0xFF2E7D32), // Dark Green
+      Color(0xFF388E3C), // Medium Green
+      Color(0xFF43A047), // Vibrant Green
+      Color(0xFF4CAF50), // Classic Green
+      Color(0xFF66BB6A), // Light Green
+      Color(0xFF00897B), // Teal Green
+      Color(0xFF00796B), // Deep Teal
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: [0.0, 0.12, 0.25, 0.38, 0.5, 0.62, 0.75, 1.0],
+  );
+  
+  Widget cardContent = Container(
+    margin: EdgeInsets.symmetric(
+      horizontal: horizontalMargin,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.15),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+          spreadRadius: -1,
+        ),
+        BoxShadow(
+          color: Color(0xFF2E7D32).withOpacity(0.25),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: _cardGradient,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.2),
+            width: 0.5,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              if (authProvider.isGuestMode) {
+                _showLoginRequiredDialog(context, 'View Networking Partner Details');
+                return;
+              }
+              _showPartnerDetails(partner);
+            },
+            borderRadius: BorderRadius.circular(20),
+            splashColor: Colors.white.withOpacity(0.15),
+            highlightColor: Colors.white.withOpacity(0.05),
+            child: Padding(
+              padding: EdgeInsets.all(isTablet ? 14 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Info Row - Compact
+                  Row(
+                    children: [
+                      // Avatar
+                      Container(
+                        width: isTablet ? 44 : 38,
+                        height: isTablet ? 44 : 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFF66BB6A).withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(1.5),
+                          child: ClipOval(
+                            child: _buildPartnerPosterImage(partner),
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: 10),
+                      
+                      // Name and Verified Badge
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              partner.postedByName ?? 'Business Owner',
+                              style: GoogleFonts.poppins(
+                                fontSize: isTablet ? 14 : 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.verified_rounded,
+                                  size: 12,
+                                  color: Color(0xFFA5D6A7),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Verified Partner',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 9,
+                                    color: Color(0xFFC8E6C9),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Rating Badge
+                      if (partner.rating > 0)
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.star_rounded, 
+                                color: Color(0xFFFFD700), 
+                                size: 10,
+                              ),
+                              SizedBox(width: 3),
+                              Text(
+                                partner.rating.toStringAsFixed(1),
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Distance Badge
+                  if (partner.latitude != null && partner.longitude != null)
+                    Consumer<LocationFilterProvider>(
+                      builder: (context, locationProvider, _) {
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 8),
+                          child: DistanceBadge(
+                            latitude: partner.latitude!,
+                            longitude: partner.longitude!,
+                            isTablet: isTablet,
+                          ),
+                        );
+                      },
+                    ),
+                  
+                  // Business Name
+                  Text(
+                    partner.businessName,
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  SizedBox(height: 6),
+                  
+                  // Industry and Owner Row - Compact
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.25),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          partner.industry,
+                          style: GoogleFonts.poppins(
+                            fontSize: isTablet ? 11 : 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      
+                      if (partner.ownerName.isNotEmpty) ...[
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Icon(Icons.person_outline_rounded, 
+                                size: 10,
+                                color: Colors.white.withOpacity(0.7)
+                              ),
+                              SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  partner.ownerName,
+                                  style: GoogleFonts.inter(
+                                    fontSize: isTablet ? 11 : 10,
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // Tags Row - Compact
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _buildCompactPartnerTag(partner.businessType.displayName, Icons.business_rounded, isTablet),
+                      _buildCompactPartnerTag(partner.city, Icons.location_on_rounded, isTablet),
+                      _buildCompactPartnerTag('${partner.yearsInBusiness}yrs', Icons.calendar_today_rounded, isTablet),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  // View Details Button - Compact
+                  GestureDetector(
+                    onTap: () {
+                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                      if (authProvider.isGuestMode) {
+                        _showLoginRequiredDialog(context, 'View Networking Partner Details');
+                        return;
+                      }
+                      _showPartnerDetails(partner);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        vertical: isTablet ? 8 : 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'View Details',
+                            style: GoogleFonts.poppins(
+                              color: Color(0xFF2E7D32),
+                              fontSize: isTablet ? 12 : 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          shouldAnimate
+                              ? RotationTransition(
+                                  turns: _rotateController,
+                                  child: Icon(
+                                    Icons.arrow_forward_rounded,
+                                    color: Color(0xFF2E7D32),
+                                    size: isTablet ? 14 : 12,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: Color(0xFF2E7D32),
+                                  size: isTablet ? 14 : 12,
+                                ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
+    ),
+  );
+  
+  if (shouldAnimate) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final clampedValue = value.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: 0.96 + (0.04 * clampedValue),
+          child: Opacity(
+            opacity: clampedValue,
+            child: cardContent,
+          ),
+        );
+      },
     );
-  }   */
+  }
+  
+  return cardContent;
+}
+
+Widget _buildCompactPartnerTag(String text, IconData icon, [bool isTablet = false]) {
+  return Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: isTablet ? 8 : 6,
+      vertical: isTablet ? 4 : 3,
+    ),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: Colors.white.withOpacity(0.25),
+        width: 0.5,
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: isTablet ? 10 : 9, color: Colors.white),
+        SizedBox(width: isTablet ? 4 : 3),
+        Text(
+          text,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: isTablet ? 10 : 9,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    ),
+  );
+}
+
 
 
  Widget _buildPartnerPosterImage(NetworkingBusinessPartner partner) {
@@ -2842,46 +3445,6 @@ Widget _buildDefaultProfileImage() {
   );
 }
 
-  Widget _buildPremiumTag(String text, IconData icon, [bool isTablet = false]) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isTablet ? 10 : 8,
-        vertical: isTablet ? 6 : 4,
-      ),
-      decoration: BoxDecoration(
-        gradient: _glassMorphismGradient,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _secondaryGold.withOpacity(0.25)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon, 
-            size: isTablet ? 11 : 10,
-            color: _secondaryGold
-          ),
-          SizedBox(width: isTablet ? 5 : 4),
-          Text(
-            text,
-            style: GoogleFonts.poppins(
-              color: _textPrimary,
-              fontSize: isTablet ? 11 : 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showPartnerDetails(NetworkingBusinessPartner partner) {
     HapticFeedback.mediumImpact();
     Navigator.push(
@@ -2967,7 +3530,8 @@ class CommunityStates {
 }
 
 // ====================== PREMIUM ADD PARTNER DIALOG ======================
-// ====================== PREMIUM ADD PARTNER DIALOG ======================
+
+
 class PremiumAddPartnerDialog extends StatefulWidget {
   final VoidCallback? onBusinessAdded;
   final ScrollController scrollController;
@@ -2995,8 +3559,9 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
   
   final _formKey = GlobalKey<FormState>();
   
-  // Track app lifecycle
+  // Track app lifecycle and keyboard visibility
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  bool _isKeyboardVisible = false;
   
   // Controllers
   final TextEditingController _businessNameController = TextEditingController();
@@ -3050,11 +3615,14 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     
     WidgetsBinding.instance.addObserver(this);
     
+    // Add keyboard listener
+    _setupKeyboardListeners();
+    
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_handleTabChange);
     _animationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 500),
     );
     _animationController.forward();
     
@@ -3071,6 +3639,32 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     _yearsController.addListener(_validateDetailsTab);
   }
   
+  void _setupKeyboardListeners() {
+    // Listen to keyboard visibility changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusManager.instance.addListener(() {
+        final hasFocus = FocusManager.instance.primaryFocus != null;
+        if (mounted && _isKeyboardVisible != hasFocus) {
+          setState(() {
+            _isKeyboardVisible = hasFocus;
+          });
+          // Auto-scroll to focused field
+          if (hasFocus) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              if (mounted && widget.scrollController.hasClients) {
+                widget.scrollController.animateTo(
+                  widget.scrollController.position.maxScrollExtent,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              }
+            });
+          }
+        }
+      });
+    });
+  }
+  
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     setState(() {
@@ -3081,6 +3675,14 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
   void _handleTabChange() {
     if (mounted) {
       setState(() {});
+      // Scroll to top when tab changes
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     }
   }
 
@@ -3118,6 +3720,14 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
   void _goToPreviousTab() {
     if (_tabController.index > 0) {
       _tabController.animateTo(_tabController.index - 1);
+      // Scroll to top
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     }
   }
 
@@ -3128,6 +3738,14 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
         return;
       }
       _tabController.animateTo(_tabController.index + 1);
+      // Scroll to top
+      if (widget.scrollController.hasClients) {
+        widget.scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     }
   }
 
@@ -3346,141 +3964,149 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
     
     return FadeTransition(
       opacity: _animationController,
-      child: Column(
-        children: [
-          // Premium Header
-          Container(
-            padding: EdgeInsets.all(screenWidth > 600 ? 24 : 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [widget.primaryGreen, widget.primaryGreen.withOpacity(0.8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      child: Container(
+        height: screenHeight * 0.9, // Fixed height to prevent overflow
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            // Premium Header
+            Container(
+              padding: EdgeInsets.all(screenWidth > 600 ? 24 : 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [widget.primaryGreen, widget.primaryGreen.withOpacity(0.8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.primaryGreen.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                  ),
+                ],
               ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-              boxShadow: [
-                BoxShadow(
-                  color: widget.primaryGreen.withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(screenWidth > 600 ? 12 : 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.add_business_rounded, color: widget.secondaryGold, size: screenWidth > 600 ? 28 : 22),
-                ),
-                SizedBox(width: screenWidth > 600 ? 16 : 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Add Your Business',
-                        style: GoogleFonts.poppins(
-                          fontSize: screenWidth > 600 ? 20 : 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Join our premium network',
-                        style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: screenWidth > 600 ? 13 : 12),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close_rounded, color: Colors.white),
-                  padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(),
-                  iconSize: screenWidth > 600 ? 24 : 20,
-                ),
-              ],
-            ),
-          ),
-          
-          // Premium Tab Indicators
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: screenWidth > 600 ? 20 : 16, vertical: 16),
-            height: screenWidth > 600 ? 60 : 50,
-            child: Row(
-              children: [
-                _buildPremiumTabIndicator(0, 'Basic', _isBasicInfoValid),
-                _buildPremiumTabConnector(_isBasicInfoValid),
-                _buildPremiumTabIndicator(1, 'Media', true),
-                _buildPremiumTabConnector(true),
-                _buildPremiumTabIndicator(2, 'Details', _isDetailsTabValid),
-              ],
-            ),
-          ),
-          
-          // Form Content with ScrollController
-          Expanded(
-            child: Form(
-              key: _formKey,
-              child: TabBarView(
-                controller: _tabController,
-                physics: NeverScrollableScrollPhysics(),
+              child: Row(
                 children: [
-                  _buildPremiumBasicInfoTab(),
-                  _buildPremiumMediaTab(),
-                  _buildPremiumDetailsTab(),
+                  Container(
+                    padding: EdgeInsets.all(screenWidth > 600 ? 12 : 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.add_business_rounded, color: widget.secondaryGold, size: screenWidth > 600 ? 28 : 22),
+                  ),
+                  SizedBox(width: screenWidth > 600 ? 16 : 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add Your Business',
+                          style: GoogleFonts.poppins(
+                            fontSize: screenWidth > 600 ? 20 : 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Join our premium network',
+                          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: screenWidth > 600 ? 13 : 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close_rounded, color: Colors.white),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    iconSize: screenWidth > 600 ? 24 : 20,
+                  ),
                 ],
               ),
             ),
-          ),
-          
-          // Premium Navigation Buttons
-          Container(
-            padding: EdgeInsets.all(screenWidth > 600 ? 20 : 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 20,
-                  offset: Offset(0, -5),
-                ),
-              ],
+            
+            // Premium Tab Indicators
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: screenWidth > 600 ? 20 : 16, vertical: 16),
+              height: screenWidth > 600 ? 60 : 50,
+              child: Row(
+                children: [
+                  _buildPremiumTabIndicator(0, 'Basic', _isBasicInfoValid),
+                  _buildPremiumTabConnector(_isBasicInfoValid),
+                  _buildPremiumTabIndicator(1, 'Media', true),
+                  _buildPremiumTabConnector(true),
+                  _buildPremiumTabIndicator(2, 'Details', _isDetailsTabValid),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                if (_tabController.index > 0)
-                  Expanded(
-                    child: _buildPremiumNavButton(
-                      label: 'Previous',
-                      onPressed: _goToPreviousTab,
-                      isPrimary: false,
-                    ),
+            
+            // Form Content with ScrollController - Keyboard aware
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: TabBarView(
+                  controller: _tabController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _buildPremiumBasicInfoTab(),
+                    _buildPremiumMediaTab(),
+                    _buildPremiumDetailsTab(),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Premium Navigation Buttons
+            Container(
+              padding: EdgeInsets.all(screenWidth > 600 ? 20 : 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 20,
+                    offset: Offset(0, -5),
                   ),
-                if (_tabController.index > 0) SizedBox(width: 12),
-                Expanded(
-                  child: _tabController.index < 2
-                      ? _buildPremiumNavButton(
-                          label: 'Next',
-                          onPressed: _goToNextTab,
-                          isPrimary: true,
-                        )
-                      : _buildPremiumSubmitButton(),
-                ),
-              ],
+                ],
+              ),
+              child: Row(
+                children: [
+                  if (_tabController.index > 0)
+                    Expanded(
+                      child: _buildPremiumNavButton(
+                        label: 'Previous',
+                        onPressed: _goToPreviousTab,
+                        isPrimary: false,
+                      ),
+                    ),
+                  if (_tabController.index > 0) const SizedBox(width: 12),
+                  Expanded(
+                    child: _tabController.index < 2
+                        ? _buildPremiumNavButton(
+                            label: 'Next',
+                            onPressed: _goToNextTab,
+                            isPrimary: true,
+                          )
+                        : _buildPremiumSubmitButton(),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -3542,7 +4168,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                         ),
                       ),
               ),
-              SizedBox(height: 2),
+              const SizedBox(height: 2),
               Text(
                 label,
                 style: TextStyle(
@@ -3562,7 +4188,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     return Container(
       width: MediaQuery.of(context).size.width > 600 ? 20 : 12,
       height: 2,
-      margin: EdgeInsets.symmetric(horizontal: 2),
+      margin: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
         gradient: isCompleted
             ? LinearGradient(
@@ -3599,7 +4225,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                 BoxShadow(
                   color: widget.primaryGreen.withOpacity(0.3),
                   blurRadius: 8,
-                  offset: Offset(0, 4),
+                  offset: const Offset(0, 4),
                 ),
               ]
             : null,
@@ -3642,7 +4268,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                 BoxShadow(
                   color: widget.secondaryGold.withOpacity(0.3),
                   blurRadius: 8,
-                  offset: Offset(0, 4),
+                  offset: const Offset(0, 4),
                 ),
               ]
             : null,
@@ -3673,52 +4299,57 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20, // Add bottom padding for keyboard
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildPremiumSectionHeader('Business Information', Icons.business_center_rounded),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           _buildPremiumTextField(
             controller: _businessNameController,
             label: 'Business Name *',
             icon: Icons.store_rounded,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _buildPremiumTextField(
             controller: _ownerNameController,
             label: 'Owner Name *',
             icon: Icons.person_rounded,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _buildPremiumTextField(
             controller: _emailController,
             label: 'Email *',
             icon: Icons.email_rounded,
             keyboardType: TextInputType.emailAddress,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _buildPremiumTextField(
             controller: _phoneController,
             label: 'Phone *',
             icon: Icons.phone_rounded,
             keyboardType: TextInputType.phone,
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           
           _buildPremiumSectionHeader('Location', Icons.location_on_rounded),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           
           // Location Picker Field with Map
           _buildLocationPickerField(isTablet),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           
           _buildPremiumTextField(
             controller: _addressController,
             label: 'Street Address *',
             icon: Icons.home_rounded,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _buildPremiumTextField(
             controller: _cityController,
             label: 'City *',
@@ -3874,255 +4505,194 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     );
   }
 
-  Widget _buildPremiumMediaTab() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-    
-    return SingleChildScrollView(
-      controller: widget.scrollController,
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildPremiumSectionHeader('Logo Image', Icons.image_rounded),
-          SizedBox(height: 8),
-          Text(
-            'Upload your business logo (optional)',
-            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+
+Widget _buildPremiumMediaTab() {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isTablet = screenWidth > 600;
+  
+  return SingleChildScrollView(  // Fixed: Changed from SingleChildScrollUp to SingleChildScrollView
+    controller: widget.scrollController,
+    padding: EdgeInsets.only(
+      left: 16,
+      right: 16,
+      top: 16,
+      bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPremiumSectionHeader('Logo Image', Icons.image_rounded),
+        const SizedBox(height: 8),
+        Text(
+          'Upload your business logo (optional)',
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: widget.primaryGreen.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
-          SizedBox(height: 4),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: widget.primaryGreen.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.info_outline, size: 12, color: widget.primaryGreen),
-                SizedBox(width: 4),
-                Text(
-                  'Auto-compressed to under 1MB',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: widget.primaryGreen,
-                    fontWeight: FontWeight.w500,
-                  ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.info_outline, size: 12, color: widget.primaryGreen),
+              const SizedBox(width: 4),
+              Text(
+                'Auto-compressed to under 1MB',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: widget.primaryGreen,
+                  fontWeight: FontWeight.w500,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          SizedBox(height: 16),
-          
-          Center(
-            child: GestureDetector(
-              onTap: _isImageProcessing ? null : _pickLogoImage,
-              child: Container(
-                width: isTablet ? 150 : 120,
-                height: isTablet ? 150 : 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [widget.lightGreen, Colors.white],
-                  ),
-                  border: Border.all(color: widget.primaryGreen, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: widget.primaryGreen.withOpacity(0.2),
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
-                  ],
+        ),
+        const SizedBox(height: 16),
+        
+        Center(
+          child: GestureDetector(
+            onTap: _isImageProcessing ? null : _pickLogoImage,
+            child: Container(
+              width: isTablet ? 150 : 120,
+              height: isTablet ? 150 : 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [widget.lightGreen, Colors.white],
                 ),
-                child: _isImageProcessing
-                    ? Center(
-                        child: Column(
+                border: Border.all(color: widget.primaryGreen, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.primaryGreen.withOpacity(0.2),
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: _isImageProcessing
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            color: widget.primaryGreen,
+                            strokeWidth: 2,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Compressing...',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: widget.primaryGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _logoImage != null
+                      ? ClipOval(
+                          child: Image.file(
+                            _logoImage!,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            CircularProgressIndicator(
+                            Icon(
+                              Icons.add_photo_alternate_rounded,
+                              size: isTablet ? 40 : 32,
                               color: widget.primaryGreen,
-                              strokeWidth: 2,
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             Text(
-                              'Compressing...',
-                              style: TextStyle(
-                                fontSize: 10,
+                              'Add Logo',
+                              style: GoogleFonts.poppins(
                                 color: widget.primaryGreen,
+                                fontSize: isTablet ? 14 : 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Max 1MB',
+                              style: GoogleFonts.inter(
+                                color: Colors.grey[500],
+                                fontSize: 9,
                               ),
                             ),
                           ],
                         ),
-                      )
-                    : _logoImage != null
-                        ? ClipOval(
-                            child: Image.file(
-                              _logoImage!,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.add_photo_alternate_rounded,
-                                size: isTablet ? 40 : 32,
-                                color: widget.primaryGreen,
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Add Logo',
-                                style: GoogleFonts.poppins(
-                                  color: widget.primaryGreen,
-                                  fontSize: isTablet ? 14 : 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Max 1MB',
-                                style: GoogleFonts.inter(
-                                  color: Colors.grey[500],
-                                  fontSize: 9,
-                                ),
-                              ),
-                            ],
-                          ),
-              ),
             ),
           ),
-          
-          if (_logoImage != null && !_isImageProcessing)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Center(
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _logoImage = null;
-                      _logoBase64 = null;
-                    });
-                    _showSuccessSnackBar('Logo removed');
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: widget.accentRed.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: widget.accentRed.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.delete_outline, size: 14, color: widget.accentRed),
-                        SizedBox(width: 4),
-                        Text(
-                          'Remove Logo',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: widget.accentRed,
-                            fontWeight: FontWeight.w600,
-                          ),
+        ),
+        
+        if (_logoImage != null && !_isImageProcessing)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _logoImage = null;
+                    _logoBase64 = null;
+                  });
+                  _showSuccessSnackBar('Logo removed');
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: widget.accentRed.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: widget.accentRed.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.delete_outline, size: 14, color: widget.accentRed),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Remove Logo',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: widget.accentRed,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          
-          SizedBox(height: 24),
-          
-        /*  _buildPremiumSectionHeader('Gallery Images', Icons.photo_library_rounded),
-          SizedBox(height: 8),
-          Text(
-            'Add up to 5 images to showcase your business (optional)',
-            style: TextStyle(color: Colors.grey[600], fontSize: 12),
-          ),
-          SizedBox(height: 4),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: widget.primaryGreen.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.info_outline, size: 12, color: widget.primaryGreen),
-                SizedBox(width: 4),
-                Text(
-                  'Auto-compressed to under 1MB per image',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: widget.primaryGreen,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 16),
-          
-          if (_isImageProcessing)
-            Container(
-              padding: EdgeInsets.all(20),
-              child: Center(
-                child: Column(
-                  children: [
-                    CircularProgressIndicator(
-                      color: widget.primaryGreen,
-                      strokeWidth: 2,
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Compressing image...',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: widget.primaryGreen,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          
-          if (!_isImageProcessing)
-            GridView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: isTablet ? 4 : 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 1,
-              ),
-              itemCount: _galleryImages.length + 1,
-              itemBuilder: (context, index) {
-                if (index == _galleryImages.length) {
-                  return _buildPremiumAddImageButton();
-                }
-                return _buildPremiumGalleryImageItem(index);
-              },
-            ),  */
-        ],
-      ),
-    );
-  }
-
+          ),
+        
+        const SizedBox(height: 24),
+      ],
+    ),
+  );
+}
+ 
+ 
   Widget _buildPremiumDetailsTab() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     
     return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildPremiumSectionHeader('Business Details', Icons.info_rounded),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           
           _buildPremiumDropdown(
             value: _selectedBusinessType,
@@ -4143,14 +4713,14 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
             },
             icon: Icons.business_rounded,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           
           _buildPremiumTextField(
             controller: _industryController,
             label: 'Industry *',
             icon: Icons.category_rounded,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           
           _buildPremiumTextField(
             controller: _descriptionController,
@@ -4158,7 +4728,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
             icon: Icons.description_rounded,
             maxLines: 3,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           
           _buildPremiumTextField(
             controller: _yearsController,
@@ -4167,10 +4737,10 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
             keyboardType: TextInputType.number,
           ),
           
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
           
           _buildPremiumSectionHeader('Services Offered', Icons.checklist_rounded),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           
           _buildPremiumTagInput(
             controller: _serviceController,
@@ -4195,10 +4765,10 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
             },
           ),
           
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
           
           _buildPremiumSectionHeader('Additional Info', Icons.add_circle_outline_rounded),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           
           _buildPremiumTextField(
             controller: _websiteController,
@@ -4206,7 +4776,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
             icon: Icons.language_rounded,
             keyboardType: TextInputType.url,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           
           _buildPremiumTagInput(
             controller: _socialMediaController,
@@ -4251,13 +4821,13 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
           ),
           child: Icon(icon, color: Colors.white, size: screenWidth > 600 ? 18 : 16),
         ),
-        SizedBox(width: 10),
+        const SizedBox(width: 10),
         Text(
           title,
           style: GoogleFonts.poppins(
             fontSize: screenWidth > 600 ? 16 : 14,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF1E2A3A),
+            color: const Color(0xFF1E2A3A),
           ),
         ),
       ],
@@ -4280,7 +4850,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
             blurRadius: 8,
-            offset: Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -4289,6 +4859,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
         keyboardType: keyboardType,
         maxLines: maxLines,
         style: GoogleFonts.inter(fontSize: screenWidth > 600 ? 15 : 13),
+        textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(color: Colors.grey[600], fontSize: screenWidth > 600 ? 13 : 12),
@@ -4331,7 +4902,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
             blurRadius: 8,
-            offset: Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -4351,7 +4922,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         ),
         items: items,
         onChanged: (value) {
@@ -4387,6 +4958,8 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
             Expanded(
               child: TextField(
                 controller: controller,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => onAdd(),
                 decoration: InputDecoration(
                   hintText: hint,
                   hintStyle: TextStyle(color: Colors.grey[400], fontSize: isTablet ? 13 : 12),
@@ -4404,7 +4977,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                 ),
               ),
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -4422,13 +4995,13 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                 onPressed: onAdd,
                 icon: Icon(Icons.add_rounded, color: Colors.white, size: isTablet ? 22 : 20),
                 padding: EdgeInsets.all(isTablet ? 10 : 8),
-                constraints: BoxConstraints(),
+                constraints: const BoxConstraints(),
               ),
             ),
           ],
         ),
         if (tags.isNotEmpty) ...[
-          SizedBox(height: isTablet ? 12 : 10),
+           SizedBox(height: isTablet ? 12 : 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -4463,7 +5036,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                         color: Colors.white,
                         size: isTablet ? 14 : 12,
                       ),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                     ],
                     Text(
                       isSocialMedia ? _getSocialMediaName(tags[index]) : tags[index],
@@ -4473,7 +5046,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     GestureDetector(
                       onTap: () => onRemove(index),
                       child: Icon(
@@ -4492,100 +5065,6 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     );
   }
 
-  Widget _buildPremiumAddImageButton() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-    
-    return GestureDetector(
-      onTap: _galleryImages.length < 5 ? _pickGalleryImage : null,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.grey[100]!, Colors.white],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _galleryImages.length < 5 ? Icons.add_photo_alternate_rounded : Icons.block_rounded,
-              color: _galleryImages.length < 5 ? widget.primaryGreen : Colors.grey[400],
-              size: isTablet ? 28 : 24,
-            ),
-            SizedBox(height: isTablet ? 6 : 4),
-            Text(
-              _galleryImages.length < 5 ? 'Add' : 'Max',
-              style: TextStyle(
-                color: _galleryImages.length < 5 ? widget.primaryGreen : Colors.grey[500],
-                fontSize: isTablet ? 11 : 10,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: 2),
-            Text(
-              'Max 1MB',
-              style: GoogleFonts.inter(
-                color: Colors.grey[400],
-                fontSize: 8,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPremiumGalleryImageItem(int index) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-    
-    return Stack(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(
-              image: FileImage(_galleryImages[index]),
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        Positioned(
-          top: 4,
-          right: 4,
-          child: GestureDetector(
-            onTap: () {
-              if (mounted) {
-                setState(() {
-                  _galleryImages.removeAt(index);
-                  _galleryBase64.removeAt(index);
-                });
-              }
-            },
-            child: Container(
-              padding: EdgeInsets.all(isTablet ? 6 : 4),
-              decoration: BoxDecoration(
-                color: widget.accentRed,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.accentRed.withOpacity(0.3),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              child: Icon(Icons.close_rounded, color: Colors.white, size: isTablet ? 14 : 12),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   String _getSocialMediaName(String url) {
     if (url.contains('facebook.com') || url.contains('fb.com')) return 'Facebook';
     if (url.contains('instagram.com')) return 'Instagram';
@@ -4596,11 +5075,11 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
   }
 
   Color _getSocialMediaColor(String url) {
-    if (url.contains('facebook.com') || url.contains('fb.com')) return Color(0xFF1877F2);
-    if (url.contains('instagram.com')) return Color(0xFFE4405F);
-    if (url.contains('twitter.com') || url.contains('x.com')) return Color(0xFF1DA1F2);
-    if (url.contains('linkedin.com')) return Color(0xFF0A66C2);
-    if (url.contains('youtube.com')) return Color(0xFFFF0000);
+    if (url.contains('facebook.com') || url.contains('fb.com')) return const Color(0xFF1877F2);
+    if (url.contains('instagram.com')) return const Color(0xFFE4405F);
+    if (url.contains('twitter.com') || url.contains('x.com')) return const Color(0xFF1DA1F2);
+    if (url.contains('linkedin.com')) return const Color(0xFF0A66C2);
+    if (url.contains('youtube.com')) return const Color(0xFFFF0000);
     return widget.primaryGreen;
   }
 
@@ -4640,7 +5119,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
 
     int totalSize = 0;
     if (_logoBase64 != null) totalSize += _logoBase64!.length;
-    _galleryBase64.forEach((img) => totalSize += img.length);
+    for (var img in _galleryBase64) totalSize += img.length;
     
     if (totalSize > 8 * 1024 * 1024) { // 8MB total limit
       _showErrorSnackBar('Total image size too large. Please use fewer or smaller images.');
@@ -4661,7 +5140,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
       yearsInBusiness: int.tryParse(_yearsController.text) ?? 0,
       servicesOffered: _servicesOffered,
       targetMarkets: _targetMarkets,
-      businessHours: ['Mon-Fri: 9 AM - 6 PM'],
+      businessHours: const ['Mon-Fri: 9 AM - 6 PM'],
       logoImageBase64: _logoBase64,
       galleryImagesBase64: _galleryBase64.isNotEmpty ? _galleryBase64 : null,
       website: _websiteController.text.isNotEmpty ? _websiteController.text : null,
@@ -4685,8 +5164,8 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
       isVerified: false,
       isActive: true,
       isDeleted: false,
-      likedByUsers: [],
-      languagesSpoken: ['English', 'Bengali'],
+      likedByUsers: const [],
+      languagesSpoken: const ['English', 'Bengali'],
     );
 
     // Show loading
@@ -4695,7 +5174,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
       barrierDismissible: false,
       builder: (context) => Center(
         child: Container(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -4708,7 +5187,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
                 height: 50,
                 child: CircularProgressIndicator(color: widget.primaryGreen),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Text('Submitting...', style: GoogleFonts.poppins()),
             ],
           ),
@@ -4734,8 +5213,6 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
     }
   }
 
-
-
   void _showSuccessSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -4743,7 +5220,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
         content: Row(
           children: [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
@@ -4759,8 +5236,8 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
         backgroundColor: widget.primaryGreen,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(12),
-        duration: Duration(seconds: 3),
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -4773,15 +5250,15 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
         content: Row(
           children: [
             Icon(Icons.error_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 10),
-            Expanded(child: Text(message, style: TextStyle(fontSize: 13))),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message, style: const TextStyle(fontSize: 13))),
           ],
         ),
         backgroundColor: widget.accentRed,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(12),
-        duration: Duration(seconds: 3),
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
