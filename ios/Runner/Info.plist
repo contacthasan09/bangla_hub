@@ -49,23 +49,25 @@
     <string>Main</string>
 
     <!-- ========================= -->
-    <!-- 🔄 ORIENTATION -->
+    <!-- 🔄 ORIENTATION - PORTRAIT ONLY (SAFE) -->
     <!-- ========================= -->
 
+    <!-- iPhone: Portrait only -->
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
-        <string>UIInterfaceOrientationLandscapeLeft</string>
-        <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
 
+    <!-- iPad: Portrait only (or add landscape if iPad supports it) -->
     <key>UISupportedInterfaceOrientations~ipad</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
         <string>UIInterfaceOrientationPortraitUpsideDown</string>
-        <string>UIInterfaceOrientationLandscapeLeft</string>
-        <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+
+    <!-- ========================= -->
+    <!-- 📱 FLUTTER REQUIREMENTS -->
+    <!-- ========================= -->
 
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
@@ -73,28 +75,31 @@
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
 
+    <key>UIRequiresFullScreen</key>
+    <true/>
+
     <!-- ========================= -->
-    <!-- 🔐 PERMISSIONS (ONLY NEEDED) -->
+    <!-- 🔐 PERMISSIONS -->
     <!-- ========================= -->
 
-    <!-- Location - When In Use (Required for nearby services) -->
+    <!-- Location - When In Use -->
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Bangla Hub uses your location to show nearby events, services, and businesses in your area.</string>
 
-    <!-- Camera - For profile pictures and event photos -->
+    <!-- Camera -->
     <key>NSCameraUsageDescription</key>
-    <string>Bangla Hub needs camera access to take photos for your profile, events, and service listings.</string>
+    <string>Bangla Hub uses camera to take photos for your profile, events, and service listings.</string>
 
-    <!-- Photo Library - For uploading images -->
+    <!-- Photo Library -->
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Bangla Hub needs access to your photo library to upload profile pictures and event images.</string>
 
-    <!-- Photo Library Add - For saving images -->
+    <!-- Photo Library Add -->
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>Bangla Hub needs permission to save images to your gallery.</string>
 
     <!-- ========================= -->
-    <!-- 🌐 DEEP LINKING (Custom Scheme Only) -->
+    <!-- 🔗 DEEP LINKING -->
     <!-- ========================= -->
 
     <key>CFBundleURLTypes</key>
@@ -110,7 +115,7 @@
     </array>
 
     <!-- ========================= -->
-    <!-- 🔒 NETWORK SECURITY (SECURE) -->
+    <!-- 🔒 NETWORK SECURITY -->
     <!-- ========================= -->
 
     <key>NSAppTransportSecurity</key>
@@ -120,7 +125,7 @@
     </dict>
 
     <!-- ========================= -->
-    <!-- 📧 URL SCHEMES FOR EXTERNAL APPS -->
+    <!-- 📧 EXTERNAL APP SCHEMES -->
     <!-- ========================= -->
 
     <key>LSApplicationQueriesSchemes</key>
@@ -133,7 +138,7 @@
     </array>
 
     <!-- ========================= -->
-    <!-- 🎨 UI REQUIREMENTS -->
+    <!-- 🎨 UI APPEARANCE -->
     <!-- ========================= -->
 
     <key>UIViewControllerBasedStatusBarAppearance</key>
@@ -141,6 +146,15 @@
 
     <key>UIStatusBarStyle</key>
     <string>UIStatusBarStyleLightContent</string>
+
+    <!-- ========================= -->
+    <!-- 🖼️ ICON AND BRANDING -->
+    <!-- ========================= -->
+
+    <key>CFBundleIcons</key>
+    <dict/>
+    <key>CFBundleIcons~ipad</key>
+    <dict/>
 
 </dict>
 </plist>
