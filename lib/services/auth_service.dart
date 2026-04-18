@@ -54,7 +54,7 @@ class AuthService {
 
 
 
-  Future<User?> signInWithEmail({
+/*  Future<User?> signInWithEmail({
     required String email,
     required String password,
   }) async {
@@ -145,6 +145,85 @@ class AuthService {
       throw 'Login failed. Please try again.';
     }
   }
+
+*/
+
+
+Future<User?> signInWithEmail({
+  required String email,
+  required String password,
+}) async {
+  try {
+    // Check if admin login
+    if (email == adminEmail && password == adminPassword) {
+      final adminQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: adminEmail)
+          .limit(1)
+          .get();
+      
+      if (adminQuery.docs.isEmpty) {
+        final adminUser = UserModel(
+          id: 'admin_${DateTime.now().millisecondsSinceEpoch}',
+          email: adminEmail,
+          firstName: 'Admin',
+          lastName: 'User',
+          role: 'admin',
+          isEmailVerified: true,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        await _firestoreService.createUser(adminUser);
+      }
+      return null;
+    }
+    
+    // Regular user login
+    final UserCredential result = await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+    
+    final User? user = result.user;
+    
+    // Check if user exists in Firestore
+    if (user != null) {
+      final userData = await _firestoreService.getUser(user.uid);
+      if (userData == null) {
+        // User exists in Auth but not in Firestore - sign them out
+        await _auth.signOut();
+        throw 'Account data not found. Please contact support.';
+      }
+    }
+    
+    return user;
+  } on FirebaseAuthException catch (e) {
+    // Firebase auth errors - these will be caught and shown properly
+    switch (e.code) {
+      case 'user-not-found':
+        throw 'No account found for this email. Please sign up first.';
+      case 'wrong-password':
+        throw 'Incorrect password. Please try again.';
+      case 'user-disabled':
+        throw 'Your account has been disabled. Contact support.';
+      case 'too-many-requests':
+        throw 'Too many login attempts. Try again later.';
+      case 'invalid-credential':
+        throw 'Invalid email or password.';
+      case 'invalid-email':
+        throw 'Please enter a valid email address.';
+      case 'user-mismatch':
+        throw 'Invalid credentials.';
+      case 'requires-recent-login':
+        throw 'Please log in again to continue.';
+      default:
+        throw 'Login failed: ${e.message}';
+    }
+  } catch (e) {
+    throw e.toString();
+  }
+}
+
 
     Future<void> signOut() async {
     try {
@@ -288,7 +367,9 @@ class AuthService {
 
 
   // Add/Replace this method in your AuthService class
-Future<void> deleteAccount() async {
+
+
+/* Future<void> deleteAccount() async {
   try {
     final user = _auth.currentUser;
     if (user == null) {
@@ -445,6 +526,170 @@ Future<void> deleteAccount() async {
     throw 'Failed to delete account. Please try again later.';
   }
 }
+
+*/
+
+
+Future<void> deleteAccount() async {
+  try {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No user logged in');
+    }
+    
+    final userId = user.uid;
+    print('🗑️ Starting account deletion for user: $userId');
+    
+    // Show loading indicator (handled by UI)
+    
+    // 1. Delete user document from Firestore
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .delete();
+    print('✅ User document deleted');
+    
+    // 2. Delete user's events
+    final eventsSnapshot = await FirebaseFirestore.instance
+        .collection('events')
+        .where('createdBy', isEqualTo: userId)
+        .get();
+    
+    for (var doc in eventsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${eventsSnapshot.docs.length} events');
+    
+    // 3. Delete user's interested events subcollection
+    final interestedEventsSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('interested_events')
+        .get();
+    
+    for (var doc in interestedEventsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${interestedEventsSnapshot.docs.length} interested events');
+    
+    // 4. Delete user's job postings
+    final jobsSnapshot = await FirebaseFirestore.instance
+        .collection('job_postings')
+        .where('postedBy', isEqualTo: userId)
+        .get();
+    
+    for (var doc in jobsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${jobsSnapshot.docs.length} job postings');
+    
+    // 5. Delete user's business promotions
+    final promotionsSnapshot = await FirebaseFirestore.instance
+        .collection('small_business_promotions')
+        .where('postedBy', isEqualTo: userId)
+        .get();
+    
+    for (var doc in promotionsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${promotionsSnapshot.docs.length} business promotions');
+    
+    // 6. Delete user's service provider listings
+    final servicesSnapshot = await FirebaseFirestore.instance
+        .collection('service_providers')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in servicesSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${servicesSnapshot.docs.length} service provider listings');
+    
+    // 7. Delete user's business partner requests
+    final partnerRequestsSnapshot = await FirebaseFirestore.instance
+        .collection('business_partner_requests')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in partnerRequestsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${partnerRequestsSnapshot.docs.length} business partner requests');
+    
+    // 8. Delete user's networking business partners
+    final networkingSnapshot = await FirebaseFirestore.instance
+        .collection('networking_business_partners')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in networkingSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${networkingSnapshot.docs.length} networking business partners');
+    
+    // 9. Delete user's tutoring services
+    final tutoringSnapshot = await FirebaseFirestore.instance
+        .collection('tutoring_services')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in tutoringSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${tutoringSnapshot.docs.length} tutoring services');
+    
+    // 10. Delete user's admissions guidance
+    final admissionsSnapshot = await FirebaseFirestore.instance
+        .collection('admissions_guidance')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in admissionsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${admissionsSnapshot.docs.length} admissions guidance entries');
+    
+    // 11. Delete user's Bangla classes
+    final banglaClassesSnapshot = await FirebaseFirestore.instance
+        .collection('bangla_classes')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in banglaClassesSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${banglaClassesSnapshot.docs.length} Bangla classes');
+    
+    // 12. Delete user's sports clubs
+    final sportsClubsSnapshot = await FirebaseFirestore.instance
+        .collection('sports_clubs')
+        .where('userId', isEqualTo: userId)
+        .get();
+    
+    for (var doc in sportsClubsSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    print('✅ Deleted ${sportsClubsSnapshot.docs.length} sports clubs');
+    
+    // 13. Finally, delete the Firebase Auth account
+    await user.delete();
+    print('✅ Firebase Auth account deleted');
+    
+    print('🎉 Account and all associated data deleted successfully');
+    
+  } on FirebaseAuthException catch (e) {
+    print('❌ FirebaseAuth error: ${e.code} - ${e.message}');
+    if (e.code == 'requires-recent-login') {
+      throw 'For security reasons, please log in again before deleting your account.';
+    } else {
+      throw 'Failed to delete account: ${e.message}';
+    }
+  } catch (e) {
+    print('❌ Unexpected error: $e');
+    throw 'Failed to delete account. Please try again later.';
+  }
+}
+
 
   // Check if user is admin by email
   bool isAdminEmail(String email) {

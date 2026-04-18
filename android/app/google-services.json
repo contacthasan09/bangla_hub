@@ -7,6 +7,42 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:137876250697:android:bf0773196daaf52f2fdf98",
+        "android_client_info": {
+          "package_name": "com.banglahub.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "137876250697-4p9lpbo29bfsebq72utsc8cvpjaijjg8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOdMEeI3uZAS9NRFiPDOvgsFPJnqG782k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "137876250697-4p9lpbo29bfsebq72utsc8cvpjaijjg8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "137876250697-2tj43aer2ot0akh8e2fbd8c18b5dbi9v.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.banglahub.app"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:137876250697:android:4e4687bb45e69ce02fdf98",
         "android_client_info": {
           "package_name": "com.example.bangla_hub"
@@ -29,6 +65,13 @@
             {
               "client_id": "137876250697-4p9lpbo29bfsebq72utsc8cvpjaijjg8.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "137876250697-2tj43aer2ot0akh8e2fbd8c18b5dbi9v.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.banglahub.app"
+              }
             }
           ]
         }

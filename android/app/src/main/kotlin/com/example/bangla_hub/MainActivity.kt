@@ -1,4 +1,4 @@
-package com.example.bangla_hub
+package com.banglahub.app
 
 import io.flutter.embedding.android.FlutterActivity
 

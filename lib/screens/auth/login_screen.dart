@@ -716,7 +716,9 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildLoginButton(bool isSmallScreen, AuthProvider authProvider) {
+
+
+/*  Widget _buildLoginButton(bool isSmallScreen, AuthProvider authProvider) {
     return AnimatedContainer(
       duration: Duration(milliseconds: 500),
       width: double.infinity,
@@ -787,6 +789,95 @@ class _LoginScreenState extends State<LoginScreen>
       ),
     );
   }
+
+
+*/
+
+
+Widget _buildLoginButton(bool isSmallScreen, AuthProvider authProvider) {
+  final isLoading = authProvider.isLoading;
+  
+  return AnimatedContainer(
+    duration: const Duration(milliseconds: 500),
+    width: double.infinity,
+    height: isSmallScreen ? 56 : 64,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [_primaryRed, _primaryGreen],
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        stops: const [0.0, 1.0],
+      ),
+      borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+      boxShadow: [
+        BoxShadow(
+          color: _primaryRed.withOpacity(0.3),
+          blurRadius: 20,
+          offset: const Offset(0, 8),
+          spreadRadius: 2,
+        ),
+      ],
+    ),
+    child: Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+      child: InkWell(
+        onTap: isLoading ? null : () => _login(context, authProvider),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+        splashColor: Colors.white.withOpacity(0.2),
+        highlightColor: Colors.white.withOpacity(0.1),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 24),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            child: isLoading
+                ? Center(
+                    key: const ValueKey('loading'),
+                    child: SizedBox(
+                      width: isSmallScreen ? 24 : 28,
+                      height: isSmallScreen ? 24 : 28,
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                  )
+                : Row(
+                    key: const ValueKey('button'),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Sign In',
+                        style: GoogleFonts.poppins(
+                          fontSize: isSmallScreen ? 17 : 19,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      SizedBox(width: isSmallScreen ? 12 : 16),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: Colors.white,
+                        size: isSmallScreen ? 18 : 20,
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+
+
+
+
+
+
 
   Widget _buildOrDivider(bool isSmallScreen) {
     return Padding(
@@ -969,7 +1060,8 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Future<void> _login(BuildContext context, AuthProvider authProvider) async {
+
+/*  Future<void> _login(BuildContext context, AuthProvider authProvider) async {
     if (_formKey.currentState!.validate()) {
       try {
         await authProvider.signIn(
@@ -1010,6 +1102,90 @@ class _LoginScreenState extends State<LoginScreen>
       }
     }
   }
+
+*/
+
+
+Future<void> _login(BuildContext context, AuthProvider authProvider) async {
+  if (_formKey.currentState!.validate()) {
+    // Remove focus from fields
+    FocusScope.of(context).unfocus();
+    
+    try {
+      await authProvider.signIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        context: context,
+      );
+
+      // Login successful - check if user exists
+      if (mounted && authProvider.user != null) {
+        if (authProvider.user!.isAdmin) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminHomeScreen()),
+            (route) => false,
+          );
+        } else {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (route) => false,
+          );
+        }
+      } else if (mounted && authProvider.user == null) {
+        // This case shouldn't happen, but handle it
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.orange,
+            content: Text('Login successful but user data not loaded. Please try again.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      // Show error message - this will catch "No account found" etc.
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars(); // Clear any existing snackbars
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: _primaryRed,
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    e.toString(),
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    }
+  } else {
+    // Form validation failed - show validation errors
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.orange,
+          content: Text('Please fill all fields correctly'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+}
+
 
   void _showEmailVerificationDialog(BuildContext context, AuthProvider authProvider) {
     print('🟡 Dialog triggered - Email: ${_emailController.text}');

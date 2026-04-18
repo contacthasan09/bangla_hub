@@ -13,6 +13,7 @@ import 'package:bangla_hub/services/firestore_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -275,6 +276,8 @@ class AuthProvider with ChangeNotifier {
       return null;
     }
   }
+
+
   
   Future<void> signIn({
     required String email,
@@ -300,6 +303,9 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
+
+
+
   Future<void> _handleAdminLogin(String email) async {
     final adminQuery = await _firestore
         .collection('users')
@@ -570,7 +576,9 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
-  Future<void> deleteAccount() async {
+
+
+/*  Future<void> deleteAccount() async {
     try {
       _isLoading = true;
       _error = null;
@@ -617,6 +625,262 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
+*/
+
+/* Future<void> deleteAccount(BuildContext context) async {
+  // Show loading dialog
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: EdgeInsets.all(30),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_bangladeshGreen, _bangladeshRed],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Colors.white),
+            const SizedBox(height: 20),
+            Text(
+              'Deleting your account...',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  
+  try {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    
+    print('🗑️ AuthProvider: Starting account deletion...');
+    
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw 'No user logged in';
+    }
+    
+    final userId = user.uid;
+    print('📧 Deleting account for user: $userId');
+    
+    await _authService.deleteAccount();
+    
+    _user = null;
+    _isAdminMode = false;
+    _isGuestMode = false;
+    _profileImageNotifier.value = null;
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userId');
+    await prefs.remove('userEmail');
+    await prefs.setBool('isLoggedIn', false);
+    await prefs.setBool('isAdmin', false);
+    await prefs.setBool('isGuestMode', false);
+    await prefs.remove('selected_tab_index');
+    await prefs.remove('user_location');
+    await prefs.remove('user_latitude');
+    await prefs.remove('user_longitude');
+    
+    notifyListeners();
+    
+    print('✅ AuthProvider: Account deleted successfully');
+    
+    // Close loading dialog
+    if (context.mounted) {
+      Navigator.pop(context); // Close loading dialog
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account deleted successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+      // Navigate to login screen after a short delay
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    }
+  } catch (e) {
+    _error = e.toString();
+    print('❌ AuthProvider error deleting account: $e');
+    
+    // Close loading dialog
+    if (context.mounted) {
+      Navigator.pop(context); // Close loading dialog
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: _bangladeshRed,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+    rethrow;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
+*/
+
+Future<void> deleteAccount(BuildContext context) async {
+  // Store the dialog context separately
+  BuildContext? dialogContext;
+  
+  // Show loading dialog and store its context
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) {
+      dialogContext = ctx;
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_bangladeshGreen, _bangladeshRed],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: Colors.white),
+              const SizedBox(height: 20),
+              Text(
+                'Deleting your account...',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+  
+  try {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    
+    print('🗑️ AuthProvider: Starting account deletion...');
+    
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw 'No user logged in';
+    }
+    
+    final userId = user.uid;
+    print('📧 Deleting account for user: $userId');
+    
+    await _authService.deleteAccount();
+    
+    _user = null;
+    _isAdminMode = false;
+    _isGuestMode = false;
+    _profileImageNotifier.value = null;
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userId');
+    await prefs.remove('userEmail');
+    await prefs.setBool('isLoggedIn', false);
+    await prefs.setBool('isAdmin', false);
+    await prefs.setBool('isGuestMode', false);
+    await prefs.remove('selected_tab_index');
+    await prefs.remove('user_location');
+    await prefs.remove('user_latitude');
+    await prefs.remove('user_longitude');
+    
+    notifyListeners();
+    
+    print('✅ AuthProvider: Account deleted successfully');
+    
+    // Close loading dialog using the stored dialog context
+    if (dialogContext != null && dialogContext!.mounted) {
+      Navigator.pop(dialogContext!);
+    }
+    
+    // Show success message using the original context
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account deleted successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+      // Small delay for snackbar to show
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      if (context.mounted) {
+        // Navigate to login screen and clear all history
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    }
+  } catch (e) {
+    _error = e.toString();
+    print('❌ AuthProvider error deleting account: $e');
+    
+    // Close loading dialog using the stored dialog context
+    if (dialogContext != null && dialogContext!.mounted) {
+      Navigator.pop(dialogContext!);
+    }
+    
+    // Show error message
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: _bangladeshRed,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+    rethrow;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
   Future<void> resetPassword(String email) async {
     try {
       _isLoading = true;

@@ -2523,7 +2523,7 @@ Widget _buildRightItem(String text, bool isSmallScreen) {
 
 
 
-void _confirmDeleteAccount(BuildContext context) {
+/* void _confirmDeleteAccount(BuildContext context) {
   final mediaQuery = MediaQuery.of(context);
   final isSmallScreen = mediaQuery.size.height < 600;
   
@@ -2726,6 +2726,213 @@ void _confirmDeleteAccount(BuildContext context) {
   );
 }
 
+*/
+
+
+void _confirmDeleteAccount(BuildContext context) {
+  final mediaQuery = MediaQuery.of(context);
+  final isSmallScreen = mediaQuery.size.height < 600;
+  
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: 500,
+          minWidth: 280,
+        ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_bgGradient2, _primaryGreen.withOpacity(0.9)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(color: _borderColor, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header with icon
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_primaryRed, _primaryGreen],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Delete Account',
+                      style: GoogleFonts.poppins(
+                        fontSize: isSmallScreen ? 20 : 22,
+                        fontWeight: FontWeight.w800,
+                        color: _textWhite,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              
+              // Warning message
+              Container(
+                padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.error_outline, color: _primaryRed, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'This action is permanent and cannot be undone!',
+                            style: TextStyle(
+                              color: _textWhite,
+                              fontWeight: FontWeight.w600,
+                              fontSize: isSmallScreen ? 14 : 15,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '⚠️ This will delete:',
+                      style: TextStyle(
+                        color: _textMuted,
+                        fontWeight: FontWeight.w600,
+                        fontSize: isSmallScreen ? 13 : 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Column(
+                      children: [
+                        _buildDeleteItem('Your profile information', isSmallScreen),
+                        _buildDeleteItem('All your posts and events', isSmallScreen),
+                        _buildDeleteItem('Saved items and preferences', isSmallScreen),
+                        _buildDeleteItem('Your account history', isSmallScreen),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Action buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isSmallScreen ? 14 : 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: _borderColor),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: isSmallScreen ? 15 : 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: isSmallScreen ? 12 : 16),
+                  Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          Navigator.pop(context); // Close confirmation dialog
+                          await _deleteAccount(context);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isSmallScreen ? 14 : 16,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_primaryRed, _deepRed],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _primaryRed.withOpacity(0.4),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Delete Forever',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: isSmallScreen ? 15 : 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+
 // Helper method to build delete items
 Widget _buildDeleteItem(String text, bool isSmallScreen) {
   return Padding(
@@ -2750,7 +2957,7 @@ Widget _buildDeleteItem(String text, bool isSmallScreen) {
   );
 }
   
-  Future<void> _deleteAccount(BuildContext context) async {
+/*  Future<void> _deleteAccount(BuildContext context) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -2779,7 +2986,7 @@ Widget _buildDeleteItem(String text, bool isSmallScreen) {
 
     try {
       final authProvider = context.read<AuthProvider>();
-      await authProvider.deleteAccount();
+      await authProvider.deleteAccount(context);
       
       if (mounted) {
         Navigator.pop(context);
@@ -2797,6 +3004,30 @@ Widget _buildDeleteItem(String text, bool isSmallScreen) {
       }
     }
   }
+
+*/
+
+
+Future<void> _deleteAccount(BuildContext context) async {
+  final authProvider = context.read<AuthProvider>();
+  
+  try {
+    // Call deleteAccount - it will handle its own loading dialog
+    await authProvider.deleteAccount(context);
+    
+    // After successful deletion, authProvider already:
+    // - Showed loading dialog
+    // - Closed loading dialog  
+    // - Showed success snackbar
+    // - Navigated to login screen
+    
+  } catch (e) {
+    // Error is already handled in authProvider
+    print('Delete account error: $e');
+  }
+}
+
+
 
 
 void _showContactOptions(BuildContext context) {
