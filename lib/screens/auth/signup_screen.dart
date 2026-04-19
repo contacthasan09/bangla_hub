@@ -1469,11 +1469,13 @@ void _navigateToTermsOfService() {
     MaterialPageRoute(
       builder: (context) => WebViewScreen(
         title: 'Terms of Service',
-        url: 'https://contacthasan09.github.io/bangla-hub-privacy-policies/terms_of_service.html',
+        url: 'https://contacthasan09.github.io/banglahub-us/terms_of_service.html',
       ),
     ),
   );
 }
+
+
 
 void _navigateToPrivacyPolicy() {
   Navigator.push(
@@ -1481,7 +1483,7 @@ void _navigateToPrivacyPolicy() {
     MaterialPageRoute(
       builder: (context) => WebViewScreen(
         title: 'Privacy Policy',
-        url: 'https://contacthasan09.github.io/bangla-hub-privacy-policies/privacy_policy.html',
+        url: 'https://contacthasan09.github.io/banglahub-us/privacy_policy.html',
       ),
     ),
   );

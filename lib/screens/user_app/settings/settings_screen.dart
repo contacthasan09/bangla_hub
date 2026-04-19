@@ -1752,11 +1752,11 @@ Widget _buildAppSettingsCards(BuildContext context, bool isTablet) {
         subtitle: 'Read how we protect your personal information',
         gradientColors: [_primaryGreen, _darkGreen],
         onTap: () {
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      /*    final authProvider = Provider.of<AuthProvider>(context, listen: false);
           if (authProvider.isGuestMode) {
             _showLoginRequiredDialog(context, 'Privacy Policy');
             return;
-          }
+          } */
           _openWebView('Privacy Policy', privacyPolicyUrl);
         },
         isTablet: isTablet,
@@ -1771,11 +1771,11 @@ Widget _buildAppSettingsCards(BuildContext context, bool isTablet) {
         subtitle: 'Terms and conditions for using Bangla Hub',
         gradientColors: [_primaryGreen, _darkGreen],
         onTap: () {
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      /*    final authProvider = Provider.of<AuthProvider>(context, listen: false);
           if (authProvider.isGuestMode) {
             _showLoginRequiredDialog(context, 'Terms of Service');
             return;
-          }
+          }  */
           _openWebView('Terms of Service', termsOfServiceUrl);
         },
         isTablet: isTablet,
@@ -1837,11 +1837,11 @@ Widget _buildAppSettingsCards(BuildContext context, bool isTablet) {
         subtitle: 'Get help from our support team',
         gradientColors: [_primaryRed, _deepRed],
         onTap: () {
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+       /*   final authProvider = Provider.of<AuthProvider>(context, listen: false);
           if (authProvider.isGuestMode) {
             _showLoginRequiredDialog(context, 'Contact Support');
             return;
-          }
+          }  */
           _showContactOptions(context);
         },
         isTablet: isTablet,
@@ -1875,11 +1875,11 @@ Widget _buildAppSettingsCards(BuildContext context, bool isTablet) {
         subtitle: 'Frequently asked questions',
         gradientColors: [_primaryGreen, _darkGreen],
         onTap: () {
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        /*  final authProvider = Provider.of<AuthProvider>(context, listen: false);
           if (authProvider.isGuestMode) {
             _showLoginRequiredDialog(context, 'FAQs');
             return;
-          }
+          }  */
           _showFaqDialog(context);
         },
         isTablet: isTablet,
