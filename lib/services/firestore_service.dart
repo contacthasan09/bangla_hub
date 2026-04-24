@@ -166,6 +166,8 @@ class FirestoreService {
     var query = _firestore
         .collection(AppConstants.eventsCollection)
         .where('status', isEqualTo: 'approved')
+              .where('isDeleted', isEqualTo: false)  // ✅ Add this filter
+
         .where('eventDate', isGreaterThanOrEqualTo: Timestamp.now())
         .orderBy('eventDate');
 
@@ -202,6 +204,7 @@ class FirestoreService {
     var query = _firestore
         .collection(AppConstants.eventsCollection)
         .where('status', isEqualTo: 'approved')
+        .where('isDeleted', isEqualTo: false)
         .where('eventDate', isLessThan: Timestamp.now())
         .orderBy('eventDate', descending: true);
 
@@ -227,6 +230,8 @@ class FirestoreService {
     return _firestore
         .collection(AppConstants.eventsCollection)
         .where('status', isEqualTo: 'pending')
+              .where('isDeleted', isEqualTo: false)  // ✅ Add this filter
+
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -234,16 +239,23 @@ class FirestoreService {
             .toList());
   }
 
-  Stream<List<EventModel>> getUserEvents(String userId) {
-    return _firestore
-        .collection(AppConstants.eventsCollection)
-        .where('createdBy', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
+// In firestore_service.dart, verify getUserEvents method:
+
+Stream<List<EventModel>> getUserEvents(String userId) {
+  return _firestore
+      .collection(AppConstants.eventsCollection)
+      .where('createdBy', isEqualTo: userId)  // ✅ This ensures only user's events
+            .where('isDeleted', isEqualTo: false)  // ✅ Add this filter
+
+      .orderBy('createdAt', descending: true)
+      .snapshots()
+      .map((snapshot) {
+        print('📊 Firestore returned ${snapshot.docs.length} events for user $userId');
+        return snapshot.docs
             .map((doc) => EventModel.fromMap(doc.data(), doc.id))
-            .toList());
-  }
+            .toList();
+      });
+}
 
   Stream<List<EventModel>> searchEvents(String query, {
     String? category,

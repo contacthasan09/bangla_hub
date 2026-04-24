@@ -836,7 +836,7 @@ Widget _buildServiceProviderCard(ServiceProviderModel provider, BuildContext con
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  provider.companyName,
+                                  provider.companyName ?? 'Not Provided',
                                   style: GoogleFonts.inter(
                                     fontSize: isTablet ? 14 : 12,
                                     color: Colors.grey.shade700,
@@ -2757,47 +2757,7 @@ class __AddServiceDialogContentState extends State<_AddServiceDialogContent> {
                   icon: Icons.category_rounded,
                   isRequired: true,
                   hintText: 'Choose the main service category',
-              /*    child: DropdownButton<ServiceCategory>(
-                    value: _selectedCategory,
-                    isExpanded: true,
-                    dropdownColor: widget.bgGradient2,
-                    style: TextStyle(
-                      color: widget.textWhite,
-                      fontSize: widget.isTablet ? 18 : 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    underline: SizedBox(),
-                    icon: Icon(
-                      Icons.arrow_drop_down_rounded,
-                      color: widget.textMuted,
-                      size: widget.isTablet ? 32 : 28,
-                    ),
-                    items: ServiceCategory.values.map((category) {
-                      return DropdownMenuItem<ServiceCategory>(
-                        value: category,
-                        child: Row(
-                          children: [
-                            Icon(category.icon, color: widget.primaryRed, size: widget.isTablet ? 22 : 18),
-                            SizedBox(width: widget.isTablet ? 16 : 12),
-                            Text(category.displayName),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedCategory = value;
-                        _updateServiceProviders();
-                      });
-                    },
-                    hint: Text(
-                      'Select Category',
-                      style: TextStyle(
-                        color: widget.textMuted,
-                        fontSize: widget.isTablet ? 18 : 16,
-                      ),
-                    ),
-                  ),   */
+             
                 
 
                 child : DropdownButton<ServiceCategory>(
@@ -2899,41 +2859,7 @@ class __AddServiceDialogContentState extends State<_AddServiceDialogContent> {
                         icon: Icons.work_rounded,
                         isRequired: true,
                         hintText: 'Select the specific service provider type',
-                    /*    child: DropdownButton<String>(
-                          value: _selectedServiceProvider,
-                          isExpanded: true,
-                          dropdownColor: widget.bgGradient2,
-                          style: TextStyle(
-                            color: widget.textWhite,
-                            fontSize: widget.isTablet ? 18 : 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          underline: SizedBox(),
-                          icon: Icon(
-                            Icons.arrow_drop_down_rounded,
-                            color: widget.textMuted,
-                            size: widget.isTablet ? 32 : 28,
-                          ),
-                          items: _availableServiceProviders.map((provider) {
-                            return DropdownMenuItem<String>(
-                              value: provider,
-                              child: Text(provider),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedServiceProvider = value;
-                              _updateSubServiceProviders();
-                            });
-                          },
-                          hint: Text(
-                            'Select Service Provider',
-                            style: TextStyle(
-                              color: widget.textMuted,
-                              fontSize: widget.isTablet ? 18 : 16,
-                            ),
-                          ),
-                        ),  */
+                 
    child : DropdownButton<String>(
   value: _selectedServiceProvider,
   isExpanded: true,
@@ -3015,39 +2941,7 @@ class __AddServiceDialogContentState extends State<_AddServiceDialogContent> {
                         title: 'Sub-Service Provider',
                         icon: Icons.work_outline_rounded,
                         hintText: 'Optional: Choose sub-category if applicable',
-                    /*    child: DropdownButton<String?>(
-                          value: _selectedSubServiceProvider,
-                          isExpanded: true,
-                          dropdownColor: widget.bgGradient2,
-                          style: TextStyle(
-                            color: widget.textWhite,
-                            fontSize: widget.isTablet ? 18 : 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          underline: SizedBox(),
-                          icon: Icon(
-                            Icons.arrow_drop_down_rounded,
-                            color: widget.textMuted,
-                            size: widget.isTablet ? 32 : 28,
-                          ),
-                          items: [
-                            DropdownMenuItem<String?>(
-                              value: null,
-                              child: Text('Select Sub-Service Provider (Optional)'),
-                            ),
-                            ..._availableSubServiceProviders.map((provider) {
-                              return DropdownMenuItem<String?>(
-                                value: provider,
-                                child: Text(provider),
-                              );
-                            }),
-                          ].toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedSubServiceProvider = value;
-                            });
-                          },
-                        ),   */
+                  
 
  child : DropdownButton<String?>(
   value: _selectedSubServiceProvider,
@@ -3607,12 +3501,7 @@ class __AddServiceDialogContentState extends State<_AddServiceDialogContent> {
                                   : Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                    /*    Icon(
-                                          Icons.add_circle_rounded,
-                                          color: Colors.white,
-                                          size: widget.isTablet ? 24 : 20,
-                                        ),
-                                        SizedBox(width: widget.isTablet ? 12 : 10), */
+                                   
                                         Text(
                                           'Add Service',
                                           style: TextStyle(

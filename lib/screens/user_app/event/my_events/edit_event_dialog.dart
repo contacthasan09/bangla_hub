@@ -1,14 +1,20 @@
 // lib/screens/user_app/event/edit_event_dialog.dart
+import 'package:bangla_hub/widgets/common/osm_location_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:bangla_hub/models/event_model.dart';
-import 'package:bangla_hub/widgets/common/osm_location_picker.dart';
+import 'package:bangla_hub/providers/event_provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:bangla_hub/services/cloudinary_service.dart';
 
 class EditEventDialog extends StatefulWidget {
   final EventModel event;
+  final VoidCallback? onSuccess;
 
-  const EditEventDialog({Key? key, required this.event}) : super(key: key);
+  const EditEventDialog({Key? key, required this.event, this.onSuccess}) : super(key: key);
 
   @override
   State<EditEventDialog> createState() => _EditEventDialogState();
@@ -33,6 +39,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
   TimeOfDay? _endTime;
   String? _category;
   bool _isFree = true;
+  bool _isMultiDay = false;
   
   // Location coordinates
   double? _latitude;
@@ -42,6 +49,13 @@ class _EditEventDialogState extends State<EditEventDialog> {
   
   // Ticket prices
   final Map<String, double> _ticketPrices = {};
+  
+  // Banner image
+  XFile? _selectedImage;
+  String? _existingBannerUrl;
+  bool _isImageLoading = false;
+  bool _removeExistingBanner = false;
+  bool _isSaving = false;
 
   // Premium Colors
   final Color _primaryGreen = const Color(0xFF006A4E);
@@ -68,7 +82,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
     _titleController = TextEditingController(text: widget.event.title);
     _organizerController = TextEditingController(text: widget.event.organizer);
     _contactPersonController = TextEditingController(text: widget.event.contactPerson);
-    _contactEmailController = TextEditingController(text: widget.event.contactEmail);
+    _contactEmailController = TextEditingController(text: widget.event.contactEmail ?? '');
     _contactPhoneController = TextEditingController(text: widget.event.contactPhone);
     _locationController = TextEditingController(text: widget.event.location);
     _descriptionController = TextEditingController(text: widget.event.description);
@@ -81,12 +95,13 @@ class _EditEventDialogState extends State<EditEventDialog> {
     _endTime = widget.event.endTime;
     _category = widget.event.category;
     _isFree = widget.event.isFree;
+    _isMultiDay = widget.event.endDate != null;
     _latitude = widget.event.latitude;
     _longitude = widget.event.longitude;
     _selectedState = widget.event.state;
     _selectedCity = widget.event.city;
+    _existingBannerUrl = widget.event.bannerImageUrl;
     
-    // Load existing ticket prices if any
     if (widget.event.ticketPrices != null) {
       _ticketPrices.addAll(widget.event.ticketPrices!);
     }
@@ -106,6 +121,51 @@ class _EditEventDialogState extends State<EditEventDialog> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 600,
+      );
+      
+      if (pickedFile != null && mounted) {
+        final File originalFile = File(pickedFile.path);
+        final int originalSize = await originalFile.length();
+        
+        if (originalSize > 10 * 1024 * 1024) {
+          _showErrorSnackBar('Image is too large (max 10MB)');
+          return;
+        }
+        
+        setState(() {
+          _selectedImage = pickedFile;
+          _removeExistingBanner = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) _showErrorSnackBar('Error picking image: $e');
+    }
+  }
+
+  Future<String?> _uploadNewImage(String eventId) async {
+    if (_selectedImage == null) return null;
+    
+    if (mounted) setState(() => _isImageLoading = true);
+    
+    try {
+      final imageFile = File(_selectedImage!.path);
+      final url = await CloudinaryService.uploadEventBanner(imageFile, eventId);
+      return url;
+    } catch (e) {
+      print('Upload error: $e');
+      return null;
+    } finally {
+      if (mounted) setState(() => _isImageLoading = false);
+    }
+  }
+
   Future<void> _selectDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -120,17 +180,12 @@ class _EditEventDialogState extends State<EditEventDialog> {
               onPrimary: Colors.white,
               onSurface: Colors.black87,
             ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: _primaryGreen,
-              ),
-            ),
           ),
           child: child!,
         );
       },
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() => _eventDate = picked);
     }
   }
@@ -138,7 +193,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
   Future<void> _selectEndDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _endDate ?? _eventDate,
+      initialDate: _endDate ?? _eventDate.add(const Duration(days: 1)),
       firstDate: _eventDate,
       lastDate: _eventDate.add(const Duration(days: 30)),
       builder: (context, child) {
@@ -154,7 +209,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
         );
       },
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() => _endDate = picked);
     }
   }
@@ -171,18 +226,12 @@ class _EditEventDialogState extends State<EditEventDialog> {
               onPrimary: Colors.white,
               onSurface: Colors.black87,
             ),
-            timePickerTheme: TimePickerThemeData(
-              backgroundColor: Colors.white,
-              hourMinuteTextColor: _primaryGreen,
-              dialHandColor: _primaryGreen,
-              dialBackgroundColor: _lightGreen,
-            ),
           ),
           child: child!,
         );
       },
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() => _startTime = picked);
     }
   }
@@ -204,7 +253,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
         );
       },
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() => _endTime = picked);
     }
   }
@@ -212,7 +261,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
   void _addTicket() {
     final type = _ticketTypeController.text.trim();
     final priceText = _ticketPriceController.text.trim();
-    if (type.isNotEmpty && priceText.isNotEmpty) {
+    if (type.isNotEmpty && priceText.isNotEmpty && mounted) {
       final price = double.tryParse(priceText);
       if (price != null && price > 0) {
         setState(() {
@@ -225,9 +274,283 @@ class _EditEventDialogState extends State<EditEventDialog> {
   }
 
   void _removeTicket(String type) {
-    setState(() {
-      _ticketPrices.remove(type);
-    });
+    if (mounted) {
+      setState(() {
+        _ticketPrices.remove(type);
+      });
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: _coralRed,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: _primaryGreen,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _saveChanges() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    setState(() => _isSaving = true);
+    
+    try {
+      String? newBannerUrl = _existingBannerUrl;
+      
+      // Upload new image if selected
+      if (_selectedImage != null) {
+        final eventId = widget.event.id;
+        newBannerUrl = await _uploadNewImage(eventId);
+        if (newBannerUrl == null && mounted) {
+          _showErrorSnackBar('Failed to upload new banner image');
+          setState(() => _isSaving = false);
+          return;
+        }
+      } else if (_removeExistingBanner) {
+        newBannerUrl = null;
+      }
+      
+      // Handle nullable email - convert empty string to null
+      final String? contactEmail = _contactEmailController.text.trim().isEmpty
+          ? null
+          : _contactEmailController.text.trim();
+      
+      final updatedEvent = widget.event.copyWith(
+        title: _titleController.text.trim(),
+        organizer: _organizerController.text.trim(),
+        contactPerson: _contactPersonController.text.trim(),
+        contactEmail: contactEmail,
+        contactPhone: _contactPhoneController.text.trim(),
+        eventDate: _eventDate,
+        endDate: _isMultiDay ? _endDate : null,
+        startTime: _startTime,
+        endTime: _endTime,
+        location: _locationController.text.trim(),
+        description: _descriptionController.text.trim(),
+        category: _category!,
+        isFree: _isFree,
+        ticketPrices: _isFree ? null : Map.from(_ticketPrices),
+        latitude: _latitude,
+        longitude: _longitude,
+        state: _selectedState,
+        city: _selectedCity,
+        bannerImageUrl: newBannerUrl,
+        updatedAt: DateTime.now(),
+      );
+      
+      // Call EventProvider to update Firestore
+      final eventProvider = Provider.of<EventProvider>(context, listen: false);
+      await eventProvider.updateEvent(updatedEvent);
+      
+      if (mounted) {
+        _showSuccessSnackBar('Event updated successfully!');
+        widget.onSuccess?.call();
+        Navigator.pop(context, updatedEvent);
+      }
+    } catch (e) {
+      print('Error saving event: $e');
+      if (mounted) _showErrorSnackBar('Failed to update event. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Widget _buildBannerImageSection() {
+    final isTablet = MediaQuery.of(context).size.width >= 600;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Event Banner',
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: _primaryGreen,
+          ),
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: _pickImage,
+          child: Container(
+            width: double.infinity,
+            height: isTablet ? 150 : 120,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                colors: [_lightGreen, Colors.white],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(color: _primaryGreen.withOpacity(0.3), width: 1.5),
+            ),
+            child: _selectedImage != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.file(
+                          File(_selectedImage!.path),
+                          fit: BoxFit.cover,
+                        ),
+                        if (_isImageLoading)
+                          Container(
+                            color: Colors.black54,
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  )
+                : _existingBannerUrl != null && !_removeExistingBanner
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.network(
+                              _existingBannerUrl!,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  color: Colors.grey[100],
+                                  child: const Center(
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return _buildImagePlaceholder(isTablet);
+                              },
+                            ),
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: GestureDetector(
+                                onTap: () {
+                                  if (mounted) {
+                                    setState(() {
+                                      _removeExistingBanner = true;
+                                      _existingBannerUrl = null;
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _buildImagePlaceholder(isTablet),
+          ),
+        ),
+        if (_selectedImage != null || (_existingBannerUrl != null && !_removeExistingBanner))
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  if (mounted) {
+                    setState(() {
+                      _selectedImage = null;
+                      if (_existingBannerUrl != null) {
+                        _removeExistingBanner = true;
+                      }
+                    });
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _coralRed.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.delete_outline, size: 12, color: _coralRed),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Remove Banner',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: _coralRed,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildImagePlaceholder(bool isTablet) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.add_photo_alternate_rounded,
+            size: isTablet ? 36 : 28,
+            color: _primaryGreen.withOpacity(0.5),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tap to add banner',
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: _primaryGreen.withOpacity(0.7),
+            ),
+          ),
+          Text(
+            '(Optional)',
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildTicketPricesSection() {
@@ -248,7 +571,6 @@ class _EditEventDialogState extends State<EditEventDialog> {
           ),
           child: Column(
             children: [
-              // Existing tickets
               if (_ticketPrices.isNotEmpty) ...[
                 ..._ticketPrices.entries.map((entry) {
                   return Container(
@@ -311,7 +633,6 @@ class _EditEventDialogState extends State<EditEventDialog> {
                 const SizedBox(height: 8),
               ],
               
-              // Add new ticket row
               Row(
                 children: [
                   Expanded(
@@ -327,7 +648,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                         controller: _ticketTypeController,
                         style: GoogleFonts.inter(fontSize: 12),
                         decoration: InputDecoration(
-                          hintText: 'Type',
+                          hintText: 'Type (e.g., VIP)',
                           hintStyle: GoogleFonts.inter(fontSize: 11, color: Colors.grey[400]),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -385,32 +706,36 @@ class _EditEventDialogState extends State<EditEventDialog> {
   }
 
   Widget _buildLocationPickerField() {
+    final isTablet = MediaQuery.of(context).size.width >= 600;
+    
     return GestureDetector(
       onTap: () async {
-        final result = await showModalBottomSheet(
+        await showModalBottomSheet(
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
-          builder: (context) => OSMLocationPicker(
+          builder: (context) => GoogleMapsLocationPicker(
             initialLatitude: _latitude,
             initialLongitude: _longitude,
             initialAddress: _locationController.text,
             initialState: _selectedState,
             initialCity: _selectedCity,
             onLocationSelected: (lat, lng, address, state, city) {
-              setState(() {
-                _latitude = lat;
-                _longitude = lng;
-                _selectedState = state;
-                _selectedCity = city;
-                _locationController.text = address;
-              });
+              if (mounted) {
+                setState(() {
+                  _latitude = lat;
+                  _longitude = lng;
+                  _selectedState = state;
+                  _selectedCity = city;
+                  _locationController.text = address;
+                });
+              }
             },
           ),
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(isTablet ? 14 : 12),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [_coralRed.withOpacity(0.1), Colors.white],
@@ -432,7 +757,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
               ),
               child: const Icon(Icons.map_rounded, color: Colors.white, size: 16),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,17 +774,17 @@ class _EditEventDialogState extends State<EditEventDialog> {
                   Text(
                     _locationController.text.isEmpty ? 'Tap to select location' : _locationController.text,
                     style: GoogleFonts.inter(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: _locationController.text.isEmpty ? Colors.grey[500] : Colors.black87,
                       fontWeight: FontWeight.w500,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, size: 12, color: _coralRed),
+            Icon(Icons.arrow_forward_ios, size: 14, color: _coralRed),
           ],
         ),
       ),
@@ -469,7 +794,11 @@ class _EditEventDialogState extends State<EditEventDialog> {
   Widget _buildCategoryChip(Map<String, dynamic> category) {
     final isSelected = _category == category['value'];
     return GestureDetector(
-      onTap: () => setState(() => _category = category['value']),
+      onTap: () {
+        if (mounted) {
+          setState(() => _category = category['value']);
+        }
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -583,6 +912,9 @@ class _EditEventDialogState extends State<EditEventDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Banner Image Section
+                      _buildBannerImageSection(),
+                      
                       // Title
                       Container(
                         height: 44,
@@ -600,7 +932,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                           controller: _titleController,
                           style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
                           decoration: InputDecoration(
-                            labelText: 'Event Title',
+                            labelText: 'Event Title *',
                             labelStyle: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: _primaryGreen),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -616,7 +948,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                             ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
-                          validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                          validator: (value) => value?.isEmpty ?? true ? 'Event title is required' : null,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -638,7 +970,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                           controller: _organizerController,
                           style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
                           decoration: InputDecoration(
-                            labelText: 'Organizer',
+                            labelText: 'Organizer *',
                             labelStyle: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: _sapphireBlue),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -654,7 +986,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                             ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
-                          validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                          validator: (value) => value?.isEmpty ?? true ? 'Organizer name is required' : null,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -669,7 +1001,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                                 controller: _contactPersonController,
                                 style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
                                 decoration: InputDecoration(
-                                  labelText: 'Contact Person',
+                                  labelText: 'Contact Person *',
                                   labelStyle: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: _amethystPurple),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
@@ -685,7 +1017,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                                   ),
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                 ),
-                                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                                validator: (value) => value?.isEmpty ?? true ? 'Contact person is required' : null,
                               ),
                             ),
                           ),
@@ -696,8 +1028,9 @@ class _EditEventDialogState extends State<EditEventDialog> {
                               child: TextFormField(
                                 controller: _contactEmailController,
                                 style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
+                                keyboardType: TextInputType.emailAddress,
                                 decoration: InputDecoration(
-                                  labelText: 'Email',
+                                  labelText: 'Email (Optional)',
                                   labelStyle: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: _sapphireBlue),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
@@ -713,7 +1046,6 @@ class _EditEventDialogState extends State<EditEventDialog> {
                                   ),
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                 ),
-                                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
                               ),
                             ),
                           ),
@@ -729,7 +1061,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                           style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
                           keyboardType: TextInputType.phone,
                           decoration: InputDecoration(
-                            labelText: 'Phone',
+                            labelText: 'Phone *',
                             labelStyle: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: _coralRed),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -745,14 +1077,14 @@ class _EditEventDialogState extends State<EditEventDialog> {
                             ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
-                          validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                          validator: (value) => value?.isEmpty ?? true ? 'Phone number is required' : null,
                         ),
                       ),
                       const SizedBox(height: 16),
                       
                       // Category Section
                       Text(
-                        'Category',
+                        'Category *',
                         style: GoogleFonts.poppins(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -766,6 +1098,59 @@ class _EditEventDialogState extends State<EditEventDialog> {
                         children: _categories.map((cat) => _buildCategoryChip(cat)).toList(),
                       ),
                       const SizedBox(height: 16),
+                      
+                      // Multi-day Toggle
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [_goldAccent.withOpacity(0.1), Colors.white],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: _goldAccent.withOpacity(0.3), width: 1),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.calendar_month_rounded, color: _goldAccent, size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Multi-Day Event',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: _goldAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Switch(
+                              value: _isMultiDay,
+                              onChanged: (value) {
+                                if (mounted) {
+                                  setState(() {
+                                    _isMultiDay = value;
+                                    if (!value) {
+                                      _endDate = null;
+                                      _endTime = null;
+                                    }
+                                  });
+                                }
+                              },
+                              activeColor: Colors.white,
+                              activeTrackColor: _primaryGreen,
+                              inactiveThumbColor: Colors.white,
+                              inactiveTrackColor: Colors.grey[400],
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       
                       // Date & Time
                       Text(
@@ -803,29 +1188,30 @@ class _EditEventDialogState extends State<EditEventDialog> {
                       const SizedBox(height: 8),
                       
                       // End Date (if multi-day)
-                      GestureDetector(
-                        onTap: _selectEndDate,
-                        child: Container(
-                          height: 44,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey[300]!),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.calendar_today_rounded, size: 16, color: _emeraldGreen),
-                              const SizedBox(width: 10),
-                              Text(
-                                _endDate != null
-                                    ? 'End: ${DateFormat('MMM d, yyyy').format(_endDate!)}'
-                                    : 'End Date (Optional)',
-                                style: GoogleFonts.inter(fontSize: 13),
-                              ),
-                            ],
+                      if (_isMultiDay)
+                        GestureDetector(
+                          onTap: _selectEndDate,
+                          child: Container(
+                            height: 44,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.calendar_today_rounded, size: 16, color: _emeraldGreen),
+                                const SizedBox(width: 10),
+                                Text(
+                                  _endDate != null
+                                      ? 'End: ${DateFormat('MMM d, yyyy').format(_endDate!)}'
+                                      : 'End Date (Recommended)',
+                                  style: GoogleFonts.inter(fontSize: 13),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
                       const SizedBox(height: 8),
                       
                       // Start Time
@@ -901,7 +1287,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                           maxLines: 3,
                           style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, height: 1.4),
                           decoration: InputDecoration(
-                            labelText: 'Description',
+                            labelText: 'Description *',
                             labelStyle: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: _goldAccent),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -918,7 +1304,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                             alignLabelWithHint: true,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
-                          validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                          validator: (value) => value?.isEmpty ?? true ? 'Description is required' : null,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -954,13 +1340,16 @@ class _EditEventDialogState extends State<EditEventDialog> {
                             ),
                             Switch(
                               value: _isFree,
-                              onChanged: (value) => setState(() => _isFree = value),
+                              onChanged: (value) {
+                                if (mounted) {
+                                  setState(() => _isFree = value);
+                                }
+                              },
                               activeColor: Colors.white,
                               activeTrackColor: _primaryGreen,
                               inactiveThumbColor: Colors.white,
                               inactiveTrackColor: Colors.grey[400],
                               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            //  visualDensity: VisualDensity.compact,
                             ),
                           ],
                         ),
@@ -998,7 +1387,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _coralRed,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         side: BorderSide(color: _coralRed, width: 1.5),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -1007,7 +1396,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
                       child: Text(
                         'Cancel',
                         style: GoogleFonts.poppins(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1016,34 +1405,10 @@ class _EditEventDialogState extends State<EditEventDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          final updatedEvent = widget.event.copyWith(
-                            title: _titleController.text,
-                            organizer: _organizerController.text,
-                            contactPerson: _contactPersonController.text,
-                            contactEmail: _contactEmailController.text,
-                            contactPhone: _contactPhoneController.text,
-                            eventDate: _eventDate,
-                            endDate: _endDate,
-                            startTime: _startTime,
-                            endTime: _endTime,
-                            location: _locationController.text,
-                            description: _descriptionController.text,
-                            category: _category!,
-                            isFree: _isFree,
-                            ticketPrices: _isFree ? null : _ticketPrices,
-                            latitude: _latitude,
-                            longitude: _longitude,
-                            state: _selectedState,
-                            city: _selectedCity,
-                          );
-                          Navigator.pop(context, updatedEvent);
-                        }
-                      },
+                      onPressed: _isSaving ? null : _saveChanges,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _primaryGreen,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -1053,14 +1418,24 @@ class _EditEventDialogState extends State<EditEventDialog> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.save_rounded, size: 16 ,color: Colors.white,),
-                          const SizedBox(width: 6),
+                          if (_isSaving)
+                            const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          else
+                            const Icon(Icons.save_rounded, size: 18, color: Colors.white),
+                          const SizedBox(width: 8),
                           Text(
-                            'Save',
+                            _isSaving ? 'Saving...' : 'Save Changes',
                             style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: Colors.white,
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
                           ),
                         ],

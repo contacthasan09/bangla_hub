@@ -1244,117 +1244,6 @@ class _RegisterScreenState extends State<RegisterScreen>
     );
   }
 
-/*  Widget _buildLuxuryTermsAndConditions() {
-    return GestureDetector(
-      onTap: _toggleTermsAccepted,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Checkbox
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            width: 22,
-            height: 22,
-            margin: const EdgeInsets.only(top: 2),
-            decoration: BoxDecoration(
-              color: _isTermsAccepted 
-                  ? _bangladeshGreen 
-                  : _bangladeshGreen.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: _isTermsAccepted 
-                    ? _bangladeshGreen 
-                    : _bangladeshGreen.withOpacity(0.3),
-                width: _isTermsAccepted ? 0 : 1.5,
-              ),
-              boxShadow: _isTermsAccepted 
-                  ? [
-                      BoxShadow(
-                        color: _bangladeshGreen.withOpacity(0.4),
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Center(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: _isTermsAccepted
-                    ? Icon(
-                        Icons.check_rounded,
-                        size: 16,
-                        color: Colors.white,
-                        key: const ValueKey('checked'),
-                      )
-                    : const SizedBox.shrink(key: ValueKey('unchecked')),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: Colors.grey[700],
-                  height: 1.5,
-                  letterSpacing: 0.3,
-                ),
-                children: [
-                  const TextSpan(text: 'By registering, you agree to our '),
-                  WidgetSpan(
-                    child: GestureDetector(
-                      onTap: () {
-                        // Navigate to Terms of Service
-                        // _navigateToTerms();
-                      },
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: Text(
-                          'Terms of Service',
-                          style: TextStyle(
-                            color: _bangladeshGreen,
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const TextSpan(text: ' and '),
-                  WidgetSpan(
-                    child: GestureDetector(
-                      onTap: () {
-                        // Navigate to Privacy Policy
-                        // _navigateToPrivacyPolicy();
-                      },
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: Text(
-                          'Privacy Policy',
-                          style: TextStyle(
-                            color: _bangladeshGreen,
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  */
-  
-
   Widget _buildLuxuryTermsAndConditions() {
   return GestureDetector(
     onTap: _toggleTermsAccepted,
@@ -2256,55 +2145,6 @@ void _navigateToPrivacyPolicy() {
     );
   }
 
-/*  Future<void> _register(BuildContext context, AuthProvider authProvider) async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        await authProvider.signUp(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-          firstName: _firstNameController.text.trim(),
-          lastName: _lastNameController.text.trim(),
-          phoneNumber: _phoneController.text.trim(),
-          location: _selectedLocation!,
-          profileImageFile: _profileImageFile,
-          country: _selectedCountry?.name,
-          countryCode: _selectedCountry?.countryCode,
-          latitude: _latitude,
-          longitude: _longitude,
-          context: context,
-        );
-
-        // Don't show dialog here - it's now handled in the signUp method
-      } catch (e) {
-        if (!mounted) return;
-        
-        String errorMessage = 'Registration failed. Please try again.';
-        
-        if (e.toString().contains('email-already-in-use')) {
-          errorMessage = 'Email already in use. Please use a different email or login.';
-        } else if (e.toString().contains('too-many-requests')) {
-          errorMessage = 'Too many attempts. Please try again later.';
-        } else if (e.toString().contains('weak-password')) {
-          errorMessage = 'Password is too weak. Please use a stronger password.';
-        } else if (e.toString().contains('network-request-failed')) {
-          errorMessage = 'Network error. Please check your internet connection.';
-        } else if (e.toString().isNotEmpty) {
-          errorMessage = e.toString();
-        }
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: _bangladeshRed,
-            content: Text(errorMessage),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
-
-*/
-
 Future<void> _register(BuildContext context, AuthProvider authProvider) async {
   if (_formKey.currentState!.validate()) {
     // Show loading dialog
@@ -2314,7 +2154,7 @@ Future<void> _register(BuildContext context, AuthProvider authProvider) async {
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          padding: EdgeInsets.all(30),
+          padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [_bangladeshGreen, _bangladeshRed],
@@ -2326,14 +2166,14 @@ Future<void> _register(BuildContext context, AuthProvider authProvider) async {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(
-                color: _goldAccent,
+              const CircularProgressIndicator(
+                color: Colors.white,
                 strokeWidth: 3,
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Text(
                 'Creating your account...',
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -2351,17 +2191,15 @@ Future<void> _register(BuildContext context, AuthProvider authProvider) async {
       // Upload profile image to Cloudinary if selected
       if (_profileImageFile != null) {
         print('📸 Uploading profile image to Cloudinary...');
-
-  String userId = CloudinaryService.sanitizeEmailForFolder(
-    _emailController.text.trim()
-  );
-
-
-
-  profileImageUrl = await CloudinaryService.uploadImage(
-    _profileImageFile!,
-    customFolder: 'profile_images/$userId',
-  );
+        
+        String userId = CloudinaryService.sanitizeEmailForFolder(
+          _emailController.text.trim()
+        );
+        
+        profileImageUrl = await CloudinaryService.uploadImage(
+          _profileImageFile!,
+          customFolder: 'profile_images/$userId',
+        );
         if (profileImageUrl != null) {
           print('✅ Profile image uploaded: $profileImageUrl');
         } else {
@@ -2385,29 +2223,17 @@ Future<void> _register(BuildContext context, AuthProvider authProvider) async {
         context: context,
       );
       
-      // Close loading dialog
-      if (mounted) {
+      // Close loading dialog if still open
+      if (mounted && Navigator.canPop(context)) {
         Navigator.pop(context);
       }
       
-      // ✅ NAVIGATE TO WELCOME SCREEN
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => WelcomeScreen(
-              onComplete: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => HomeScreen()),
-                );
-              },
-            ),
-          ),
-        );
-      }
+      // ✅ DO NOT NAVIGATE - AuthProvider will show verification dialog
+      // The user will stay on the verification dialog until they verify or go back
       
     } catch (e) {
       // Close loading dialog
-      if (mounted) {
+      if (mounted && Navigator.canPop(context)) {
         Navigator.pop(context);
       }
       
@@ -2423,17 +2249,17 @@ Future<void> _register(BuildContext context, AuthProvider authProvider) async {
         errorMessage = 'Network error. Please check your internet connection.';
       }
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: _bangladeshRed,
-          content: Text(errorMessage),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: _bangladeshRed,
+            content: Text(errorMessage),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 }
-
-
 
 }

@@ -43,34 +43,33 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
   // Premium Color Palette
-  final Color _primaryRed = Color(0xFFD32F2F);
-  final Color _primaryGreen = Color(0xFF2E7D32);
-  final Color _darkGreen = Color(0xFF1B5E20);
-  final Color _goldAccent = Color(0xFFFFB300);
-  final Color _coralRed = Color(0xFFC62828);
-  final Color _mintGreen = Color(0xFF2E7D32);
-  final Color _softGold = Color(0xFFFF8F00);
-  final Color _emeraldGreen = Color(0xFF1B5E20);
-  final Color _sapphireBlue = Color(0xFF1565C0);
-  final Color _amethystPurple = Color(0xFF6A1B9A);
-  final Color _deepRed = Color(0xFFB71C1C);
-  final Color _lightGreenBg = Color(0x80E8F5E9);
-  final Color _lightGreen = Color(0xFFE8F5E9);
-  final Color _lightRed = Color(0xFFFFEBEE);
-  final Color _lightYellow = Color(0xFFFFF3E0);
-  final Color _lightBlue = Color(0xFFE3F2FD);
-  final Color _creamWhite = Color(0xFFFFF9E6);
-  final Color _borderLight = Color(0xFFE0E7E9);
-  final Color _shadowColor = Color(0x1A000000);
-  final Color _textPrimary = Color(0xFF1A2B3C);
-  final Color _textSecondary = Color(0xFF5D6D7E);
-  final Color _textLight = Color(0xFF6C757D);
-  final Color _successGreen = Color(0xFF2E7D32);
-  final Color _infoBlue = Color(0xFF1565C0);
-  final Color _badgeGold = Color(0xFFFF8F00);
+  final Color _primaryRed = const Color(0xFFD32F2F);
+  final Color _primaryGreen = const Color(0xFF2E7D32);
+  final Color _darkGreen = const Color(0xFF1B5E20);
+  final Color _goldAccent = const Color(0xFFFFB300);
+  final Color _coralRed = const Color(0xFFC62828);
+  final Color _mintGreen = const Color(0xFF2E7D32);
+  final Color _softGold = const Color(0xFFFF8F00);
+  final Color _emeraldGreen = const Color(0xFF1B5E20);
+  final Color _sapphireBlue = const Color(0xFF1565C0);
+  final Color _amethystPurple = const Color(0xFF6A1B9A);
+  final Color _deepRed = const Color(0xFFB71C1C);
+  final Color _lightGreenBg = const Color(0x80E8F5E9);
+  final Color _lightGreen = const Color(0xFFE8F5E9);
+  final Color _lightRed = const Color(0xFFFFEBEE);
+  final Color _lightYellow = const Color(0xFFFFF3E0);
+  final Color _lightBlue = const Color(0xFFE3F2FD);
+  final Color _creamWhite = const Color(0xFFFFF9E6);
+  final Color _borderLight = const Color(0xFFE0E7E9);
+  final Color _shadowColor = const Color(0x1A000000);
+  final Color _textPrimary = const Color(0xFF1A2B3C);
+  final Color _textSecondary = const Color(0xFF5D6D7E);
+  final Color _textLight = const Color(0xFF6C757D);
+  final Color _successGreen = const Color(0xFF2E7D32);
+  final Color _infoBlue = const Color(0xFF1565C0);
+  final Color _badgeGold = const Color(0xFFFF8F00);
 
-  final Color _lightGreen50 = Color(0x80E8F5E9);   // Light green with 50% opacity
-
+  final Color _lightGreen50 = const Color(0x80E8F5E9);   // Light green with 50% opacity
 
   @override
   void initState() {
@@ -228,7 +227,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
-          padding: EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isError ? [_primaryRed, _deepRed] : [_primaryGreen, _darkGreen],
@@ -240,7 +239,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
               BoxShadow(
                 color: Colors.black.withOpacity(0.2),
                 blurRadius: 10,
-                offset: Offset(0, 5),
+                offset: const Offset(0, 5),
               ),
             ],
           ),
@@ -251,7 +250,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                 color: Colors.white,
                 size: 24,
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   message,
@@ -268,8 +267,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(16),
-        duration: Duration(seconds: 2),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -369,7 +368,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
             ),
           ),
           
-          // Back button
+          // Back button and Like button - Both with SAME SIZE containers
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             left: isTablet ? 20 : 16,
@@ -377,14 +376,14 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
               width: isTablet ? 44 : 40,
               height: isTablet ? 44 : 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withOpacity(0.95),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.white, width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.15),
                     blurRadius: 8,
-                    offset: Offset(0, 3),
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
@@ -401,31 +400,35 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
             ),
           ),
           
-          // Interest button
+          // Interest button - SAME SIZE container as back button
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             right: isTablet ? 20 : 16,
             child: Container(
+              width: isTablet ? 44 : 40,
+              height: isTablet ? 44 : 40,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.white.withOpacity(0.95),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white, width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: _shadowColor,
+                    color: Colors.black.withOpacity(0.15),
                     blurRadius: 8,
-                    offset: Offset(0, 3),
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
               child: IconButton(
                 onPressed: _isLoading ? null : _toggleInterest,
+                padding: EdgeInsets.zero,
+                splashRadius: isTablet ? 22 : 18,
                 icon: _isLoading
                     ? SizedBox(
                         width: isTablet ? 22 : 20,
                         height: isTablet ? 22 : 20,
-                        child: CircularProgressIndicator(
+                        child: const CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: _primaryGreen,
                         ),
                       )
                     : Icon(
@@ -462,7 +465,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                       BoxShadow(
                         color: _primaryRed.withOpacity(0.3),
                         blurRadius: 8,
-                        offset: Offset(0, 3),
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
@@ -486,12 +489,12 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                     ],
                   ),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 
                 // Multi-Day Badge on Banner
                 if (widget.event.isMultiDay)
                   Padding(
-                    padding: EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: 8),
                     child: Container(
                       padding: EdgeInsets.symmetric(
                         horizontal: isTablet ? 12 : 10,
@@ -511,7 +514,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                             color: Colors.white,
                             size: isTablet ? 16 : 14,
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
                             'Multi-Day Event',
                             style: GoogleFonts.inter(
@@ -533,8 +536,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                     shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.5),
+                      const Shadow(
+                        color: Colors.black38,
                         blurRadius: 10,
                         offset: Offset(0, 3),
                       ),
@@ -588,7 +591,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
               BoxShadow(
                 color: Colors.black.withOpacity(0.3),
                 blurRadius: 30,
-                offset: Offset(0, -10),
+                offset: const Offset(0, -10),
               ),
             ],
           ),
@@ -610,7 +613,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                     ),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 
                 // Premium Header
                 Row(
@@ -633,7 +636,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                         size: isTablet ? 28 : 24,
                       ),
                     ),
-                    SizedBox(width: 16),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -646,7 +649,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                               color: Colors.white,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             'Share this event with friends',
                             style: GoogleFonts.inter(
@@ -689,7 +692,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                     _buildPremiumShareOption(
                       icon: Icons.text_fields_rounded,
                       label: 'Text',
-                      gradientColors: [_sapphireBlue, Color(0xFF0D47A1)],
+                      gradientColors: [_sapphireBlue, const Color(0xFF0D47A1)],
                       onTap: () {
                         Navigator.pop(context);
                         _shareEventAsText();
@@ -700,7 +703,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                     _buildPremiumShareOption(
                       icon: Icons.chat_rounded,
                       label: 'WhatsApp',
-                      gradientColors: [_primaryGreen, Color(0xFF0D3B1A)],
+                      gradientColors: [_primaryGreen, const Color(0xFF0D3B1A)],
                       onTap: () {
                         Navigator.pop(context);
                         _shareToWhatsApp();
@@ -711,7 +714,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                     _buildPremiumShareOption(
                       icon: Icons.facebook_rounded,
                       label: 'Facebook',
-                      gradientColors: [_sapphireBlue, Color(0xFF002171)],
+                      gradientColors: [_sapphireBlue, const Color(0xFF002171)],
                       onTap: () {
                         Navigator.pop(context);
                         _shareToFacebookFeed();
@@ -722,7 +725,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen>
                     _buildPremiumShareOption(
                       icon: Icons.copy_rounded,
                       label: 'Copy',
-                      gradientColors: [_amethystPurple, Color(0xFF4A148C)],
+                      gradientColors: [_amethystPurple, const Color(0xFF4A148C)],
                       onTap: () async {
                         final text = '''
 🎉 ${widget.event.title} 🎉
@@ -775,7 +778,7 @@ Shared via Bangla Hub App.
                             BoxShadow(
                               color: Colors.black.withOpacity(0.2),
                               blurRadius: 15,
-                              offset: Offset(0, 8),
+                              offset: const Offset(0, 8),
                             ),
                           ],
                         ),
@@ -836,7 +839,7 @@ Shared via Bangla Hub App.
               BoxShadow(
                 color: gradientColors.first.withOpacity(0.3),
                 blurRadius: 10,
-                offset: Offset(0, 5),
+                offset: const Offset(0, 5),
               ),
             ],
           ),
@@ -1067,7 +1070,7 @@ Shared via Bangla Hub App.
                     ),
                     pw.SizedBox(height: 12),
                     _buildPDFInfoRow('Contact Person:', widget.event.contactPerson, font, boldFont),
-                    _buildPDFInfoRow('Email:', widget.event.contactEmail, font, boldFont),
+                    _buildPDFInfoRow('Email:', widget.event.contactEmail ?? 'Not provided', font, boldFont),
                     _buildPDFInfoRow('Phone:', widget.event.contactPhone, font, boldFont),
                   ],
                 ),
@@ -1239,8 +1242,8 @@ _Download Bangla Hub App for more details!_ 📱
 ''';
     
     final url = 'whatsapp://send?text=${Uri.encodeComponent(text)}';
-    if (await canLaunch(url)) {
-      await launch(url);
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
     } else {
       if (mounted) {
         _showPremiumSnackBar('WhatsApp not installed 📱', isError: true);
@@ -1366,7 +1369,7 @@ Shared via Bangla Hub App. Download now! 📲
           BoxShadow(
             color: gradientColors.first.withOpacity(0.1),
             blurRadius: 12,
-            offset: Offset(0, 5),
+            offset: const Offset(0, 5),
             spreadRadius: -2,
           ),
         ],
@@ -1387,7 +1390,7 @@ Shared via Bangla Hub App. Download now! 📲
                 BoxShadow(
                   color: gradientColors.first.withOpacity(0.3),
                   blurRadius: 8,
-                  offset: Offset(0, 3),
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
@@ -1412,7 +1415,7 @@ Shared via Bangla Hub App. Download now! 📲
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   value,
                   style: GoogleFonts.poppins(
@@ -1486,7 +1489,7 @@ Shared via Bangla Hub App. Download now! 📲
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       value,
                       style: GoogleFonts.poppins(
@@ -1534,7 +1537,7 @@ Shared via Bangla Hub App. Download now! 📲
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
         floatingActionButton: ScaleTransition(
-          scale: AlwaysStoppedAnimation(1.0),
+          scale: const AlwaysStoppedAnimation(1.0),
           child: GestureDetector(
             onTap: _isGeneratingPDF ? null : _showPremiumShareOptions,
             child: Container(
@@ -1542,20 +1545,20 @@ Shared via Bangla Hub App. Download now! 📲
               height: isTablet ? 64 : 56,
               decoration: BoxDecoration(
                 gradient: _isGeneratingPDF
-                    ? LinearGradient(colors: [Colors.grey.shade300, Colors.grey.shade400])
+                    ? const LinearGradient(colors: [Colors.grey, Colors.grey])
                     : LinearGradient(colors: [_primaryRed, _primaryGreen]),
                 borderRadius: BorderRadius.circular(isTablet ? 22 : 18),
                 boxShadow: [
                   BoxShadow(
                     color: _primaryRed.withOpacity(0.3),
                     blurRadius: 20,
-                    offset: Offset(0, 10),
+                    offset: const Offset(0, 10),
                   ),
                 ],
                 border: Border.all(color: Colors.white, width: 2),
               ),
               child: _isGeneratingPDF
-                  ? Padding(
+                  ? const Padding(
                       padding: EdgeInsets.all(16),
                       child: CircularProgressIndicator(
                         color: Colors.white,
@@ -1626,7 +1629,7 @@ Shared via Bangla Hub App. Download now! 📲
                                           BoxShadow(
                                             color: _successGreen.withOpacity(0.3),
                                             blurRadius: 5,
-                                            offset: Offset(0, 2),
+                                            offset: const Offset(0, 2),
                                           ),
                                         ],
                                       ),
@@ -1673,7 +1676,7 @@ Shared via Bangla Hub App. Download now! 📲
                                               ? Colors.grey.withOpacity(0.2)
                                               : _successGreen.withOpacity(0.3),
                                           blurRadius: 5,
-                                          offset: Offset(0, 2),
+                                          offset: const Offset(0, 2),
                                         ),
                                       ],
                                     ),
@@ -1730,7 +1733,7 @@ Shared via Bangla Hub App. Download now! 📲
                                             BoxShadow(
                                               color: _shadowColor,
                                               blurRadius: 4,
-                                              offset: Offset(0, 2),
+                                              offset: const Offset(0, 2),
                                             ),
                                           ],
                                         ),
@@ -1773,7 +1776,7 @@ Shared via Bangla Hub App. Download now! 📲
                                         BoxShadow(
                                           color: _shadowColor,
                                           blurRadius: 4,
-                                          offset: Offset(0, 2),
+                                          offset: const Offset(0, 2),
                                         ),
                                       ],
                                     ),
@@ -1856,7 +1859,7 @@ Shared via Bangla Hub App. Download now! 📲
                                       BoxShadow(
                                         color: _shadowColor,
                                         blurRadius: 8,
-                                        offset: Offset(0, 4),
+                                        offset: const Offset(0, 4),
                                       ),
                                     ],
                                   ),
@@ -1888,7 +1891,7 @@ Shared via Bangla Hub App. Download now! 📲
                                       BoxShadow(
                                         color: _shadowColor,
                                         blurRadius: 8,
-                                        offset: Offset(0, 4),
+                                        offset: const Offset(0, 4),
                                       ),
                                     ],
                                   ),
@@ -1904,9 +1907,11 @@ Shared via Bangla Hub App. Download now! 📲
                                       _buildPremiumContactItem(
                                         icon: Icons.email_rounded,
                                         title: 'Email',
-                                        value: widget.event.contactEmail,
+                                        value: widget.event.contactEmail ?? 'Not provided',
                                         isTablet: isTablet,
-                                        onTap: () => _launchEmail(widget.event.contactEmail),
+                                        onTap: widget.event.contactEmail != null 
+                                            ? () => _launchEmail(widget.event.contactEmail!)
+                                            : null,
                                       ),
                                       SizedBox(height: isTablet ? 14 : 12),
                                       _buildPremiumContactItem(
@@ -1938,7 +1943,7 @@ Shared via Bangla Hub App. Download now! 📲
                                         BoxShadow(
                                           color: _shadowColor,
                                           blurRadius: 8,
-                                          offset: Offset(0, 4),
+                                          offset: const Offset(0, 4),
                                         ),
                                       ],
                                     ),
@@ -2043,7 +2048,7 @@ Shared via Bangla Hub App. Download now! 📲
                                             BoxShadow(
                                               color: _primaryGreen.withOpacity(0.3),
                                               blurRadius: 8,
-                                              offset: Offset(0, 4),
+                                              offset: const Offset(0, 4),
                                             ),
                                           ],
                                         ),
@@ -2068,7 +2073,7 @@ Shared via Bangla Hub App. Download now! 📲
                                                 color: _primaryGreen,
                                               ),
                                             ),
-                                            SizedBox(height: isTablet ? 4 : 2),
+                                            const SizedBox(height: 4),
                                             Text(
                                               'No tickets required - Join for free!',
                                               style: GoogleFonts.inter(
@@ -2114,7 +2119,7 @@ Shared via Bangla Hub App. Download now! 📲
                                           BoxShadow(
                                             color: _primaryRed.withOpacity(0.3),
                                             blurRadius: 8,
-                                            offset: Offset(0, 4),
+                                            offset: const Offset(0, 4),
                                           ),
                                         ],
                                       ),
@@ -2139,7 +2144,7 @@ Shared via Bangla Hub App. Download now! 📲
                                               color: _primaryGreen,
                                             ),
                                           ),
-                                          SizedBox(height: isTablet ? 4 : 2),
+                                          const SizedBox(height: 4),
                                           Text(
                                             'Powered by Bangla Hub Community',
                                             style: GoogleFonts.inter(

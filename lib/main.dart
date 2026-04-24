@@ -1,3 +1,5 @@
+// main.dart
+
 import 'dart:async';
 
 import 'package:bangla_hub/firebase_options.dart';
@@ -14,6 +16,7 @@ import 'package:bangla_hub/screens/auth/login_screen.dart';
 import 'package:bangla_hub/screens/auth/signup_screen.dart';
 import 'package:bangla_hub/screens/user_app/home_screen.dart';
 import 'package:bangla_hub/screens/user_app/welcome_screen.dart';
+import 'package:bangla_hub/widgets/common/email_verification_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -62,10 +65,12 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       navigatorKey: navigatorKey,
-      home: const AuthWrapper(),
+      home: const SplashScreen(),
+   
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => RegisterScreen(role: 'user'),
+        '/home': (context) => const HomeScreen(),
         '/welcome': (context) => WelcomeScreen(
               onComplete: () {
                 navigatorKey.currentState?.pushReplacementNamed('/home');
@@ -76,48 +81,63 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatefulWidget {
-  const AuthWrapper({Key? key}) : super(key: key);
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({Key? key}) : super(key: key);
 
   @override
-  _AuthWrapperState createState() => _AuthWrapperState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _AuthWrapperState extends State<AuthWrapper> {
-  bool _showSplash = true;
-  
-  // Store the screen instances at the class level
-  late Widget _homeScreen;
-  late Widget _adminScreen;
-  bool _screensInitialized = false;
-
+class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    
-    // Initialize screens once
-    _homeScreen = const HomeScreen();
-    _adminScreen = const AdminHomeScreen();
-    _screensInitialized = true;
-    
-    // Show splash for 4 seconds minimum
-    Future.delayed(const Duration(seconds: 4), () {
+    _navigateToAuthWrapper();
+  }
+
+  void _navigateToAuthWrapper() {
+    Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        setState(() {
-          _showSplash = false;
-        });
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AuthWrapper()),
+        );
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_showSplash) {
-      return const SplashScreen();
-    }
+    return const Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text('Loading...'),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({Key? key}) : super(key: key);
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
+        print('🔐 AuthWrapper - isLoading: ${authProvider.isLoading}, isLoggedIn: ${authProvider.isLoggedIn}, user: ${authProvider.user?.email}, isEmailVerified: ${authProvider.user?.isEmailVerified}, isAdmin: ${authProvider.user?.isAdmin}');
+        
         if (authProvider.isLoading) {
           return const Scaffold(
             body: Center(
@@ -126,18 +146,37 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
         }
 
-        if (authProvider.isLoggedIn && authProvider.user != null) {
-          if (authProvider.user!.isAdmin) {
-            return _adminScreen;
-          } else {
-            // Return the SAME HomeScreen instance every time
-            return _homeScreen;
-          }
-        } else {
-          return const LoginScreen();
+        final isLoggedIn = authProvider.isLoggedIn && authProvider.user != null;
+        final isEmailVerified = authProvider.user?.isEmailVerified ?? false;
+        final isAdmin = authProvider.user?.isAdmin ?? false;
+        
+        // Admin always goes to admin screen
+        if (isAdmin && isLoggedIn) {
+          return const AdminHomeScreen();
         }
+        
+        // Regular user with verified email goes to home
+        if (isLoggedIn && isEmailVerified) {
+          return const HomeScreen();
+        }
+        
+        // Regular user logged in but email not verified - show verification screen
+        if (isLoggedIn && !isEmailVerified && !isAdmin) {
+          return EmailVerificationScreen(
+            email: authProvider.user!.email,
+            onVerified: () async {
+              await authProvider.syncEmailVerificationStatus();
+              if (mounted) {
+                // Force rebuild to check verification status
+                setState(() {});
+              }
+            },
+          );
+        }
+        
+        // Not logged in - show login screen
+        return const LoginScreen();
       },
     );
   }
 }
-

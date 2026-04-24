@@ -139,7 +139,7 @@ class ServiceCard extends StatelessWidget {
                         const SizedBox(height: 8),
                         
                         // Company Name
-                        Text(
+                   /*     Text(
                           service.companyName,
                           style: GoogleFonts.poppins(
                             fontSize: isTablet ? 15 : 13,
@@ -149,7 +149,19 @@ class ServiceCard extends StatelessWidget {
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                        ),
+                        ),  */
+
+                        Text(
+  service.companyName ?? 'Not Provided',
+  style: GoogleFonts.poppins(
+    fontSize: isTablet ? 15 : 13,
+    fontWeight: FontWeight.w700,
+    color: _textPrimary,
+    height: 1.2,
+  ),
+  maxLines: 1,
+  overflow: TextOverflow.ellipsis,
+),
                         
                         const SizedBox(height: 4),
                         

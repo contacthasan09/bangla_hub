@@ -41,6 +41,14 @@ class _PremiumSettingsScreenState extends State<PremiumSettingsScreen>
     bool _isInitialized = false;
       bool _isRefreshing = false; // Add this flag
         bool _isUpdatingImage = false;
+        bool _isDeleting = false;
+        bool _isProcessingDelete = false;
+        int _deleteAttemptCount = 0; // Add this to track attempts
+
+
+
+String? _deleteError;
+
 
 
 
@@ -295,6 +303,7 @@ void didChangeDependencies() {
   }
 
 
+
 Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context) {
   return CustomScrollView(
     physics: BouncingScrollPhysics(),
@@ -342,6 +351,7 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
                     ),
                     SizedBox(height: 20),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Column(
@@ -374,6 +384,47 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
                             ],
                           ),
                         ),
+                        // ✅ Logo added on the right side
+                        Container(
+                          width: isTablet ? 60 : 50,
+                          height: isTablet ? 60 : 50,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: _goldAccent, width: 2.5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                              BoxShadow(
+                                color: _goldAccent.withOpacity(0.3),
+                                blurRadius: 15,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/logo/logo.png',
+                              width: isTablet ? 40 : 32,
+                              height: isTablet ? 40 : 32,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.white.withOpacity(0.2),
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.settings_applications_rounded,
+                                      color: Colors.white,
+                                      size: isTablet ? 32 : 28,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     SizedBox(height: 20),
@@ -391,6 +442,7 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
             ),
           ),
         ),
+     
       ),
       SliverToBoxAdapter(
         child: Padding(
@@ -398,43 +450,6 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
           child: Column(
             children: [
               _buildPremiumProfileCard(context, currentUser, isTablet),
-              
-              // Refresh Button (for debugging - remove after fixing)
-          /*    if (currentUser != null)
-                Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: GestureDetector(
-                    onTap: () async {
-                      final authProvider = context.read<AuthProvider>();
-                      await authProvider.refreshUserData();
-                      setState(() {});
-                      _showSnackBar('Profile refreshed', _primaryGreen);
-                    },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _goldAccent.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: _goldAccent.withOpacity(0.5)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.refresh, size: 14, color: _goldAccent),
-                          SizedBox(width: 6),
-                          Text(
-                            'Refresh Profile',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: _goldAccent,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ), */
               
               SizedBox(height: 24),
               _buildAccountInfoCard(context, currentUser, isTablet),
@@ -456,520 +471,7 @@ Widget _buildContent(UserModel? currentUser, bool isTablet, BuildContext context
       ),
     ],
   );
-} 
- 
-
-/*  Widget _buildPremiumProfileCard(BuildContext context, UserModel? user, bool isTablet) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final currentUser = authProvider.user;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 380;
-    
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(isTablet ? 16 : (isSmallScreen ? 12 : 14)),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-        border: Border.all(color: _borderColor, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: isTablet ? 20 : 12,
-            offset: Offset(0, isTablet ? 6 : 3),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Profile Image Picker
-        ProfileImagePicker(
-          size: isTablet ? 100 : (isSmallScreen ? 80 : 90),
-          onImageUpdated: () async {
-            print('🔄 Image updated callback triggered');
-            
-            // Just refresh the user data without forcing full UI rebuild
-            if (mounted) {
-              await authProvider.refreshUserData();
-              // Only update this screen, not the entire app
-              setState(() {});
-            }
-          },
-        ),
-          SizedBox(height: isTablet ? 12 : (isSmallScreen ? 8 : 10)),
-          
-          // User Info
-          Column(
-            children: [
-              Text(
-                currentUser?.fullName ?? "Guest User",
-                style: GoogleFonts.poppins(
-                  fontSize: isTablet ? 18 : (isSmallScreen ? 16 : 17),
-                  fontWeight: FontWeight.w700,
-                  color: _textWhite,
-                  letterSpacing: 0.3,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: isSmallScreen ? 2 : 4),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 8 : 10, 
-                  vertical: isSmallScreen ? 4 : 5
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
-                  border: Border.all(color: _borderColor, width: 0.5),
-                ),
-                child: Text(
-                  currentUser?.email ?? "Not signed in",
-                  style: GoogleFonts.inter(
-                    fontSize: isTablet ? 11 : (isSmallScreen ? 10 : 11),
-                    color: _textLight,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-          
-          SizedBox(height: isTablet ? 12 : (isSmallScreen ? 8 : 10)),
-          
-          // Login Button for Guest
-          if (currentUser == null) ...[
-            GestureDetector(
-              onTap: () => _navigateToLogin(context),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(
-                  horizontal: isTablet ? 16 : (isSmallScreen ? 12 : 14),
-                  vertical: isTablet ? 8 : (isSmallScreen ? 6 : 7),
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_primaryRed, _primaryGreen],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.2),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: isTablet ? 12 : 8,
-                      offset: Offset(0, isTablet ? 4 : 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.login_rounded,
-                      color: Colors.white,
-                      size: isTablet ? 14 : (isSmallScreen ? 12 : 13),
-                    ),
-                    SizedBox(width: isTablet ? 6 : (isSmallScreen ? 4 : 5)),
-                    Text(
-                      'Sign In',
-                      style: GoogleFonts.poppins(
-                        fontSize: isTablet ? 12 : (isSmallScreen ? 11 : 12),
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: isTablet ? 10 : (isSmallScreen ? 8 : 9)),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 8 : 10, 
-                vertical: isSmallScreen ? 6 : 8
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
-                border: Border.all(color: _borderColor, width: 0.5),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    color: _goldAccent,
-                    size: isSmallScreen ? 10 : 12,
-                  ),
-                  SizedBox(width: isSmallScreen ? 4 : 5),
-                  Expanded(
-                    child: Text(
-                      'Sign in to access all features',
-                      style: GoogleFonts.inter(
-                        fontSize: isTablet ? 9 : (isSmallScreen ? 8 : 9),
-                        color: _textLight,
-                        fontWeight: FontWeight.w400,
-                        height: 1.3,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          
-          // Admin Badge
-          if (currentUser?.isAdmin ?? false)
-            Padding(
-              padding: EdgeInsets.only(top: isSmallScreen ? 6 : 8),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 12 : 14, 
-                  vertical: isSmallScreen ? 4 : 5
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_goldAccent, Color(0xFFFFC107)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _goldAccent.withOpacity(0.3),
-                      blurRadius: isTablet ? 6 : 4,
-                      offset: Offset(0, isTablet ? 2 : 1),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.verified_user_rounded, 
-                      color: Colors.white, 
-                      size: isSmallScreen ? 12 : 14
-                    ),
-                    SizedBox(width: isSmallScreen ? 4 : 6),
-                    Text(
-                      'Admin',
-                      style: GoogleFonts.notoSansBengali(
-                        fontSize: isSmallScreen ? 10 : 12,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-          // Join Date
-          if (currentUser?.createdAt != null)
-            Padding(
-              padding: EdgeInsets.only(top: isTablet ? 10 : (isSmallScreen ? 8 : 9)),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 8 : 10, 
-                  vertical: isSmallScreen ? 4 : 5
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
-                  border: Border.all(color: _borderColor, width: 0.5),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.calendar_today_rounded,
-                      color: _primaryGreen, 
-                      size: isSmallScreen ? 10 : 12
-                    ),
-                    SizedBox(width: isSmallScreen ? 4 : 6),
-                    Text(
-                      'Joined ${_formatDate(currentUser!.createdAt)}',
-                      style: GoogleFonts.poppins(
-                        fontSize: isSmallScreen ? 9 : 10,
-                        color: _textLight,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-
-*/
-
-
-
-/*Widget _buildPremiumProfileCard(BuildContext context, UserModel? user, bool isTablet) {
-  final authProvider = Provider.of<AuthProvider>(context);
-  final currentUser = authProvider.user;
-  final screenWidth = MediaQuery.of(context).size.width;
-  final isSmallScreen = screenWidth < 380;
-  
-  return Container(
-    width: double.infinity,
-    padding: EdgeInsets.all(isTablet ? 16 : (isSmallScreen ? 12 : 14)),
-    decoration: BoxDecoration(
-      color: _cardColor,
-      borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
-      border: Border.all(color: _borderColor, width: 1),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.2),
-          blurRadius: isTablet ? 20 : 12,
-          offset: Offset(0, isTablet ? 6 : 3),
-        ),
-      ],
-    ),
-    child: Column(
-      children: [
-        // Profile Image Picker with ValueListenableBuilder
-        ValueListenableBuilder<String?>(
-          valueListenable: authProvider.profileImageNotifier,
-          builder: (context, profileImageUrl, child) {
-            return ProfileImagePicker(
-              size: isTablet ? 100 : (isSmallScreen ? 80 : 90),
-              onImageUpdated: () async {
-                print('🔄 Image updated callback triggered');
-                // Small delay to ensure upload is complete
-                await Future.delayed(const Duration(milliseconds: 300));
-                if (mounted) {
-                  // This will only refresh the user data without full rebuild
-                  await authProvider.refreshUserData();
-                }
-              },
-            );
-          },
-        ),
-        SizedBox(height: isTablet ? 12 : (isSmallScreen ? 8 : 10)),
-        
-        // User Info
-        Column(
-          children: [
-            Text(
-              currentUser?.fullName ?? "Guest User",
-              style: GoogleFonts.poppins(
-                fontSize: isTablet ? 18 : (isSmallScreen ? 16 : 17),
-                fontWeight: FontWeight.w700,
-                color: _textWhite,
-                letterSpacing: 0.3,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: isSmallScreen ? 2 : 4),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 8 : 10, 
-                vertical: isSmallScreen ? 4 : 5
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
-                border: Border.all(color: _borderColor, width: 0.5),
-              ),
-              child: Text(
-                currentUser?.email ?? "Not signed in",
-                style: GoogleFonts.inter(
-                  fontSize: isTablet ? 11 : (isSmallScreen ? 10 : 11),
-                  color: _textLight,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-        
-        SizedBox(height: isTablet ? 12 : (isSmallScreen ? 8 : 10)),
-        
-        // Login Button for Guest
-        if (currentUser == null) ...[
-          GestureDetector(
-            onTap: () => _navigateToLogin(context),
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 16 : (isSmallScreen ? 12 : 14),
-                vertical: isTablet ? 8 : (isSmallScreen ? 6 : 7),
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [_primaryRed, _primaryGreen],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: isTablet ? 12 : 8,
-                    offset: Offset(0, isTablet ? 4 : 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.login_rounded,
-                    color: Colors.white,
-                    size: isTablet ? 14 : (isSmallScreen ? 12 : 13),
-                  ),
-                  SizedBox(width: isTablet ? 6 : (isSmallScreen ? 4 : 5)),
-                  Text(
-                    'Sign In',
-                    style: GoogleFonts.poppins(
-                      fontSize: isTablet ? 12 : (isSmallScreen ? 11 : 12),
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: isTablet ? 10 : (isSmallScreen ? 8 : 9)),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isSmallScreen ? 8 : 10, 
-              vertical: isSmallScreen ? 6 : 8
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
-              borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
-              border: Border.all(color: _borderColor, width: 0.5),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  color: _goldAccent,
-                  size: isSmallScreen ? 10 : 12,
-                ),
-                SizedBox(width: isSmallScreen ? 4 : 5),
-                Expanded(
-                  child: Text(
-                    'Sign in to access all features',
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 9 : (isSmallScreen ? 8 : 9),
-                      color: _textLight,
-                      fontWeight: FontWeight.w400,
-                      height: 1.3,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-        
-        // Admin Badge
-        if (currentUser?.isAdmin ?? false)
-          Padding(
-            padding: EdgeInsets.only(top: isSmallScreen ? 6 : 8),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 12 : 14, 
-                vertical: isSmallScreen ? 4 : 5
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [_goldAccent, Color(0xFFFFC107)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 18),
-                boxShadow: [
-                  BoxShadow(
-                    color: _goldAccent.withOpacity(0.3),
-                    blurRadius: isTablet ? 6 : 4,
-                    offset: Offset(0, isTablet ? 2 : 1),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.verified_user_rounded, 
-                    color: Colors.white, 
-                    size: isSmallScreen ? 12 : 14
-                  ),
-                  SizedBox(width: isSmallScreen ? 4 : 6),
-                  Text(
-                    'Admin',
-                    style: GoogleFonts.notoSansBengali(
-                      fontSize: isSmallScreen ? 10 : 12,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-        // Join Date
-        if (currentUser?.createdAt != null)
-          Padding(
-            padding: EdgeInsets.only(top: isTablet ? 10 : (isSmallScreen ? 8 : 9)),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 8 : 10, 
-                vertical: isSmallScreen ? 4 : 5
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
-                border: Border.all(color: _borderColor, width: 0.5),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.calendar_today_rounded,
-                    color: _primaryGreen, 
-                    size: isSmallScreen ? 10 : 12
-                  ),
-                  SizedBox(width: isSmallScreen ? 4 : 6),
-                  Text(
-                    'Joined ${_formatDate(currentUser!.createdAt)}',
-                    style: GoogleFonts.poppins(
-                      fontSize: isSmallScreen ? 9 : 10,
-                      color: _textLight,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    ),
-  );
 }
-
-*/
-
 
 
 Widget _buildPremiumProfileCard(BuildContext context, UserModel? user, bool isTablet) {
@@ -1222,82 +724,6 @@ Widget _buildPremiumProfileCard(BuildContext context, UserModel? user, bool isTa
   );
 }
 
-
-
-
-
-// Add this debug method to test the profile image picker
-void _testProfileImagePicker() async {
-  print('🧪 [TEST] Testing ProfileImagePicker manually');
-  print('🧪 [TEST] Checking AuthProvider state...');
-  
-  final authProvider = Provider.of<AuthProvider>(context, listen: false);
-  final currentUser = authProvider.user;
-  
-  if (currentUser == null) {
-    print('❌ [TEST] No user logged in');
-    _showSnackBar('Please login first', _primaryRed);
-    return;
-  }
-  
-  print('✅ [TEST] User logged in: ${currentUser.email}');
-  print('✅ [TEST] Current profile image: ${currentUser.profileImageUrl ?? 'NULL'}');
-  
-  // Test image picker directly
-  try {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 85,
-    );
-    
-    if (pickedFile != null) {
-      print('✅ [TEST] Image picked: ${pickedFile.path}');
-      
-      // Show loading
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Uploading...'), backgroundColor: Colors.orange),
-      );
-      
-      final file = File(pickedFile.path);
-      final userId = CloudinaryService.sanitizeEmailForFolder(currentUser.email);
-      final imageUrl = await CloudinaryService.uploadProfileImage(
-        file,
-        customFolder: 'profile_images/$userId',
-      );
-      
-      if (imageUrl != null) {
-        print('✅ [TEST] Upload successful: $imageUrl');
-        
-        final updatedUser = currentUser.copyWith(
-          profileImageUrl: imageUrl,
-          updatedAt: DateTime.now(),
-        );
-        
-        await authProvider.updateUserProfile(updatedUser);
-        await authProvider.refreshUserData();
-        
-        setState(() {});
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture updated!'), backgroundColor: Colors.green),
-        );
-      } else {
-        print('❌ [TEST] Upload failed');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Upload failed'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  } catch (e) {
-    print('❌ [TEST] Error: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-    );
-  }
-}
 
 
   void _navigateToLogin(BuildContext context) {
@@ -1699,7 +1125,8 @@ Widget _buildProfileManagementCards(BuildContext context, bool isTablet) {
         icon: Icons.lock_reset_rounded,
         title: 'Change Password',
         subtitle: 'Update your password for security',
-        gradientColors: [_primaryRed, _deepRed],
+      //  gradientColors: [_primaryRed, _deepRed],
+       gradientColors: [_primaryGreen, _darkGreen],
         onTap: () {
           final authProvider = Provider.of<AuthProvider>(context, listen: false);
           if (authProvider.isGuestMode) {
@@ -1752,11 +1179,7 @@ Widget _buildAppSettingsCards(BuildContext context, bool isTablet) {
         subtitle: 'Read how we protect your personal information',
         gradientColors: [_primaryGreen, _darkGreen],
         onTap: () {
-      /*    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          if (authProvider.isGuestMode) {
-            _showLoginRequiredDialog(context, 'Privacy Policy');
-            return;
-          } */
+      
           _openWebView('Privacy Policy', privacyPolicyUrl);
         },
         isTablet: isTablet,
@@ -1771,11 +1194,7 @@ Widget _buildAppSettingsCards(BuildContext context, bool isTablet) {
         subtitle: 'Terms and conditions for using Bangla Hub',
         gradientColors: [_primaryGreen, _darkGreen],
         onTap: () {
-      /*    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          if (authProvider.isGuestMode) {
-            _showLoginRequiredDialog(context, 'Terms of Service');
-            return;
-          }  */
+     
           _openWebView('Terms of Service', termsOfServiceUrl);
         },
         isTablet: isTablet,
@@ -1835,13 +1254,10 @@ Widget _buildAppSettingsCards(BuildContext context, bool isTablet) {
         icon: Icons.support_agent_rounded,
         title: 'Contact Support',
         subtitle: 'Get help from our support team',
-        gradientColors: [_primaryRed, _deepRed],
+      //  gradientColors: [_primaryRed, _deepRed],
+       gradientColors: [_primaryGreen, _darkGreen],
         onTap: () {
-       /*   final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          if (authProvider.isGuestMode) {
-            _showLoginRequiredDialog(context, 'Contact Support');
-            return;
-          }  */
+      
           _showContactOptions(context);
         },
         isTablet: isTablet,
@@ -1854,7 +1270,8 @@ Widget _buildAppSettingsCards(BuildContext context, bool isTablet) {
         icon: Icons.report_problem_rounded,
         title: 'Report a Problem',
         subtitle: 'Report bugs, issues, or inappropriate content',
-        gradientColors: [_primaryRed, _deepRed],
+      //  gradientColors: [_primaryRed, _deepRed],
+       gradientColors: [_primaryGreen, _darkGreen],
         onTap: () {
           final authProvider = Provider.of<AuthProvider>(context, listen: false);
           if (authProvider.isGuestMode) {
@@ -2148,75 +1565,6 @@ Widget _buildPremiumFooter(bool isTablet) {
   );
 }
  
-  // ====================== HELPER METHODS ======================
-
-Widget _getPremiumProfileImage(UserModel? user, double size) {
-  // First check for locally picked file
-  if (_profileImageFile != null) {
-    print('📸 Showing local image file');
-    return CircleAvatar(
-      radius: size / 2,
-      backgroundImage: FileImage(_profileImageFile!),
-      backgroundColor: _primaryGreen,
-      child: null,
-    );
-  }
-
-  // Check for stored profile image URL
-  if (user?.profileImageUrl == null || user!.profileImageUrl!.isEmpty) {
-    print('📸 No profile image, showing default');
-    return CircleAvatar(
-      radius: size / 2,
-      backgroundColor: _primaryGreen,
-      child: Icon(Icons.person, size: size * 0.5, color: Colors.white),
-    );
-  }
-
-  final imageUrl = user.profileImageUrl!;
-  print('📸 Loading profile image from URL: ${imageUrl.substring(0, imageUrl.length > 80 ? 80 : imageUrl.length)}...');
-
-  return CircleAvatar(
-    radius: size / 2,
-    backgroundImage: NetworkImage(imageUrl),
-    backgroundColor: _primaryGreen,
-    child: null,
-    onBackgroundImageError: (error, stackTrace) {
-      print('❌ Error loading profile image: $error');
-      // Try to refresh on error
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          authProvider.refreshUserData();
-        }
-      });
-    },
-  );
-}
-
-
-Widget _buildDefaultProfileAvatar(double size) {
-  return ClipOval(
-    child: Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_primaryGreen, _primaryRed],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.person,
-          color: Colors.white.withOpacity(0.9),
-          size: size * 0.5,
-        ),
-      ),
-    ),
-  );
-}
-
 
 
 
@@ -2242,689 +1590,347 @@ Widget _buildDefaultProfileAvatar(double size) {
     );
   }
 
-void _showDataPrivacyDialog(BuildContext context) {
-  final mediaQuery = MediaQuery.of(context);
-  final isSmallScreen = mediaQuery.size.height < 600;
-  
-  showDialog(
-    context: context,
-    builder: (context) => Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: 500,
-          minWidth: 280,
-        ),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [_bgGradient2, _primaryGreen.withOpacity(0.9)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: _borderColor, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header with icon
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryRed, _primaryGreen],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.privacy_tip, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Data & Privacy',
-                      style: GoogleFonts.poppins(
-                        fontSize: isSmallScreen ? 20 : 22,
-                        fontWeight: FontWeight.w800,
-                        color: _textWhite,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              
-              // Main content
-              Container(
-                padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _borderColor),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'We collect and use your data to provide better services:',
-                      style: TextStyle(
-                        color: _textWhite,
-                        fontWeight: FontWeight.w600,
-                        fontSize: isSmallScreen ? 14 : 15,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildPrivacyBulletPoint('📍 Location data for local recommendations', isSmallScreen),
-                    _buildPrivacyBulletPoint('📧 Account info for authentication', isSmallScreen),
-                    _buildPrivacyBulletPoint('📝 Content you post (events, listings)', isSmallScreen),
-                    _buildPrivacyBulletPoint('📊 Usage analytics to improve the app', isSmallScreen),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Your Rights section
-              Container(
-                padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_primaryGreen.withOpacity(0.1), _primaryRed.withOpacity(0.05)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _primaryGreen.withOpacity(0.3)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.verified_rounded, color: _primaryGreen, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Your Rights',
-                          style: TextStyle(
-                            color: _textWhite,
-                            fontWeight: FontWeight.w700,
-                            fontSize: isSmallScreen ? 15 : 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildRightItem('✓ Access your data anytime', isSmallScreen),
-                    _buildRightItem('✓ Request data deletion', isSmallScreen),
-                    _buildRightItem('✓ Opt out of data collection', isSmallScreen),
-                    _buildRightItem('✓ Export your data', isSmallScreen),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => Navigator.pop(context),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            vertical: isSmallScreen ? 14 : 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: _borderColor),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Close',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: isSmallScreen ? 15 : 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: isSmallScreen ? 12 : 16),
-                  Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.pop(context);
-                        //  _showComingSoon(context);
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            vertical: isSmallScreen ? 14 : 16,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [_primaryRed, _primaryGreen],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _primaryRed.withOpacity(0.4),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                           //   'Manage Preferences',
-                           "Ok",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: isSmallScreen ? 15 : 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-// Helper method for bullet points
-Widget _buildPrivacyBulletPoint(String text, bool isSmallScreen) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '•',
-          style: TextStyle(
-            color: _primaryGreen,
-            fontSize: isSmallScreen ? 16 : 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: _textLight,
-              fontSize: isSmallScreen ? 13 : 14,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-// Helper method for rights items
-Widget _buildRightItem(String text, bool isSmallScreen) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Row(
-      children: [
-        Icon(
-          Icons.check_circle_outline,
-          color: _primaryGreen,
-          size: isSmallScreen ? 16 : 18,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: _textLight,
-              fontSize: isSmallScreen ? 13 : 14,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
 
 
 
-/* void _confirmDeleteAccount(BuildContext context) {
-  final mediaQuery = MediaQuery.of(context);
-  final isSmallScreen = mediaQuery.size.height < 600;
-  
-  showDialog(
-    context: context,
-    builder: (context) => Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: 500,
-          minWidth: 280,
-        ),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [_bgGradient2, _primaryGreen.withOpacity(0.9)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: _borderColor, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header with icon
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryRed, _primaryGreen],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Delete Account',
-                      style: GoogleFonts.poppins(
-                        fontSize: isSmallScreen ? 20 : 22,
-                        fontWeight: FontWeight.w800,
-                        color: _textWhite,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              
-              // Warning message
-              Container(
-                padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _borderColor),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.error_outline, color: _primaryRed, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'This action is permanent and cannot be undone!',
-                            style: TextStyle(
-                              color: _textWhite,
-                              fontWeight: FontWeight.w600,
-                              fontSize: isSmallScreen ? 14 : 15,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '⚠️ This will delete:',
-                      style: TextStyle(
-                        color: _textMuted,
-                        fontWeight: FontWeight.w600,
-                        fontSize: isSmallScreen ? 13 : 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Column(
-                      children: [
-                        _buildDeleteItem('Your profile information', isSmallScreen),
-                        _buildDeleteItem('All your posts and events', isSmallScreen),
-                        _buildDeleteItem('Saved items and preferences', isSmallScreen),
-                        _buildDeleteItem('Your account history', isSmallScreen),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => Navigator.pop(context),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            vertical: isSmallScreen ? 14 : 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: _borderColor),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: isSmallScreen ? 15 : 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: isSmallScreen ? 12 : 16),
-                  Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () async {
-                          Navigator.pop(context);
-                          await _deleteAccount(context);
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            vertical: isSmallScreen ? 14 : 16,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [_primaryRed, _deepRed],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _primaryRed.withOpacity(0.4),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Delete Forever',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: isSmallScreen ? 15 : 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
 
-*/
-
-
+// Premium Delete Account Dialog - Scrollable and Responsive
 void _confirmDeleteAccount(BuildContext context) {
-  final mediaQuery = MediaQuery.of(context);
-  final isSmallScreen = mediaQuery.size.height < 600;
+  final TextEditingController passwordController = TextEditingController();
+  bool showPassword = false;
+  String? passwordError;
+  
+  // Reset processing flag
+  _isProcessingDelete = false;
   
   showDialog(
     context: context,
-    builder: (context) => Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: 500,
-          minWidth: 280,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withOpacity(0.6),
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setState) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: MediaQuery.of(context).viewInsets.bottom > 0 ? 8 : 24,
         ),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [_bgGradient2, _primaryGreen.withOpacity(0.9)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: 360,
+            minWidth: 280,
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
           ),
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: _borderColor, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF0A2F1D),
+                const Color(0xFF004D38),
+                const Color(0xFF006A4E),
+              ],
+              stops: const [0.0, 0.5, 1.0],
             ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header with icon
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryRed, _primaryGreen],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Delete Account',
-                      style: GoogleFonts.poppins(
-                        fontSize: isSmallScreen ? 20 : 22,
-                        fontWeight: FontWeight.w800,
-                        color: _textWhite,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              
-              // Warning message
-              Container(
-                padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _borderColor),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.error_outline, color: _primaryRed, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'This action is permanent and cannot be undone!',
-                            style: TextStyle(
-                              color: _textWhite,
-                              fontWeight: FontWeight.w600,
-                              fontSize: isSmallScreen ? 14 : 15,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '⚠️ This will delete:',
-                      style: TextStyle(
-                        color: _textMuted,
-                        fontWeight: FontWeight.w600,
-                        fontSize: isSmallScreen ? 13 : 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Column(
-                      children: [
-                        _buildDeleteItem('Your profile information', isSmallScreen),
-                        _buildDeleteItem('All your posts and events', isSmallScreen),
-                        _buildDeleteItem('Saved items and preferences', isSmallScreen),
-                        _buildDeleteItem('Your account history', isSmallScreen),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => Navigator.pop(context),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            vertical: isSmallScreen ? 14 : 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: _borderColor),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: isSmallScreen ? 15 : 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: isSmallScreen ? 12 : 16),
-                  Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () async {
-                          Navigator.pop(context); // Close confirmation dialog
-                          await _deleteAccount(context);
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            vertical: isSmallScreen ? 14 : 16,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [_primaryRed, _deepRed],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _primaryRed.withOpacity(0.4),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Delete Forever',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: isSmallScreen ? 15 : 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0x33FFFFFF),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
               ),
             ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Material(
+              color: Colors.transparent,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header Section - Smaller
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [const Color(0xFFE03C32), const Color(0xFFC62828)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFE03C32).withOpacity(0.3),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      Text(
+                        'Delete Account',
+                        style: GoogleFonts.poppins(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      
+                      Container(
+                        width: 50,
+                        height: 2,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [const Color(0xFFE03C32), const Color(0xFFFFD700)],
+                          ),
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Warning Message - Compact
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.02)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0x33FFFFFF),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.error_outline, color: const Color(0xFFE03C32), size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Permanent action - Cannot be undone!',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'This will delete:',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            _buildDeleteItem('Profile & all posts'),
+                         //   _buildDeleteItem('Saved items & history'),
+                            _buildDeleteItem('Account data permanently'),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Password Field (shown when needed)
+                      if (showPassword) ...[
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.white.withOpacity(0.08), Colors.white.withOpacity(0.03)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: passwordError != null 
+                                  ? const Color(0xFFE03C32) 
+                                  : const Color(0x33FFFFFF),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: TextField(
+                            controller: passwordController,
+                            obscureText: true,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Enter password',
+                              hintStyle: GoogleFonts.poppins(
+                                color: Colors.white54,
+                                fontSize: 13,
+                              ),
+                              prefixIcon: Icon(
+                                Icons.lock_outline_rounded,
+                                color: passwordError != null 
+                                    ? const Color(0xFFE03C32) 
+                                    : Colors.white54,
+                                size: 18,
+                              ),
+                              errorText: passwordError,
+                              errorStyle: GoogleFonts.poppins(
+                                color: const Color(0xFFE03C32),
+                                fontSize: 10,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                            ),
+                            onChanged: (_) {
+                              if (passwordError != null) {
+                                setState(() => passwordError = null);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      
+                      // Action Buttons - Smaller
+                      Row(
+                        children: [
+                          // Cancel Button
+                          Expanded(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => Navigator.pop(dialogContext),
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: const Color(0x33FFFFFF),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'Cancel',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          
+                          // Continue / Confirm Button
+                          Expanded(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () async {
+                                  if (!showPassword) {
+                                    setState(() => showPassword = true);
+                                    return;
+                                  }
+                                  
+                                  if (passwordController.text.isEmpty) {
+                                    setState(() {
+                                      passwordError = 'Password required';
+                                    });
+                                    return;
+                                  }
+                                  
+                                  // Close dialog and proceed
+                                  Navigator.pop(dialogContext);
+                                  await Future.delayed(const Duration(milliseconds: 200));
+                                  _deleteAccount(passwordController.text);
+                                },
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [const Color(0xFFE03C32), const Color(0xFFC62828)],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFFE03C32).withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      showPassword ? 'Confirm' : 'Continue',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 12),
+                      
+                      // Info text
+                      Text(
+                        'Your data will be permanently removed',
+                        style: GoogleFonts.poppins(
+                          fontSize: 9,
+                          color: Colors.white38,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -2932,103 +1938,307 @@ void _confirmDeleteAccount(BuildContext context) {
   );
 }
 
-
-// Helper method to build delete items
-Widget _buildDeleteItem(String text, bool isSmallScreen) {
+// Helper method for delete items - Smaller version
+Widget _buildDeleteItem(String text) {
   return Padding(
-    padding: const EdgeInsets.only(bottom: 6),
+    padding: const EdgeInsets.only(bottom: 4),
     child: Row(
       children: [
-        Icon(
-          Icons.close_rounded,
-          color: _primaryRed,
-          size: isSmallScreen ? 16 : 18,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: TextStyle(
-            color: _textLight,
-            fontSize: isSmallScreen ? 13 : 14,
+        Icon(Icons.close_rounded, color: const Color(0xFFE03C32), size: 12),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: Colors.white70,
+            ),
           ),
         ),
       ],
     ),
   );
 }
-  
-/*  Future<void> _deleteAccount(BuildContext context) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(30),
-          decoration: BoxDecoration(
-            color: _primaryGreen,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(color: Colors.white),
-              const SizedBox(height: 20),
-              Text(
-                'Deleting your account...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
+
+
+
+// Premium Delete Account Method
+Future<void> _deleteAccount(String password) async {
+  if (_isProcessingDelete) {
+    print('⚠️ Delete already in progress');
+    return;
+  }
+
+  _isProcessingDelete = true;
+
+  if (!mounted) return;
+
+  setState(() {
+    _isDeleting = true;
+    _deleteError = null;
+    _deleteAttemptCount++;
+  });
+
+  print('🔐 Delete attempt #$_deleteAttemptCount');
+
+  final ctx = navigatorKey.currentContext;
+  if (ctx == null) {
+    _isProcessingDelete = false;
+    return;
+  }
+
+  // Premium Loading Dialog
+  showDialog(
+    context: ctx,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withOpacity(0.5),
+    builder: (_) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF0A2F1D),
+              const Color(0xFF004D38),
+              const Color(0xFF006A4E),
             ],
           ),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: const Color(0x33FFFFFF), width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 50,
+              height: 50,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Verifying Password...',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please wait while we verify your credentials',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: Colors.white54,
+              ),
+            ),
+          ],
         ),
       ),
+    ),
+  );
+
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null || user.email == null) {
+      throw Exception('User not logged in');
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: password,
     );
 
-    try {
-      final authProvider = context.read<AuthProvider>();
-      await authProvider.deleteAccount(context);
-      
+    await user.reauthenticateWithCredential(credential);
+
+    // Close loading dialog
+    final navCtx = navigatorKey.currentContext;
+    if (navCtx != null && Navigator.canPop(navCtx)) {
+      Navigator.pop(navCtx);
+    }
+
+    if (!mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    await authProvider.deleteAccount(context, password: password);
+
+    if (mounted) {
+      setState(() {
+        _isDeleting = false;
+        _isProcessingDelete = false;
+      });
+    }
+  } catch (e) {
+    print('❌ Delete error: $e');
+
+    // Close loading dialog safely
+    final navCtx = navigatorKey.currentContext;
+    if (navCtx != null && Navigator.canPop(navCtx)) {
+      Navigator.pop(navCtx);
+    }
+
+    if (!mounted) {
+      _isProcessingDelete = false;
+      return;
+    }
+
+    String errorMessage = 'Incorrect password. Please try again.';
+    if (e.toString().contains('too-many-requests')) {
+      errorMessage = 'Too many attempts. Try again later.';
+    }
+
+    setState(() {
+      _deleteError = errorMessage;
+      _isDeleting = false;
+    });
+
+    Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) {
-        Navigator.pop(context);
-        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account deleted successfully')),
-        );
+        _isProcessingDelete = false;
       }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting account: $e')),
-        );
-      }
+    });
+
+    final globalCtx = navigatorKey.currentContext;
+    if (globalCtx != null) {
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (mounted) {
+          showDialog(
+            context: globalCtx,
+            barrierDismissible: false,
+            builder: (dialogContext) => Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF0A2F1D),
+                      const Color(0xFF004D38),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: const Color(0x33FFFFFF), width: 1),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [const Color(0xFFE03C32), const Color(0xFFC62828)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.error_outline, color: Colors.white, size: 30),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Password Incorrect',
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      errorMessage,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => Navigator.pop(dialogContext),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0x33FFFFFF)),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Cancel',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.pop(dialogContext);
+                                _confirmDeleteAccount(globalCtx);
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [const Color(0xFF006A4E), const Color(0xFF004D38)],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Try Again',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+      });
     }
   }
-
-*/
-
-
-Future<void> _deleteAccount(BuildContext context) async {
-  final authProvider = context.read<AuthProvider>();
-  
-  try {
-    // Call deleteAccount - it will handle its own loading dialog
-    await authProvider.deleteAccount(context);
-    
-    // After successful deletion, authProvider already:
-    // - Showed loading dialog
-    // - Closed loading dialog  
-    // - Showed success snackbar
-    // - Navigated to login screen
-    
-  } catch (e) {
-    // Error is already handled in authProvider
-    print('Delete account error: $e');
-  }
 }
-
-
-
+  
 
 void _showContactOptions(BuildContext context) {
   final mediaQuery = MediaQuery.of(context);
@@ -3236,750 +2446,6 @@ Widget _buildContactOptionDialog({
 
 
 
-  void _sendEmail(String email, String subject) async {
-    final Uri emailUri = Uri(
-      scheme: 'mailto',
-      path: email,
-      query: 'subject=${Uri.encodeComponent(subject)}',
-    );
-    
-    if (await canLaunchUrl(emailUri)) {
-      await launchUrl(emailUri);
-    } else {
-      _showSnackBar('Could not open email client', _primaryRed);
-    }
-  }
-
-  void _makePhoneCall(String phoneNumber) async {
-    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunchUrl(phoneUri)) {
-      await launchUrl(phoneUri);
-    } else {
-      _showSnackBar('Could not make phone call', _primaryRed);
-    }
-  }
-
-  void _openWhatsApp(String phoneNumber) async {
-    // Remove '+' if present for WhatsApp URL
-    String cleanNumber = phoneNumber.replaceAll('+', '');
-    final Uri whatsappUri = Uri.parse('https://wa.me/$cleanNumber');
-    
-    if (await canLaunchUrl(whatsappUri)) {
-      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
-    } else {
-      _showSnackBar('WhatsApp is not installed', _primaryRed);
-    }
-  }
-
-
-/*void _showReportProblemDialog(BuildContext context) {
-  final problemController = TextEditingController();
-  String problemType = 'Bug/Technical Issue';
-  
-  final mediaQuery = MediaQuery.of(context);
-  final isSmallScreen = mediaQuery.size.height < 600;
-  
-  showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setState) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: 450,
-            minWidth: 280,
-          ),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_bgGradient2, _primaryGreen.withOpacity(0.9)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _borderColor, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.25),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(isSmallScreen ? 16 : 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Header with icon - Smaller
-                Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_primaryRed, _primaryGreen],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(Icons.report_problem_rounded, color: Colors.white, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Report a Problem',
-                        style: GoogleFonts.poppins(
-                          fontSize: isSmallScreen ? 18 : 20,
-                          fontWeight: FontWeight.w700,
-                          color: _textWhite,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                
-                // Problem Type Section - Smaller
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _borderColor, width: 0.8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.category_rounded, color: _primaryRed, size: isSmallScreen ? 16 : 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Problem Type',
-                            style: GoogleFonts.poppins(
-                              color: _textWhite,
-                              fontWeight: FontWeight.w600,
-                              fontSize: isSmallScreen ? 13 : 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          border: Border.all(color: _borderColor, width: 0.8),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: problemType,
-                            isExpanded: true,
-                            dropdownColor: _bgGradient2,
-                            style: GoogleFonts.poppins(
-                              color: _textWhite,
-                              fontSize: isSmallScreen ? 13 : 14,
-                            ),
-                            items: const [
-                              DropdownMenuItem(value: 'Bug/Technical Issue', child: Text('🐛 Bug/Technical Issue')),
-                              DropdownMenuItem(value: 'Inappropriate Content', child: Text('🚫 Inappropriate Content')),
-                              DropdownMenuItem(value: 'Account Issue', child: Text('👤 Account Issue')),
-                              DropdownMenuItem(value: 'Payment Issue', child: Text('💳 Payment Issue')),
-                              DropdownMenuItem(value: 'Other', child: Text('📝 Other')),
-                            ],
-                            onChanged: (value) {
-                              setState(() {
-                                problemType = value!;
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 12),
-                
-                // Description Field - Smaller
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _borderColor, width: 0.8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.description_rounded, color: _primaryGreen, size: isSmallScreen ? 16 : 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Describe the problem',
-                            style: GoogleFonts.poppins(
-                              color: _textWhite,
-                              fontWeight: FontWeight.w600,
-                              fontSize: isSmallScreen ? 13 : 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: problemController,
-                        maxLines: 3,
-                        style: GoogleFonts.inter(
-                          color: _textWhite,
-                          fontSize: isSmallScreen ? 13 : 14,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Please provide details...',
-                          hintStyle: GoogleFonts.inter(
-                            color: _textMuted,
-                            fontSize: isSmallScreen ? 12 : 13,
-                          ),
-                          filled: true,
-                          fillColor: Colors.white.withOpacity(0.1),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: _borderColor, width: 0.8),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: _borderColor, width: 0.8),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: _primaryGreen, width: 1.5),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: isSmallScreen ? 10 : 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 12),
-                
-                // Info Message - Smaller
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [_primaryGreen.withOpacity(0.1), _primaryRed.withOpacity(0.05)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _primaryGreen.withOpacity(0.3), width: 0.5),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_rounded, color: _primaryGreen, size: isSmallScreen ? 14 : 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'You can also include screenshots by emailing us directly.',
-                          style: GoogleFonts.inter(
-                            fontSize: isSmallScreen ? 10 : 11,
-                            color: _textLight,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // Action Buttons - Smaller
-                Row(
-                  children: [
-                    Expanded(
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => Navigator.pop(context),
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              vertical: isSmallScreen ? 10 : 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: _borderColor, width: 0.8),
-                            ),
-                            child: Center(
-                              child: Text(
-                                'Cancel',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: isSmallScreen ? 13 : 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: isSmallScreen ? 10 : 12),
-                    Expanded(
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.pop(context);
-                            _submitReport(problemType, problemController.text);
-                          },
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              vertical: isSmallScreen ? 10 : 12,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [_primaryRed, _primaryGreen],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _primaryRed.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Text(
-                                'Submit Report',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: isSmallScreen ? 13 : 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-*/
-
-
-/* void _showReportProblemDialog(BuildContext context) {
-  final problemController = TextEditingController();
-  String problemType = 'Bug/Technical Issue';
-  
-  final mediaQuery = MediaQuery.of(context);
-  final isSmallScreen = mediaQuery.size.height < 600;
-  
-  showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setState) {
-        // Listen to keyboard visibility
-        final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-        
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: isKeyboardVisible ? 10 : 20,
-          ),
-          child: SingleChildScrollView(
-            // Add padding at bottom when keyboard is open
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-            ),
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: 450,
-                minWidth: 280,
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [_bgGradient2, _primaryGreen.withOpacity(0.9)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _borderColor, width: 1),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.25),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(isSmallScreen ? 16 : 18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Header with icon
-                    Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [_primaryRed, _primaryGreen],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(Icons.report_problem_rounded, color: Colors.white, size: 18),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Report a Problem',
-                            style: GoogleFonts.poppins(
-                              fontSize: isSmallScreen ? 18 : 20,
-                              fontWeight: FontWeight.w700,
-                              color: _textWhite,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Problem Type Section
-                    Container(
-                      padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: _borderColor, width: 0.8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.category_rounded, color: _primaryRed, size: isSmallScreen ? 16 : 18),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Problem Type',
-                                style: GoogleFonts.poppins(
-                                  color: _textWhite,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: isSmallScreen ? 13 : 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              border: Border.all(color: _borderColor, width: 0.8),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: problemType,
-                                isExpanded: true,
-                                dropdownColor: _bgGradient2,
-                                style: GoogleFonts.poppins(
-                                  color: _textWhite,
-                                  fontSize: isSmallScreen ? 13 : 14,
-                                ),
-                                items: const [
-                                  DropdownMenuItem(value: 'Bug/Technical Issue', child: Text('🐛 Bug/Technical Issue')),
-                                  DropdownMenuItem(value: 'Inappropriate Content', child: Text('🚫 Inappropriate Content')),
-                                  DropdownMenuItem(value: 'Account Issue', child: Text('👤 Account Issue')),
-                                  DropdownMenuItem(value: 'Payment Issue', child: Text('💳 Payment Issue')),
-                                  DropdownMenuItem(value: 'Other', child: Text('📝 Other')),
-                                ],
-                                onChanged: (value) {
-                                  setState(() {
-                                    problemType = value!;
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 12),
-                    
-                    // Description Field
-                    Container(
-                      padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: _borderColor, width: 0.8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.description_rounded, color: _primaryGreen, size: isSmallScreen ? 16 : 18),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Describe the problem',
-                                style: GoogleFonts.poppins(
-                                  color: _textWhite,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: isSmallScreen ? 13 : 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: problemController,
-                            maxLines: 3,
-                            style: GoogleFonts.inter(
-                              color: _textWhite,
-                              fontSize: isSmallScreen ? 13 : 14,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Please provide details...',
-                              hintStyle: GoogleFonts.inter(
-                                color: _textMuted,
-                                fontSize: isSmallScreen ? 12 : 13,
-                              ),
-                              filled: true,
-                              fillColor: Colors.white.withOpacity(0.1),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: _borderColor, width: 0.8),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: _borderColor, width: 0.8),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: _primaryGreen, width: 1.5),
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: isSmallScreen ? 10 : 12,
-                              ),
-                            ),
-                            onTap: () {
-                              // Trigger rebuild to adjust scroll when keyboard opens
-                              setState(() {});
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 12),
-                    
-                    // Info Message
-                    Container(
-                      padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_primaryGreen.withOpacity(0.1), _primaryRed.withOpacity(0.05)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: _primaryGreen.withOpacity(0.3), width: 0.5),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.info_rounded, color: _primaryGreen, size: isSmallScreen ? 14 : 16),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'You can also include screenshots by emailing us directly.',
-                              style: GoogleFonts.inter(
-                                fontSize: isSmallScreen ? 10 : 11,
-                                color: _textLight,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // Action Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                problemController.dispose();
-                                Navigator.pop(context);
-                              },
-                              borderRadius: BorderRadius.circular(10),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: isSmallScreen ? 10 : 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.05),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: _borderColor, width: 0.8),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'Cancel',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: isSmallScreen ? 13 : 14,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: isSmallScreen ? 10 : 12),
-                        Expanded(
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                if (problemController.text.trim().isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Text('Please describe your problem'),
-                                      backgroundColor: _primaryRed,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      margin: EdgeInsets.all(12),
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
-                                  return;
-                                }
-                                Navigator.pop(context);
-                                _submitReport(problemType, problemController.text);
-                                problemController.dispose();
-                              },
-                              borderRadius: BorderRadius.circular(10),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: isSmallScreen ? 10 : 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [_primaryRed, _primaryGreen],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _primaryRed.withOpacity(0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'Submit Report',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: isSmallScreen ? 13 : 14,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    // Add extra bottom padding when keyboard is open
-                    if (isKeyboardVisible) 
-                      SizedBox(height: isSmallScreen ? 10 : 16),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    ),
-  );
-}
-
-
-
-  void _submitReport(String problemType, String description) {
-    final subject = 'Problem Report: $problemType';
-    final body = '''
-Problem Type: $problemType
-Description: $description
-
----
-App Version: 1.0.0
-Device: ${Platform.operatingSystem}
-''';
-    
-    final Uri emailUri = Uri(
-      scheme: 'mailto',
-    //  path: 'support@banglahub.com',
-    path : 'rif97965@gmail.com',
-      query: 'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
-    );
-    
-    canLaunchUrl(emailUri).then((canLaunch) {
-      if (canLaunch) {
-        launchUrl(emailUri);
-        _showSnackBar('Opening email client...', _primaryGreen);
-      } else {
-        _showSnackBar('Please email us at rif97965@gmail.com', _primaryRed);
-      }
-    });
-  }
-
-
-*/
 
 void _showReportProblemDialog(BuildContext context) {
   final problemController = TextEditingController();
@@ -4905,406 +3371,9 @@ void _sendFeedback(BuildContext context) {
     });
   }
 
-  void _rateApp(BuildContext context) async {
-    const String appStoreUrl = 'https://apps.apple.com/app/idYOUR_APP_ID';
-    final Uri url = Uri.parse(appStoreUrl);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      _showSnackBar('Could not open App Store', _primaryRed);
-    }
-  }
 
-  void _shareApp(BuildContext context) async {
-    const String shareText = '''
-🇧🇩 Check out Bangla Hub - The ultimate app for the Bengali community!
-
-Features:
-• Discover local events
-• Find Bengali businesses
-• Connect with the community
-• Job postings and opportunities
-
-Download now: https://apps.apple.com/app/idYOUR_APP_ID
-''';
-    
-    final Uri shareUri = Uri.parse('https://apps.apple.com/app/idYOUR_APP_ID');
-    try {
-      await launchUrl(shareUri, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      _showSnackBar('Could not share app', _primaryRed);
-    }
-  }
-
-  // ====================== IMAGE PICKER METHODS ======================
-
-
-void _showImageSourceSheet(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) => Container(
-      decoration: BoxDecoration(
-        color: _bgGradient2,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-        border: Border.all(color: _borderColor, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 20,
-            offset: Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: 12),
-            Container(
-              width: 50,
-              height: 5,
-              decoration: BoxDecoration(
-                color: _borderColor,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Update Profile Picture',
-              style: GoogleFonts.notoSansBengali(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: _textWhite,
-              ),
-            ),
-            SizedBox(height: 6),
-            Text(
-              'Choose a method to update your profile picture',
-              style: TextStyle(
-                fontSize: 12,
-                color: _textMuted,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 20),
-            _buildImageSourceOption(
-              icon: Icons.camera_alt_rounded,
-              title: 'Capture Photo',
-              subtitle: 'Use your camera',
-              gradientColors: [_primaryGreen, _darkGreen],
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            SizedBox(height: 12),
-            _buildImageSourceOption(
-              icon: Icons.photo_library_rounded,
-              title: 'Choose from Gallery',
-              subtitle: 'Select from your photos',
-              gradientColors: [_primaryRed, _deepRed],
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-            SizedBox(height: 20),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => Navigator.pop(context),
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(12),
-                  margin: EdgeInsets.symmetric(horizontal: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: _borderColor),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _textMuted,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 16),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-Widget _buildImageSourceOption({
-  required IconData icon,
-  required String title,
-  required String subtitle,
-  required List<Color> gradientColors,
-  required VoidCallback onTap,
-}) {
-  return Padding(
-    padding: EdgeInsets.symmetric(horizontal: 20),
-    child: Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: gradientColors,
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: gradientColors.first.withOpacity(0.3),
-                blurRadius: 8,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white.withOpacity(0.9),
-                size: 20,
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-Future<void> _pickImage(ImageSource source) async {
-  print('📸 Picking image...');
-
-  try {
-    final picker = ImagePicker();
-
-    final XFile? pickedFile = await picker.pickImage(
-      source: source,
-      maxWidth: 600,   // ↓ reduce more for performance
-      maxHeight: 600,
-      imageQuality: 70, // ↓ better compression
-    );
-
-    if (pickedFile == null) return;
-
-    if (!mounted) return;
-
-    final file = File(pickedFile.path);
-
-    // Show image instantly
-    setState(() => _profileImageFile = file);
-
-    // Show loader safely
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
-    final authProvider = context.read<AuthProvider>();
-    final currentUser = authProvider.user;
-
-    if (currentUser == null) {
-      _safePop();
-      return;
-    }
-
-    final userId =
-        CloudinaryService.sanitizeEmailForFolder(currentUser.email);
-
-    // Upload with timeout
-    final imageUrl = await CloudinaryService.uploadImage(
-      file,
-      customFolder: 'profile_images/$userId',
-    ).timeout(const Duration(seconds: 20));
-
-    _safePop(); // close dialog safely
-
-    if (imageUrl == null) {
-      _showSnackBar('Upload failed', _primaryRed);
-      return;
-    }
-
-    // Update user (NO extra refresh needed)
-    final updatedUser = currentUser.copyWith(
-      profileImageUrl: imageUrl,
-      updatedAt: DateTime.now(),
-    );
-
-    await authProvider.updateUserProfile(updatedUser);
-
-    // Clear local preview
-    if (mounted) {
-      setState(() => _profileImageFile = null);
-    }
-
-    _showSnackBar('Profile updated ✅', _primaryGreen);
-
-  } catch (e) {
-    print('❌ Error: $e');
-    _safePop();
-    _showSnackBar('Something went wrong', _primaryRed);
-  }
-}
-
-void _safePop() {
-  if (mounted && Navigator.canPop(context)) {
-    Navigator.pop(context);
-  }
-}
-
-Future<void> _uploadProfileImage(File imageFile) async {
-  try {
-    final authProvider = context.read<AuthProvider>();
-    final currentUser = authProvider.user;
-    if (currentUser == null) {
-      print('❌ No user logged in');
-      return;
-    }
-    
-    print('========== UPLOAD START ==========');
-    print('User email: ${currentUser.email}');
-    
-    // Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: EdgeInsets.all(30),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_primaryGreen, _primaryRed],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: _goldAccent, strokeWidth: 3),
-              SizedBox(height: 20),
-              Text('Uploading to Cloudinary...', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ),
-      ),
-    );
-    
-    // Upload to Cloudinary
-    final imageUrl = await CloudinaryService.uploadImage(imageFile);
-    
-    if (imageUrl == null) {
-      throw Exception('Failed to upload image to Cloudinary');
-    }
-    
-    print('✅ Uploaded to Cloudinary: $imageUrl');
-    
-    // Update Firestore
-    final updatedUser = currentUser.copyWith(
-      profileImageUrl: imageUrl,
-      updatedAt: DateTime.now(),
-    );
-    
-    await authProvider.updateUserProfile(updatedUser);
-    print('✅ Firestore updated');
-    
-    // Close loading dialog
-    if (mounted) {
-      Navigator.pop(context);
-    }
-    
-    // Clear local file
-    if (mounted) {
-      setState(() {
-        _profileImageFile = null;
-      });
-    }
-    
-    // Refresh user data
-    await authProvider.refreshUserData();
-    
-    // Force UI rebuild
-    if (mounted) {
-      setState(() {});
-      _showSnackBar('Profile picture updated successfully!', _primaryGreen);
-    }
-    
-    print('========== UPLOAD COMPLETE ==========');
-    
-  } catch (e) {
-    print('❌ Upload error: $e');
-    if (mounted) {
-      Navigator.pop(context);
-      _showSnackBar('Failed to upload image: ${e.toString()}', _primaryRed);
-    }
-  }
-}
   // ====================== EDIT PROFILE METHODS ======================
+
 
   void _showEditProfileDialog(BuildContext context) {
     final authProvider = context.read<AuthProvider>();
@@ -5637,56 +3706,57 @@ Future<void> _uploadProfileImage(File imageFile) async {
                                 ),
                               ),
                               SizedBox(width: isSmallScreen ? 12 : 16),
-                              Expanded(
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: _isSaving ? null : () async {
-                                      await _saveProfileChanges(context, setState);
-                                    },
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: isSmallScreen ? 14 : 16,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [_primaryRed, _deepRed],
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: _primaryRed.withOpacity(0.4),
-                                            blurRadius: 10,
-                                            offset: Offset(0, 5),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Center(
-                                        child: _isSaving
-                                            ? SizedBox(
-                                                width: isSmallScreen ? 20 : 24,
-                                                height: isSmallScreen ? 20 : 24,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: isSmallScreen ? 2.5 : 3,
-                                                  color: Colors.white,
-                                                ),
-                                              )
-                                            : Text(
-                                              'Save',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w800,
-                                                fontSize: isSmallScreen ? 15 : 16,
-                                              ),
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
+                             // In _showEditProfileDialog, replace the save button section:
+Expanded(
+  child: Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: _isSaving ? null : () async {
+        await _saveProfileChanges(context, setState);
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          vertical: isSmallScreen ? 14 : 16,
+        ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_primaryRed, _deepRed],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: _primaryRed.withOpacity(0.4),
+              blurRadius: 10,
+              offset: Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Center(
+          child: _isSaving
+              ? SizedBox(
+                  width: isSmallScreen ? 20 : 24,
+                  height: isSmallScreen ? 20 : 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: isSmallScreen ? 2.5 : 3,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(
+                  'Save',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: isSmallScreen ? 15 : 16,
+                  ),
+                ),
+        ),
+      ),
+    ),
+  ),
+),
                             ],
                           ),
                           if (isKeyboardVisible && isSmallScreen) SizedBox(height: 12),
@@ -5703,7 +3773,6 @@ Future<void> _uploadProfileImage(File imageFile) async {
     );
   }
 
- 
  
   Widget _buildPremiumPhoneNumberField(BuildContext context, bool isSmallScreen) {
     return Container(
@@ -5873,75 +3942,89 @@ Future<void> _uploadProfileImage(File imageFile) async {
     );
   }
 
-  Future<void> _saveProfileChanges(BuildContext context, StateSetter setState) async {
-    setState(() => _isSaving = true);
-    
-    try {
-      final authProvider = context.read<AuthProvider>();
-      final currentUser = authProvider.user;
-      
-      if (currentUser != null) {
-        final firstName = _firstNameController.text.trim();
-        final lastName = _lastNameController.text.trim();
-        String? phoneNumber;
-        
-        if (firstName.isEmpty) {
-          _showSnackBar('Please enter first name', _primaryRed);
-          setState(() => _isSaving = false);
-          return;
-        }
 
-        if (_showPhoneField) {
-          final phoneDigits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
-          if (phoneDigits.isNotEmpty) {
-            if (phoneDigits.length < 7) {
-              _showSnackBar('Phone number is too short', _primaryRed);
-              setState(() => _isSaving = false);
-              return;
-            }
-            if (phoneDigits.length > 15) {
-              _showSnackBar('Phone number is too long', _primaryRed);
-              setState(() => _isSaving = false);
-              return;
-            }
-            phoneNumber = '$_selectedCountryCode$phoneDigits';
+Future<void> _saveProfileChanges(BuildContext context, StateSetter setState) async {
+  // Set loading true
+  setState(() => _isSaving = true);
+  
+  try {
+    final authProvider = context.read<AuthProvider>();
+    final currentUser = authProvider.user;
+    
+    if (currentUser != null) {
+      final firstName = _firstNameController.text.trim();
+      final lastName = _lastNameController.text.trim();
+      String? phoneNumber;
+      
+      if (firstName.isEmpty) {
+        _showSnackBar('Please enter first name', _primaryRed);
+        setState(() => _isSaving = false);
+        return;
+      }
+
+      if (_showPhoneField) {
+        final phoneDigits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+        if (phoneDigits.isNotEmpty) {
+          if (phoneDigits.length < 7) {
+            _showSnackBar('Phone number is too short', _primaryRed);
+            setState(() => _isSaving = false);
+            return;
           }
+          if (phoneDigits.length > 15) {
+            _showSnackBar('Phone number is too long', _primaryRed);
+            setState(() => _isSaving = false);
+            return;
+          }
+          phoneNumber = '$_selectedCountryCode$phoneDigits';
         }
-        
-        String? countryName;
-        if (_selectedCountry != null) {
-          countryName = _selectedCountry!.name;
-        } else if (currentUser.country != null) {
-          countryName = currentUser.country;
-        }
-        
-        final updatedUser = currentUser.copyWith(
-          firstName: firstName,
-          lastName: lastName,
-          phoneNumber: phoneNumber ?? currentUser.phoneNumber,
-          country: countryName,
-          countryCode: _selectedCountryCode,
-        );
-        
+      }
+      
+      String? countryName;
+      if (_selectedCountry != null) {
+        countryName = _selectedCountry!.name;
+      } else if (currentUser.country != null) {
+        countryName = currentUser.country;
+      }
+      
+      final updatedUser = currentUser.copyWith(
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: phoneNumber ?? currentUser.phoneNumber,
+        country: countryName,
+        countryCode: _selectedCountryCode,
+      );
+      
+      // CRITICAL: Close dialog BEFORE updating to prevent controller disposal issues
+      if (mounted) {
+        // Reset loading state
+        setState(() => _isSaving = false);
+        // Close dialog
+        Navigator.pop(context);
+      }
+      
+      // Small delay to ensure dialog is fully closed and controllers are still valid
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // Now update the user data (this will trigger rebuild but dialog is gone)
+      if (mounted) {
         await authProvider.updateUserProfile(updatedUser);
         
-        _showPhoneField = false;
-        
         if (mounted) {
-          Navigator.pop(context);
           _showSnackBar('Profile updated successfully!', _primaryGreen);
         }
       }
-    } catch (e) {
-      if (mounted) {
-        _showSnackBar('Failed to update profile: $e', _primaryRed);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
+    } else {
+      setState(() => _isSaving = false);
+      if (mounted) Navigator.pop(context);
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() => _isSaving = false);
+      _showSnackBar('Failed to update profile: $e', _primaryRed);
     }
   }
+}
+
 
   // ====================== LOCATION METHODS ======================
 
@@ -6709,7 +4792,7 @@ void _showLocationEditDialog(BuildContext context, UserModel? user) {
                             child: Text(
                               'Password must be at least 8 characters',
                               style: GoogleFonts.inter(
-                                color: _textMuted,
+                              color: _goldAccent,
                                 fontSize: isSmallScreen ? 11 : 12,
                               ),
                               maxLines: 2,
@@ -6823,59 +4906,153 @@ void _showLocationEditDialog(BuildContext context, UserModel? user) {
     ),
   );
 }
+
+
+/*
+Future<void> _changePassword(BuildContext context, StateSetter setState) async {
+  // Set loading true
+  setState(() => _isSaving = true);
   
-  
-  Future<void> _changePassword(BuildContext context, StateSetter setState) async {
-    setState(() => _isSaving = true);
+  try {
+    final currentPassword = _currentPasswordController.text.trim();
+    final newPassword = _newPasswordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    if (currentPassword.isEmpty || newPassword.isEmpty || confirmPassword.isEmpty) {
+      _showSnackBar('Please fill in all fields', _primaryRed);
+      setState(() => _isSaving = false);
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      _showSnackBar('Password must be at least 8 characters', _primaryRed);
+      setState(() => _isSaving = false);
+      return;
+    }
+
+    if (newPassword != confirmPassword) {
+      _showSnackBar('New password does not match', _primaryRed);
+      setState(() => _isSaving = false);
+      return;
+    }
+
+    final authProvider = context.read<AuthProvider>();
+    await authProvider.updatePassword(
+      context: context,
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+
+    // Clear controllers BEFORE closing dialog
+    _currentPasswordController.clear();
+    _newPasswordController.clear();
+    _confirmPasswordController.clear();
+
+    // Reset loading state
+    setState(() => _isSaving = false);
     
-    try {
-      final currentPassword = _currentPasswordController.text.trim();
-      final newPassword = _newPasswordController.text.trim();
-      final confirmPassword = _confirmPasswordController.text.trim();
-
-      if (currentPassword.isEmpty || newPassword.isEmpty || confirmPassword.isEmpty) {
-        _showSnackBar('Please fill in all fields', _primaryRed);
-        setState(() => _isSaving = false);
-        return;
+    if (mounted) {
+      // Close dialog
+      Navigator.pop(context);
+      
+      // Small delay to ensure dialog is fully closed
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      if (mounted) {
+        _showSnackBar('Password changed successfully!', _primaryGreen);
       }
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() => _isSaving = false);
+      _showSnackBar('Failed to change password: $e', _primaryRed);
+    }
+  }
+}
 
-      if (newPassword.length < 8) {
-        _showSnackBar('Password must be at least 8 characters', _primaryRed);
-        setState(() => _isSaving = false);
-        return;
-      }
 
-      if (newPassword != confirmPassword) {
-        _showSnackBar('New password does not match', _primaryRed);
-        setState(() => _isSaving = false);
-        return;
-      }
+*/
 
-      final authProvider = context.read<AuthProvider>();
+
+ Future<void> _changePassword(BuildContext context, StateSetter setState) async {
+  // Get values
+  final currentPassword = _currentPasswordController.text.trim();
+  final newPassword = _newPasswordController.text.trim();
+  final confirmPassword = _confirmPasswordController.text.trim();
+
+  // Validations
+  if (currentPassword.isEmpty) {
+    _showSnackBar('Please enter your current password', _primaryRed);
+    return;
+  }
+
+  if (newPassword.isEmpty) {
+    _showSnackBar('Please enter a new password', _primaryRed);
+    return;
+  }
+
+  if (newPassword.length < 8) {
+    _showSnackBar('Password must be at least 8 characters', _primaryRed);
+    return;
+  }
+
+  if (newPassword == currentPassword) {
+    _showSnackBar('New password must be different from current password', _primaryRed);
+    return;
+  }
+
+  if (newPassword != confirmPassword) {
+    _showSnackBar('Passwords do not match', _primaryRed);
+    return;
+  }
+
+  // Start loading
+  if (mounted) {
+    setState(() => _isSaving = true);
+  }
+  
+  try {
+    final authProvider = context.read<AuthProvider>();
+    
+    // Close dialog BEFORE updating (but don't use setState after this)
+    if (mounted) {
+      // Reset loading state and close dialog
+      setState(() => _isSaving = false);
+      Navigator.pop(context);
+    }
+    
+    // Small delay for smooth transition
+    await Future.delayed(const Duration(milliseconds: 100));
+    
+    // Update password (this will NOT rebuild the app)
+    if (mounted) {
       await authProvider.updatePassword(
         context: context,
         currentPassword: currentPassword,
         newPassword: newPassword,
       );
 
+      // Clear controllers
       _currentPasswordController.clear();
       _newPasswordController.clear();
       _confirmPasswordController.clear();
-
-      if (mounted) {
-        Navigator.pop(context);
-        _showSnackBar('Password changed successfully!', _primaryGreen);
+    }
+  } catch (e) {
+    // Don't use setState here if the dialog might be closed
+    // Just show snackbar directly
+    if (mounted) {
+      String errorMessage = e.toString();
+      // Clean up error message
+      if (errorMessage.contains('Exception:')) {
+        errorMessage = errorMessage.replaceAll('Exception:', '').trim();
       }
-    } catch (e) {
-      if (mounted) {
-        _showSnackBar('Failed to change password: $e', _primaryRed);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
+      
+      _showSnackBar(errorMessage, _primaryRed);
     }
   }
+}
+
+
 
   Future<void> _resendVerificationEmail(BuildContext context) async {
     try {
@@ -7140,127 +5317,6 @@ void _showPremiumLogoutDialog(BuildContext context) {
     }
   }
 
-  void _showAboutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_bgGradient2, _primaryGreen.withOpacity(0.9)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: _borderColor, width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 30,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_goldAccent, Color(0xFFFFC107)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _goldAccent.withOpacity(0.4),
-                      blurRadius: 15,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.info_rounded,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'About BanglaHub',
-                style: GoogleFonts.notoSansBengali(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: _textWhite,
-                ),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'BanglaHub is a premium community platform that connects Bengali people worldwide.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: _textLight,
-                  fontSize: 16,
-                  height: 1.5,
-                ),
-              ),
-              SizedBox(height: 20),
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _borderColor),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildAboutFeature('🌍 Connect with the global Bengali community'),
-                    _buildAboutFeature('📅 Share and discover cultural events'),
-                    _buildAboutFeature('🏢 Find local Bengali businesses'),
-                    _buildAboutFeature('📰 Stay updated with Bengali news'),
-                    _buildAboutFeature('👥 Build meaningful relationships'),
-                  ],
-                ),
-              ),
-              SizedBox(height: 10),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => Navigator.pop(context),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _borderColor),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'Close',
-                        style: TextStyle(
-                          color: _textWhite,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildAboutFeature(String text) {
     return Padding(
@@ -7279,35 +5335,6 @@ void _showPremiumLogoutDialog(BuildContext context) {
         ],
       ),
     );
-  }
-
-  void _showComingSoon(BuildContext context) {
-    _showSnackBar('Coming soon!', _primaryGreen);
-  }
-
-  void _handleImagePickerError(dynamic error) {
-    String errorMessage = 'Failed to pick image';
-
-    if (error is PlatformException) {
-      switch (error.code) {
-        case 'photo_access_denied':
-          errorMessage = 'Photo access denied. Please enable photo permissions.';
-          break;
-        case 'camera_access_denied':
-          errorMessage = 'Camera access denied. Please enable camera permissions.';
-          break;
-        case 'no_media_selected':
-          errorMessage = 'No image selected';
-          break;
-        case 'cancelled':
-          errorMessage = 'Image selection cancelled';
-          break;
-        default:
-          errorMessage = error.message ?? 'An unknown error occurred';
-      }
-    }
-
-    _showSnackBar(errorMessage, _primaryRed);
   }
 
   void _showSnackBar(String message, Color color) {

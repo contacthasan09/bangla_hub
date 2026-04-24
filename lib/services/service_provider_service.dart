@@ -195,10 +195,6 @@ class ServiceProviderService {
 
 
 
-// In service_provider_service.dart
-// In service_provider_service.dart
-// Get user's services
-// In service_provider_service.dart
 // Get user's services
 Stream<List<ServiceProviderModel>> getUserServices({
   required String userId,

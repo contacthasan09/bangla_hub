@@ -931,7 +931,7 @@ class _AdminEventDetailsScreenState extends State<AdminEventDetailsScreen> {
                                 _buildPremiumContactItem(
                                   icon: Icons.email_rounded,
                                   title: 'Email',
-                                  value: widget.event.contactEmail,
+                                  value: widget.event.contactEmail ?? 'Not provided', // ✅ Null safe
                                   isTablet: isTablet,
                                 ),
                                 SizedBox(height: isTablet ? 16 : 12),

@@ -48,7 +48,7 @@ class _MyEventsScreenState extends State<MyEventsScreen> with TickerProviderStat
     super.dispose();
   }
 
-  Future<void> _showDeleteConfirmationDialog(EventModel event) async {
+/*  Future<void> _showDeleteConfirmationDialog(EventModel event) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -88,7 +88,60 @@ class _MyEventsScreenState extends State<MyEventsScreen> with TickerProviderStat
         );
       }
     }
+  }   */
+
+
+ // In my_events_screen.dart, update the _showDeleteConfirmationDialog:
+
+Future<void> _showDeleteConfirmationDialog(EventModel event) async {
+  final shouldDelete = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(
+        'Delete Event',
+        style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: _primaryRed),
+      ),
+      content: Text(
+        'Are you sure you want to delete "${event.title}"? This action cannot be undone.',
+        style: GoogleFonts.inter(),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text('Delete', style: TextStyle(color: _primaryRed, fontWeight: FontWeight.w600)),
+        ),
+      ],
+    ),
+  );
+  
+  if (shouldDelete == true) {
+    final eventProvider = Provider.of<EventProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.user?.id;
+    
+    await eventProvider.deleteUserEvent(event.id);
+    
+    // ✅ Force refresh the user events after deletion
+    if (userId != null) {
+      await eventProvider.loadUserEvents(userId);
+    }
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Event deleted successfully'),
+          backgroundColor: _primaryGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
+}
 
   Future<void> _showEditEventDialog(EventModel event) async {
     final updatedEvent = await showDialog<EventModel>(

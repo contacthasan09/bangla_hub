@@ -134,7 +134,7 @@ class ServiceProviderProvider with ChangeNotifier {
   }
 
   // Apply search filter locally
-  void _applySearchFilter() {
+/*  void _applySearchFilter() {
     if (_allProviders.isEmpty) {
       _filteredProviders = [];
       return;
@@ -150,7 +150,8 @@ class ServiceProviderProvider with ChangeNotifier {
                p.serviceProvider.toLowerCase().contains(query) ||
                (p.subServiceProvider?.toLowerCase().contains(query) ?? false) ||
                p.city.toLowerCase().contains(query) ||
-               p.state.toLowerCase().contains(query);
+               p.state.toLowerCase().contains(query) ||
+               (p.email?.toLowerCase().contains(query) ?? false); // ✅ Added email to search
       }).toList();
       print('🔍 After search filter (${_searchQuery}): ${filtered.length} providers');
     }
@@ -159,7 +160,45 @@ class ServiceProviderProvider with ChangeNotifier {
     
     print('🎯 Active filters: State: ${_selectedState ?? "Any"}, City: ${_selectedCity ?? "Any"}, Category: ${_selectedCategory?.displayName ?? "Any"}, Service: ${_selectedServiceProvider ?? "Any"}');
     notifyListeners();
+  }   */
+
+
+ void _applySearchFilter() {
+  if (_allProviders.isEmpty) {
+    _filteredProviders = [];
+    return;
   }
+
+  List<ServiceProviderModel> filtered = List.from(_allProviders);
+
+  if (_searchQuery.isNotEmpty) {
+    final query = _searchQuery.toLowerCase().trim();
+    filtered = filtered.where((p) {
+      // ✅ Check for null before calling toLowerCase()
+      final fullNameMatch = p.fullName.toLowerCase().contains(query);
+      final companyNameMatch = p.companyName?.toLowerCase().contains(query) ?? false;
+      final serviceProviderMatch = p.serviceProvider.toLowerCase().contains(query);
+      final subServiceProviderMatch = p.subServiceProvider?.toLowerCase().contains(query) ?? false;
+      final cityMatch = p.city.toLowerCase().contains(query);
+      final stateMatch = p.state.toLowerCase().contains(query);
+      final emailMatch = p.email?.toLowerCase().contains(query) ?? false;
+      
+      return fullNameMatch ||
+             companyNameMatch ||
+             serviceProviderMatch ||
+             subServiceProviderMatch ||
+             cityMatch ||
+             stateMatch ||
+             emailMatch;
+    }).toList();
+    print('🔍 After search filter (${_searchQuery}): ${filtered.length} providers');
+  }
+
+  _filteredProviders = filtered;
+  
+  print('🎯 Active filters: State: ${_selectedState ?? "Any"}, City: ${_selectedCity ?? "Any"}, Category: ${_selectedCategory?.displayName ?? "Any"}, Service: ${_selectedServiceProvider ?? "Any"}');
+  notifyListeners();
+}
 
   // Load service providers
   Future<void> loadServiceProviders({bool adminView = false}) async {
@@ -229,83 +268,76 @@ class ServiceProviderProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // ==================== MY SERVICES METHODS ====================
-// ==================== MY SERVICES METHODS ====================
-
-// Load user's services - FIXED to show all services including pending
-Future<void> loadUserServices(String userId, {bool adminView = false}) async {
-  if (_isReloading) return;
-  
-  _isReloading = true;
-  _isLoading = true;
-  _error = '';
-  notifyListeners();
-
-  print('🔄 loadUserServices called for userId: $userId');
-  print('🔄 Admin view: $adminView');
-  
-  try {
-    _userServicesSubscription?.cancel();
+  Future<void> loadUserServices(String userId, {bool adminView = false}) async {
+    if (_isReloading) return;
     
-    // IMPORTANT: For user's own services, we want to see ALL their services
-    // regardless of verification status. Set adminView = true to bypass filters.
-    _userServicesSubscription = _service.getUserServices(
-      userId: userId,
-      adminView: true, // Set to true to show all services including unverified
-      includeDeleted: adminView,
-      onlyVerified: false, // Don't filter by verification for user's own services
-      onlyAvailable: false, // Don't filter by availability for user's own services
-    ).listen(
-      (providers) => _handleUserServicesUpdate(providers),
-      onError: (error) {
-        print('❌ User services stream error: $error');
-        _error = 'Failed to load your services: ${error.toString()}';
-        _isLoading = false;
-        _isReloading = false;
-        notifyListeners();
-      },
-    );
-  } catch (e) {
-    print('❌ Catch error: $e');
-    _error = 'Failed to load your services: ${e.toString()}';
+    _isReloading = true;
+    _isLoading = true;
+    _error = '';
+    notifyListeners();
+
+    print('🔄 loadUserServices called for userId: $userId');
+    print('🔄 Admin view: $adminView');
+    
+    try {
+      _userServicesSubscription?.cancel();
+      
+      // IMPORTANT: For user's own services, we want to see ALL their services
+      // regardless of verification status. Set adminView = true to bypass filters.
+      _userServicesSubscription = _service.getUserServices(
+        userId: userId,
+        adminView: true, // Set to true to show all services including unverified
+        includeDeleted: adminView,
+        onlyVerified: false, // Don't filter by verification for user's own services
+        onlyAvailable: false, // Don't filter by availability for user's own services
+      ).listen(
+        (providers) => _handleUserServicesUpdate(providers),
+        onError: (error) {
+          print('❌ User services stream error: $error');
+          _error = 'Failed to load your services: ${error.toString()}';
+          _isLoading = false;
+          _isReloading = false;
+          notifyListeners();
+        },
+      );
+    } catch (e) {
+      print('❌ Catch error: $e');
+      _error = 'Failed to load your services: ${e.toString()}';
+      _isLoading = false;
+      _isReloading = false;
+      notifyListeners();
+    }
+  }
+
+  // Handle user services update
+  void _handleUserServicesUpdate(List<ServiceProviderModel> providers) {
+    print('📊 Processing ${providers.length} user services');
+    
+    // Log each service for debugging
+    for (var service in providers) {
+      print('  - Service: ${service.companyName}, Verified: ${service.isVerified}, Deleted: ${service.isDeleted}');
+    }
+    
+    _myApprovedServices = providers
+        .where((p) => p.isVerified == true && !p.isDeleted)
+        .toList();
+    _myPendingServices = providers
+        .where((p) => p.isVerified == false && !p.isDeleted)
+        .toList();
+
     _isLoading = false;
     _isReloading = false;
+    
+    print('✅ Approved services: ${_myApprovedServices.length}');
+    print('✅ Pending services: ${_myPendingServices.length}');
+    
+    // Log pending services details
+    for (var service in _myPendingServices) {
+      print('  - Pending: ${service.companyName} (ID: ${service.id})');
+    }
+    
     notifyListeners();
   }
-}
-
-// Handle user services update
-void _handleUserServicesUpdate(List<ServiceProviderModel> providers) {
-  print('📊 Processing ${providers.length} user services');
-  
-  // Log each service for debugging
-  for (var service in providers) {
-    print('  - Service: ${service.companyName}, Verified: ${service.isVerified}, Deleted: ${service.isDeleted}');
-  }
-  
-  // Separate into approved and pending based on isVerified
-  // Show ALL services that are not deleted
-  _myApprovedServices = providers
-      .where((p) => p.isVerified == true && !p.isDeleted)
-      .toList();
-  _myPendingServices = providers
-      .where((p) => p.isVerified == false && !p.isDeleted)
-      .toList();
-
-  _isLoading = false;
-  _isReloading = false;
-  
-  print('✅ Approved services: ${_myApprovedServices.length}');
-  print('✅ Pending services: ${_myPendingServices.length}');
-  
-  // Log pending services details
-  for (var service in _myPendingServices) {
-    print('  - Pending: ${service.companyName} (ID: ${service.id})');
-  }
-  
-  notifyListeners();
-}
-
 
   // Delete user service
   Future<bool> deleteUserService(String id) async {
@@ -475,7 +507,7 @@ void _handleUserServicesUpdate(List<ServiceProviderModel> providers) {
 
   void _queueLikeUpdate() {
     _batchUpdateTimer?.cancel();
-    _batchUpdateTimer = Timer(Duration(milliseconds: _batchDelayMs), _processPendingLikes);
+    _batchUpdateTimer = Timer(const Duration(milliseconds: _batchDelayMs), _processPendingLikes);
   }
 
   Future<void> _processPendingLikes() async {

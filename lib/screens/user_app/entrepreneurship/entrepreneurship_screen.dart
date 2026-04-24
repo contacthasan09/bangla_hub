@@ -203,7 +203,8 @@ class EntrepreneurshipScreen extends StatelessWidget {
       child: CustomScrollView(
         slivers: [
           // Sliver App Bar with conditional drawer button
-          SliverAppBar(
+    
+    /*      SliverAppBar(
             expandedHeight: expandedHeight,
             collapsedHeight: collapsedHeight,
             floating: false,
@@ -292,6 +293,144 @@ class EntrepreneurshipScreen extends StatelessWidget {
             ),
           ),
           
+     */
+     
+
+    SliverAppBar(
+  expandedHeight: expandedHeight,
+  collapsedHeight: collapsedHeight,
+  floating: false,
+  pinned: true,
+  snap: false,
+  elevation: 0,
+  backgroundColor: Colors.transparent,
+  // ✅ ONLY show drawer button when user is logged in
+  leading: isLoggedIn 
+      ? IconButton(
+          icon: Icon(Icons.menu, color: Colors.white, size: isTablet ? 28 : 24),
+          onPressed: () => _openDrawer(context),
+        )
+      : null, // Hide for guests
+  // ✅ Logo on the right side
+  actions: [
+    Padding(
+      padding: EdgeInsets.only(right: isTablet ? 16 : 12),
+      child: Container(
+        width: isTablet ? 44 : 36,
+        height: isTablet ? 44 : 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: _goldAccent, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+            BoxShadow(
+              color: _goldAccent.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Image.asset(
+            'assets/logo/logo.png',
+            width: isTablet ? 40 : 32,
+            height: isTablet ? 40 : 32,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: Colors.white.withOpacity(0.2),
+                child: Center(
+                  child: Icon(
+                    Icons.business_center_rounded,
+                    color: Colors.white,
+                    size: isTablet ? 24 : 20,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    ),
+  ],
+  centerTitle: true,
+  flexibleSpace: FlexibleSpaceBar(
+    centerTitle: true,
+    background: Container(
+      decoration: BoxDecoration(
+        gradient: _headerGradient,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(isTablet ? 30 : 24),
+          bottomRight: Radius.circular(isTablet ? 30 : 24),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: horizontalPadding,
+            right: horizontalPadding,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                'Entrepreneurship',
+                style: GoogleFonts.poppins(
+                  fontSize: titleFontSize,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              SizedBox(height: isSmallScreen ? 8 : 12),
+              
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 12 : 16,
+                  vertical: isSmallScreen ? 6 : 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.25),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  'Empowering Bengali entrepreneurs',
+                  style: GoogleFonts.poppins(
+                    fontSize: subtitleFontSize,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  ),
+), 
+     
           // Main Content
           SliverToBoxAdapter(
             child: Container(

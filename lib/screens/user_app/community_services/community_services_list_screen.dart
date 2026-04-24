@@ -9,6 +9,7 @@ import 'package:bangla_hub/providers/location_filter_provider.dart';
 import 'package:bangla_hub/providers/service_provider_provider.dart';
 import 'package:bangla_hub/screens/auth/login_screen.dart';
 import 'package:bangla_hub/screens/auth/signup_screen.dart';
+import 'package:bangla_hub/screens/user_app/community_services/add_service_screen.dart';
 import 'package:bangla_hub/screens/user_app/community_services/service_provider_detail_screen.dart';
 import 'package:bangla_hub/widgets/common/distance_widget.dart';
 import 'package:bangla_hub/widgets/common/global_location_filter_bar.dart';
@@ -289,64 +290,7 @@ class _CommunityServicesListScreenState extends State<CommunityServicesListScree
     }
   }
 
-  // Optimized image builder with caching - FIXED to show user images
 
-
- /* Widget _buildProviderImage(ServiceProviderModel provider) {
-    if (provider.profileImageBase64 == null || provider.profileImageBase64!.isEmpty) {
-      return _buildDefaultProfileImage();
-    }
-
-    if (_imageCache.containsKey(provider.id)) {
-      final bytes = _imageCache[provider.id];
-      if (bytes != null) {
-        return ClipOval(
-          child: Image.memory(
-            bytes, 
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-          ),
-        );
-      }
-    }
-
-    try {
-      String base64String = provider.profileImageBase64!;
-      if (base64String.contains('base64,')) {
-        base64String = base64String.split('base64,').last;
-      }
-      base64String = base64String.replaceAll(RegExp(r'\s'), '');
-      while (base64String.length % 4 != 0) base64String += '=';
-      
-      final bytes = base64Decode(base64String);
-      _imageCache[provider.id!] = bytes;
-      return ClipOval(
-        child: Image.memory(
-          bytes, 
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: double.infinity,
-        ),
-      );
-    } catch (e) {
-      print('Error decoding image: $e');
-      return _buildDefaultProfileImage();
-    }
-  }
-
-  Widget _buildDefaultProfileImage() {
-    return Container(
-      color: const Color(0xFFE8F5E9),
-      child: Center(
-        child: Icon(Icons.person_rounded, color: _primaryGreen, size: 30),
-      ),
-    );
-  }
-
- */
- 
- 
 Widget _buildProviderImage(ServiceProviderModel provider) {
   // Check if there's an image
   if (provider.profileImageBase64 == null || provider.profileImageBase64!.isEmpty) {
@@ -650,7 +594,8 @@ void _showLocationFilterDialog(BuildContext context) {
     );
   }
 
-  Widget _buildMainContent(BuildContext context) {
+ 
+/*  Widget _buildMainContent(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width >= 600;
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenHeight < 700;
@@ -824,71 +769,306 @@ void _showLocationFilterDialog(BuildContext context) {
     );
   }
 
-  Widget _buildAnimatedSuggestButton(bool isTablet) {
-    return ScaleTransition(
-      scale: _pulseAnimation,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFF42A41), Color(0xFF006A4E)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0xFFF42A41),
-              blurRadius: 20,
-              offset: Offset(0, 8),
-              spreadRadius: 2,
-            ),
-          ],
+*/
+
+Widget _buildMainContent(BuildContext context) {
+  final isTablet = MediaQuery.of(context).size.width >= 600;
+  final screenHeight = MediaQuery.of(context).size.height;
+  final isSmallScreen = screenHeight < 700;
+  
+  // Get auth state to conditionally show drawer
+  final authProvider = Provider.of<AuthProvider>(context);
+  final bool isLoggedIn = authProvider.isLoggedIn && authProvider.user != null;
+  
+  return Consumer2<ServiceProviderProvider, LocationFilterProvider>(
+    builder: (context, provider, locationProvider, _) {
+      // FIX: Use WidgetsBinding to schedule the sync after build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (provider.stateFilter != locationProvider.selectedState) {
+          provider.syncWithLocationFilter(locationProvider);
+        }
+      });
+      
+      final allProviders = provider.serviceProviders;
+      final filteredProviders = _getFilteredProviders(allProviders, locationProvider);
+      
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light.copyWith(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              if (FirebaseAuth.instance.currentUser == null) {
-                _showLoginRequiredDialog(context, 'suggest a service provider');
-              } else {
-                _showSuggestionDialog(context, isTablet);
-              }
-            },
-            borderRadius: BorderRadius.circular(30),
-            splashColor: Colors.white30,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          extendBodyBehindAppBar: true,
+          appBar: PreferredSize(
+            preferredSize: Size.fromHeight(isTablet ? 160 : 130),
             child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 20 : 16,
-                vertical: isTablet ? 12 : 10,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  RotationTransition(
-                    turns: _rotateAnimation,
-                    child: const Icon(
-                      Icons.add_circle_rounded,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                  SizedBox(width: isTablet ? 8 : 6),
-                  Text(
-                    'Suggest',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      fontSize: isTablet ? 14 : 12,
-                      color: Colors.white,
-                    ),
+              decoration: BoxDecoration(
+                gradient: _appBarGradient,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(25),
+                  bottomRight: Radius.circular(25),
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 20 : 16,
+                    vertical: isTablet ? 12 : 8,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top row with drawer button, title, and logo
+                      Row(
+                        children: [
+                          if (isLoggedIn)
+                            IconButton(
+                              icon: Icon(
+                                Icons.menu_rounded,
+                                color: Colors.white,
+                                size: isTablet ? 28 : 24,
+                              ),
+                              onPressed: () => _openDrawer(context),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          // Title text
+                          Expanded(
+                            child: Text(
+                              'Community Services',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w700,
+                                fontSize: isTablet ? 22 : 18,
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                          // Bigger Logo on the right side with extra margin
+                          Container(
+                            margin: EdgeInsets.only(right: isTablet ? 16 : 12),
+                            width: isTablet ? 50 : 42,
+                            height: isTablet ? 50 : 42,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: _goldAccent, width: 2.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.25),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                                BoxShadow(
+                                  color: _goldAccent.withOpacity(0.4),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: Image.asset(
+                                'assets/logo/logo.png',
+                                width: isTablet ? 40 : 32,
+                                height: isTablet ? 40 : 32,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.white.withOpacity(0.2),
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.handyman_rounded,
+                                        color: Colors.white,
+                                        size: isTablet ? 28 : 24,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 4),
+                      
+                      // Subtitle
+                      Center(
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 14 : 10,
+                            vertical: isTablet ? 6 : 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.auto_awesome_rounded,
+                                color: _goldAccent,
+                                size: isTablet ? 16 : 14,
+                              ),
+                              SizedBox(width: isTablet ? 6 : 4),
+                              Text(
+                                'Find trusted professionals near you',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: isTablet ? 13 : 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          body: Container(
+            decoration: const BoxDecoration(gradient: _premiumBgGradient),
+            child: Stack(
+              children: [
+                // Background overlay
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          colors: [Colors.white, _primaryGreen, _primaryRed],
+                          stops: const [0.0, 0.5, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Main Content
+                RefreshIndicator(
+                  color: _goldAccent,
+                  backgroundColor: Colors.white,
+                  onRefresh: () async {
+                    HapticFeedback.mediumImpact();
+                    _imageCache.clear();
+                    await provider.loadServiceProviders();
+                  },
+                  child: _isFilterView
+                      ? _buildFiltersView(provider, isTablet)
+                      : _buildMainView(provider, filteredProviders, locationProvider, isTablet),
+                ),
+                
+                // Animated Floating Action Button
+                Positioned(
+                  bottom: isTablet ? 30 : 20,
+                  right: isTablet ? 30 : 20,
+                  child: _buildAnimatedSuggestButton(isTablet),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+
+Widget _buildAnimatedSuggestButton(bool isTablet) {
+  return ScaleTransition(
+    scale: _pulseAnimation,
+    child: Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF42A41), Color(0xFF006A4E)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0xFFF42A41),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            // Check if user is logged in
+            if (FirebaseAuth.instance.currentUser == null) {
+              _showLoginRequiredDialog(context, 'add a service');
+            } else {
+              // Navigate to AddServiceScreen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddServiceScreen(),
+                ),
+              ).then((_) {
+                // Optional: Refresh the service list when returning from AddServiceScreen
+                if (mounted) {
+                  // You can add a refresh callback here if needed
+                  // For example: _refreshServices();
+                }
+              });
+            }
+          },
+          borderRadius: BorderRadius.circular(30),
+          splashColor: Colors.white30,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 20 : 16,
+              vertical: isTablet ? 12 : 10,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RotationTransition(
+                  turns: _rotateAnimation,
+                  child: const Icon(
+                    Icons.add_circle_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                SizedBox(width: isTablet ? 8 : 6),
+                Text(
+                  'Add Service',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    fontSize: isTablet ? 14 : 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildFiltersView(ServiceProviderProvider provider, bool isTablet) {
     // Initialize temp filters with current LOCAL applied values (NO STATE)
@@ -1282,84 +1462,6 @@ Widget _buildLocalFilterCard(ServiceProviderProvider provider, bool isTablet) {
 }
 
 
-Future<void> _performPremiumLogout(BuildContext context) async {
-    BuildContext? dialogContext;
-    
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) {
-          dialogContext = context;
-          return Dialog(
-            backgroundColor: Colors.transparent,
-            child: Container(
-              padding: EdgeInsets.all(30),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [_primaryGreen, _primaryRed],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(
-                    color: _goldAccent,
-                    strokeWidth: 3,
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'Logging out...',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-
-      final authProvider = context.read<AuthProvider>();
-      await authProvider.signOut(context);
-      
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('selected_tab_index');
-      print('📊 Cleared saved tab index on logout');
-
-      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
-        Navigator.of(dialogContext!, rootNavigator: true).pop();
-      }
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        navigatorKey.currentState?.pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
-        );
-      });
-    } catch (e) {
-      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
-        Navigator.of(dialogContext!, rootNavigator: true).pop();
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Logout failed: $e'),
-              backgroundColor: _primaryRed,
-            ),
-          );
-        }
-      });
-    }
-  }
-  
   Widget _buildDropdown<T>({
     required T? value,
     required String label,
@@ -1833,297 +1935,6 @@ Future<void> _performPremiumLogout(BuildContext context) async {
 
 
 
-/*  Widget _buildProviderCard(
-    ServiceProviderModel provider,
-    String? userId,
-    LocationFilterProvider locationProvider,
-    bool isTablet,
-    int index,
-  ) {
-    final categoryGradient = _getCategoryGradient(provider.serviceCategory);
-    
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: isTablet ? 16 : 12,
-        vertical: 6,
-      ),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0.95, end: 1.0),
-        duration: Duration(milliseconds: 200 + (index * 30)),
-        curve: Curves.easeOut,
-        builder: (context, scale, child) {
-          return Transform.scale(
-            scale: scale,
-            child: GestureDetector(
-              onTap: () {
-                if (userId == null || userId.isEmpty) {
-                  _showLoginRequiredDialog(context, 'view details');
-                  return;
-                }
-                HapticFeedback.mediumImpact();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ServiceProviderDetailScreen(providerId: provider.id!),
-                  ),
-                );
-              },
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(isTablet ? 25 : 20),
-                  child: Stack(
-                    children: [
-                      // Premium Green Gradient Background (NO RED)
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              _primaryGreen,
-                              _darkGreen,
-                              const Color(0xFF2E7D32), // Darker green
-                              const Color(0xFF1B5E20), // Even darker green
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            stops: const [0.0, 0.3, 0.7, 1.0],
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Header Row
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Profile Image
-                                  Container(
-                                    width: isTablet ? 70 : 60,
-                                    height: isTablet ? 70 : 60,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 2,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
-                                          blurRadius: 8,
-                                        ),
-                                      ],
-                                    ),
-                                    child: _buildProviderImage(provider),
-                                  ),
-                                  
-                                  const SizedBox(width: 12),
-                                  
-                                  // Name and Company
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                provider.fullName,
-                                                style: GoogleFonts.poppins(
-                                                  fontSize: isTablet ? 18 : 16,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.white,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            if (provider.isVerified)
-                                              Container(
-                                                margin: const EdgeInsets.only(left: 4),
-                                                padding: const EdgeInsets.all(2),
-                                                decoration: const BoxDecoration(
-                                                  color: Colors.blue,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.check,
-                                                  color: Colors.white,
-                                                  size: 10,
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          provider.companyName,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: isTablet ? 13 : 11,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.white.withOpacity(0.9),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 12),
-                              
-                              // Location and Distance
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.location_on,
-                                    color: _goldAccent,
-                                    size: isTablet ? 16 : 14,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      provider.city ?? provider.state ?? 'Location',
-                                      style: GoogleFonts.inter(
-                                        fontSize: isTablet ? 13 : 11,
-                                        color: Colors.white,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  if (provider.latitude != null && provider.longitude != null) ...[
-                                    const Spacer(),
-                                    DistanceBadge(
-                                      latitude: provider.latitude!,
-                                      longitude: provider.longitude!,
-                                      isTablet: isTablet,
-                                      color: Colors.white.withOpacity(0.9),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 8),
-                              
-                              // Category and Service Type
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      provider.serviceCategory.icon,
-                                      color: _goldAccent,
-                                      size: isTablet ? 16 : 14,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        provider.serviceProvider ?? 'Service',
-                                        style: GoogleFonts.inter(
-                                          fontSize: isTablet ? 12 : 10,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 12),
-                              
-                              // Contact Buttons
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildContactButton(
-                                      icon: Icons.phone,
-                                      label: 'Call',
-                                      onTap: () {
-                                        // Add phone call functionality
-                                      },
-                                      isTablet: isTablet,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _buildContactButton(
-                                      icon: Icons.email,
-                                      label: 'Email',
-                                      onTap: () {
-                                        // Add email functionality
-                                      },
-                                      isTablet: isTablet,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  // Like Button
-                                  _buildCompactLikeButton(provider, userId, isTablet),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 12),
-                              
-                              // View Details Button (Green gradient only)
-                              Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: isTablet ? 10 : 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [_primaryGreen, _darkGreen],
-                                  ),
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'View Details',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: isTablet ? 13 : 11,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-*/
-
-
 Widget _buildProviderCard(
     ServiceProviderModel provider,
     String? userId,
@@ -2257,7 +2068,7 @@ Widget _buildProviderCard(
                                           ],
                                         ),
                                         const SizedBox(height: 2),
-                                        Text(
+                                  /*      Text(
                                           provider.companyName,
                                           style: GoogleFonts.poppins(
                                             fontSize: isTablet ? 13 : 11,
@@ -2266,7 +2077,18 @@ Widget _buildProviderCard(
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                        ),
+                                        ),  */
+
+                                        Text(
+  provider.companyName ?? 'Not Provided', // ✅ Provide default value when null
+  style: GoogleFonts.poppins(
+    fontSize: isTablet ? 13 : 11,
+    fontWeight: FontWeight.w500,
+    color: Colors.white.withOpacity(0.9),
+  ),
+  maxLines: 1,
+  overflow: TextOverflow.ellipsis,
+),
                                       ],
                                     ),
                                   ),
@@ -2751,770 +2573,6 @@ Widget _buildProviderCard(
 
 
 
-
-/*  void _showSuggestionDialog(BuildContext context, bool isTablet) {
-    HapticFeedback.mediumImpact();
-    
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: EdgeInsets.all(isTablet ? 30 : 16),
-            child: Container(
-              width: isTablet ? 500 : null,
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.85,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-                  // Header
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryRed, _primaryGreen],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.add_circle, color: Colors.white, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Suggest Service',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: isTablet ? 18 : 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white, size: 18),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Body
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        children: [
-                          _buildSuggestionField(
-                            controller: _suggestFullNameController,
-                            label: 'Full Name',
-                            icon: Icons.person,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSuggestionField(
-                            controller: _suggestCompanyNameController,
-                            label: 'Company',
-                            icon: Icons.business,
-                            required: false,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSuggestionField(
-                            controller: _suggestPhoneController,
-                            label: 'Phone',
-                            icon: Icons.phone,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSuggestionField(
-                            controller: _suggestEmailController,
-                            label: 'Email',
-                            icon: Icons.email,
-                          ),
-                          const SizedBox(height: 8),
-                          
-                          // Location Picker
-                          _buildLocationPickerField(setState, isTablet),
-                          const SizedBox(height: 8),
-                          
-                          // Category Dropdown
-                          _buildSuggestionDropdown<ServiceCategory>(
-                            value: _suggestSelectedCategory,
-                            label: 'Category',
-                            icon: Icons.category,
-                            items: ServiceCategory.values.map((category) {
-                              return DropdownMenuItem<ServiceCategory>(
-                                value: category,
-                                child: Row(
-                                  children: [
-                                    Icon(category.icon, color: _primaryRed, size: 14),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        category.displayName,
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _suggestSelectedCategory = value;
-                                _suggestSelectedServiceProvider = null;
-                                _suggestAvailableServiceProviders = value?.serviceProviders ?? [];
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                          
-                          // Service Type Dropdown
-                          if (_suggestSelectedCategory != null)
-                            _buildSuggestionDropdown<String>(
-                              value: _suggestSelectedServiceProvider,
-                              label: 'Service Type',
-                              icon: Icons.work,
-                              items: _suggestAvailableServiceProviders.map((provider) {
-                                return DropdownMenuItem<String>(
-                                  value: provider,
-                                  child: Text(
-                                    provider,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (value) => setState(() => _suggestSelectedServiceProvider = value),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  // Footer
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border(top: BorderSide(color: Colors.grey.shade200)),
-                    ),
-                    child: Row(
-                      children: [
-                        // Cancel Button
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _primaryRed,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 2,
-                            ),
-                            child: Text(
-                              'Cancel',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
-                        
-                        const SizedBox(width: 8),
-                        
-                        // Submit Button
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _isSubmittingSuggestion ? null : () => _submitSuggestion(context, setState),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _primaryGreen,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: _isSubmittingSuggestion
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  )
-                                : Text(
-                                    'Submit',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-*/
-
-void _showSuggestionDialog(BuildContext context, bool isTablet) {
-    HapticFeedback.mediumImpact();
-    
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: EdgeInsets.all(isTablet ? 30 : 16),
-            child: Container(
-              width: isTablet ? 500 : null,
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.85,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-                  // Header
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryRed, _primaryGreen],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.add_circle, color: Colors.white, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Suggest Service',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: isTablet ? 18 : 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white, size: 18),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Body
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        children: [
-                          _buildSuggestionField(
-                            controller: _suggestFullNameController,
-                            label: 'Full Name',
-                            icon: Icons.person,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSuggestionField(
-                            controller: _suggestCompanyNameController,
-                            label: 'Company',
-                            icon: Icons.business,
-                            required: false,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSuggestionField(
-                            controller: _suggestPhoneController,
-                            label: 'Phone',
-                            icon: Icons.phone,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSuggestionField(
-                            controller: _suggestEmailController,
-                            label: 'Email',
-                            icon: Icons.email,
-                          ),
-                          const SizedBox(height: 8),
-                          
-                          // Location Picker
-                          _buildLocationPickerField(setState, isTablet),
-                          const SizedBox(height: 8),
-                          
-                          // Category Dropdown
-                          _buildSuggestionDropdown<ServiceCategory>(
-                            value: _suggestSelectedCategory,
-                            label: 'Category',
-                            icon: Icons.category,
-                            items: ServiceCategory.values.map((category) {
-                              return DropdownMenuItem<ServiceCategory>(
-                                value: category,
-                                child: Row(
-                                  children: [
-                                    Icon(category.icon, color: _primaryRed, size: 14),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        category.displayName,
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _suggestSelectedCategory = value;
-                                _suggestSelectedServiceProvider = null;
-                                _suggestAvailableServiceProviders = value?.serviceProviders ?? [];
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                          
-                          // Service Type Dropdown
-                          if (_suggestSelectedCategory != null)
-                            _buildSuggestionDropdown<String>(
-                              value: _suggestSelectedServiceProvider,
-                              label: 'Service Type',
-                              icon: Icons.work,
-                              items: _suggestAvailableServiceProviders.map((provider) {
-                                return DropdownMenuItem<String>(
-                                  value: provider,
-                                  child: Text(
-                                    provider,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (value) => setState(() => _suggestSelectedServiceProvider = value),
-                            ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          // 📝 Note Box - Added before buttons
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  const Color(0xFFFEF3E8),
-                                  const Color(0xFFFFF8E8),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFFFFB74D).withOpacity(0.5),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.info_outline_rounded,
-                                  color: const Color(0xFFFF9800),
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    '📌 Note: After you submit your suggestion, our BanglaHub admin team will review the information. We may contact you for additional details before publishing the service. Once verified and approved, the service will be visible in the app.',
-                                    style: GoogleFonts.inter(
-                                      fontSize: isTablet ? 12 : 11,
-                                      color: const Color(0xFFE65100),
-                                      height: 1.4,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  // Footer
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border(top: BorderSide(color: Colors.grey.shade200)),
-                    ),
-                    child: Row(
-                      children: [
-                        // Cancel Button
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _primaryRed,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 2,
-                            ),
-                            child: Text(
-                              'Cancel',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
-                        
-                        const SizedBox(width: 8),
-                        
-                        // Submit Button
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _isSubmittingSuggestion ? null : () => _submitSuggestion(context, setState),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _primaryGreen,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: _isSubmittingSuggestion
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  )
-                                : Text(
-                                    'Submit',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-
-  Widget _buildLocationPickerField(StateSetter setState, bool isTablet) {
-    return GestureDetector(
-      onTap: () async {
-        final result = await showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => OSMLocationPicker(
-            initialLatitude: _suggestLatitude,
-            initialLongitude: _suggestLongitude,
-            initialAddress: _suggestFullAddress,
-            initialState: _suggestSelectedState,
-            initialCity: _suggestSelectedCity,
-            onLocationSelected: (lat, lng, address, state, city) {
-              setState(() {
-                _suggestLatitude = lat;
-                _suggestLongitude = lng;
-                _suggestFullAddress = address;
-                _suggestSelectedState = state;
-                _suggestSelectedCity = city;
-                _suggestAddressController.text = address;
-              });
-            },
-          ),
-        );
-      },
-      child: Container(
-        padding: EdgeInsets.all(isTablet ? 12 : 10),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8),
-          color: _suggestLatitude != null ? const Color(0xFFE8F5E9) : null,
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                _suggestLatitude != null ? Icons.location_on : Icons.add_location,
-                color: Colors.white,
-                size: isTablet ? 16 : 14,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Location *',
-                    style: GoogleFonts.poppins(
-                      fontSize: isTablet ? 12 : 10,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF006A4E),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _suggestFullAddress ?? 'Tap to select location on map',
-                    style: GoogleFonts.inter(
-                      fontSize: isTablet ? 12 : 10,
-                      color: _suggestFullAddress != null ? Colors.black87 : Colors.grey[600],
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: const Color(0xFF006A4E),
-              size: isTablet ? 14 : 12,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSuggestionField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool required = true,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TextFormField(
-        controller: controller,
-        style: GoogleFonts.inter(fontSize: 13),
-        decoration: InputDecoration(
-          labelText: required ? '$label *' : label,
-          labelStyle: GoogleFonts.poppins(fontSize: 11),
-          prefixIcon: Icon(icon, color: _primaryGreen, size: 16),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSuggestionDropdown<T>({
-    required T? value,
-    required String label,
-    required IconData icon,
-    required List<DropdownMenuItem<T>> items,
-    required void Function(T?) onChanged,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: DropdownButtonFormField<T>(
-        value: value,
-        decoration: InputDecoration(
-          labelText: '$label *',
-          labelStyle: GoogleFonts.poppins(fontSize: 11),
-          prefixIcon: Icon(icon, color: _primaryGreen, size: 16),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        ),
-        items: items,
-        onChanged: onChanged,
-        isExpanded: true,
-        icon: const Icon(Icons.arrow_drop_down, color: _primaryGreen, size: 18),
-      ),
-    );
-  }
-
-  Future<void> _submitSuggestion(BuildContext context, StateSetter setState) async {
-    // Validation
-    if (_suggestFullNameController.text.isEmpty) {
-      _showSnackBar('Enter full name');
-      return;
-    }
-    if (_suggestPhoneController.text.isEmpty) {
-      _showSnackBar('Enter phone number');
-      return;
-    }
-    if (_suggestEmailController.text.isEmpty) {
-      _showSnackBar('Enter email');
-      return;
-    }
-    if (_suggestLatitude == null || _suggestLongitude == null) {
-      _showSnackBar('Select location on map');
-      return;
-    }
-    if (_suggestSelectedState == null) {
-      _showSnackBar('Select location with valid state');
-      return;
-    }
-    if (_suggestSelectedCategory == null) {
-      _showSnackBar('Select category');
-      return;
-    }
-    if (_suggestSelectedServiceProvider == null) {
-      _showSnackBar('Select service type');
-      return;
-    }
-
-    setState(() => _isSubmittingSuggestion = true);
-
-    try {
-      final provider = Provider.of<ServiceProviderProvider>(context, listen: false);
-      
-      final suggestedProvider = ServiceProviderModel(
-        fullName: _suggestFullNameController.text.trim(),
-        companyName: _suggestCompanyNameController.text.trim(),
-        phone: _suggestPhoneController.text.trim(),
-        email: _suggestEmailController.text.trim(),
-        address: _suggestFullAddress ?? '',
-        state: _suggestSelectedState!,
-        city: _suggestSelectedCity ?? '',
-        serviceCategory: _suggestSelectedCategory!,
-        serviceProvider: _suggestSelectedServiceProvider!,
-        subServiceProvider: null,
-        profileImageBase64: null,
-        description: 'Suggested by user - pending review',
-        website: '',
-        businessHours: '',
-        yearsOfExperience: '',
-        languagesSpoken: const ['English'],
-        serviceTags: [],
-        serviceAreas: [],
-        isVerified: false,
-        isAvailable: false,
-        isDeleted: false,
-        createdBy: FirebaseAuth.instance.currentUser?.uid ?? 'anonymous',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        licenseNumber: '',
-        specialties: '',
-        consultationFee: null,
-        acceptsInsurance: false,
-        acceptedPaymentMethods: [],
-        latitude: _suggestLatitude,
-        longitude: _suggestLongitude,
-      );
-
-      final success = await provider.addServiceProvider(suggestedProvider);
-      
-      if (success && mounted) {
-        Navigator.pop(context);
-        _showSuccessDialog(context);
-        
-        // Clear form
-        _suggestFullNameController.clear();
-        _suggestCompanyNameController.clear();
-        _suggestPhoneController.clear();
-        _suggestEmailController.clear();
-        _suggestAddressController.clear();
-        setState(() {
-          _suggestLatitude = null;
-          _suggestLongitude = null;
-          _suggestFullAddress = null;
-          _suggestSelectedState = null;
-          _suggestSelectedCity = null;
-          _suggestSelectedCategory = null;
-          _suggestSelectedServiceProvider = null;
-        });
-      }
-    } catch (e) {
-      _showSnackBar('Error: $e');
-    } finally {
-      if (mounted) setState(() => _isSubmittingSuggestion = false);
-    }
-  }
-
-  void _showSuccessDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('Thank You!'),
-        content: const Text('Your suggestion has been submitted. Admin will review it soon.'),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(backgroundColor: _successGreen),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: _primaryRed,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(12),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 }
 
 // Helper class for states list

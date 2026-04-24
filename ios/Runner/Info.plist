@@ -49,16 +49,14 @@
     <string>Main</string>
 
     <!-- ========================= -->
-    <!-- 🔄 ORIENTATION - PORTRAIT ONLY (SAFE) -->
+    <!-- 🔄 ORIENTATION - PORTRAIT ONLY -->
     <!-- ========================= -->
 
-    <!-- iPhone: Portrait only -->
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
     </array>
 
-    <!-- iPad: Portrait only (or add landscape if iPad supports it) -->
     <key>UISupportedInterfaceOrientations~ipad</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
@@ -135,6 +133,8 @@
         <string>https</string>
         <string>http</string>
         <string>whatsapp</string>
+        <string>comgooglemaps</string>
+        <string>waze</string>
     </array>
 
     <!-- ========================= -->

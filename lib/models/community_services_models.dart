@@ -3,25 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 
-// Predefined States
-/*class CommunityStates {
-  static const List<String> states = [
-    'Florida',
-    'Georgia',
-    'South Carolina',
-    'North Carolina',
-    'Virginia',
-    'New York',
-    'New Jersey',
-    'Alabama',
-    'Tennessee',
-    'Texas',
-    'California',
-    'Pennsylvania',
-    'Maryland',
-    'Michigan',
-  ];
-}  */
+
 
 class CommunityStates {
   static const List<String> states = [
@@ -108,7 +90,9 @@ extension ServiceCategoryExtension on ServiceCategory {
       case ServiceCategory.healthcareNeeds:
         return ['Health Insurance Agent', 'Bengali Doctors'];
       case ServiceCategory.religious:
-        return ['Mosque, Temple & Cultural Center Listings', 'Religious Classes & Community Talks', 'Funeral & Janaza Support Coordination'];
+     //   return ['Mosque, Temple & Cultural Center Listings', 'Religious Classes & Community Talks', 'Funeral & Janaza Support Coordination'];
+          return ['Mosque', 'Temple', 'Cultural Center', 'Funeral & Janaza Support Coordination'];
+
     //  case ServiceCategory.bengaliRestaurantsGrocery:
     //    return ['Bengali Restaurants', 'Bengali/Indian Grocery Stores'];
       case ServiceCategory.halalGroceryStores:
@@ -136,9 +120,16 @@ extension ServiceCategoryExtension on ServiceCategory {
           'Non-Bengali Attorneys': ['Corporate Law', 'Immigration Law', 'Family Law'],
         };
       case ServiceCategory.religious:
-        return {
+      /*  return {
           'Mosque, Temple & Cultural Center Listings': ['Masjid Lists', 'Temple Lists'],
           'Religious Classes & Community Talks': ['Arabic/Islamic School', 'Quran Teaching Mentor'],
+          'Funeral & Janaza Support Coordination': ['Funeral Services', 'Janaza Coordination'],
+        };   */
+
+         return {
+          'Mosque': ['Mosque Listings'],
+          'Temple': ['Temple Listings'],
+          'Cultural Center': ['Cultural Center Listings'],
           'Funeral & Janaza Support Coordination': ['Funeral Services', 'Janaza Coordination'],
         };
       default:
@@ -174,9 +165,9 @@ extension ServiceCategoryExtension on ServiceCategory {
 class ServiceProviderModel {
   String? id;
   String fullName;
-  String companyName;
+  String? companyName; // ✅ Made nullable
   String phone;
-  String email;
+  String? email; // ✅ Made nullable
   String address;  
   String state;
   String city;
@@ -211,15 +202,15 @@ class ServiceProviderModel {
   int totalLikes;
   List<String> likedByUsers; // List of user IDs who liked this service
 
-    final double? latitude;
+  final double? latitude;
   final double? longitude;
 
   ServiceProviderModel({
     this.id,
     required this.fullName,
-    required this.companyName,
+    this.companyName, // ✅ Now nullable (removed required)
     required this.phone,
-    required this.email,
+    this.email, // ✅ Made nullable (removed required)
     required this.address,
     required this.state,
     required this.city,
@@ -251,8 +242,7 @@ class ServiceProviderModel {
     this.acceptedPaymentMethods,
     this.totalLikes = 0,
     this.likedByUsers = const [],
-
-        this.latitude,
+    this.latitude,
     this.longitude,
   });
 
@@ -260,9 +250,9 @@ class ServiceProviderModel {
   Map<String, dynamic> toMap() {
     return {
       'fullName': fullName,
-      'companyName': companyName,
+      'companyName': companyName ?? '', // ✅ Handle nullable - convert null to empty string for storage
       'phone': phone,
-      'email': email,
+      'email': email ?? '', // ✅ Handle nullable - convert null to empty string for storage
       'address': address,
       'state': state,
       'city': city,
@@ -299,8 +289,7 @@ class ServiceProviderModel {
       'searchKeywords': _generateSearchKeywords(),
       'state_city': '${state}_$city',
       'category_provider': '${serviceCategory.stringValue}_$serviceProvider',
-
-            'latitude': latitude,
+      'latitude': latitude,
       'longitude': longitude,
     };
   }
@@ -309,9 +298,9 @@ class ServiceProviderModel {
   List<String> _generateSearchKeywords() {
     final keywords = <String>[
       fullName.toLowerCase(),
-      companyName.toLowerCase(),
+      if (companyName != null) companyName!.toLowerCase(), // ✅ Only add if not null
       phone.toLowerCase(),
-      email.toLowerCase(),
+      if (email != null) email!.toLowerCase(), // ✅ Only add if not null
       address.toLowerCase(),
       state.toLowerCase(),
       city.toLowerCase(),
@@ -324,7 +313,9 @@ class ServiceProviderModel {
 
     // Split multi-word fields
     keywords.addAll(fullName.toLowerCase().split(' '));
-    keywords.addAll(companyName.toLowerCase().split(' '));
+    if (companyName != null) {
+      keywords.addAll(companyName!.toLowerCase().split(' '));
+    }
     keywords.addAll(address.toLowerCase().split(' '));
     
     // Remove duplicates and empty strings
@@ -352,9 +343,9 @@ class ServiceProviderModel {
     return ServiceProviderModel(
       id: doc.id,
       fullName: data['fullName'] ?? '',
-      companyName: data['companyName'] ?? '',
+      companyName: data['companyName'], // ✅ Can be null
       phone: data['phone'] ?? '',
-      email: data['email'] ?? '',
+      email: data['email'], // ✅ Can be null
       address: data['address'] ?? '',
       state: data['state'] ?? '',
       city: data['city'] ?? '',
@@ -375,8 +366,8 @@ class ServiceProviderModel {
       isAvailable: data['isAvailable'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
       createdBy: data['createdBy'] ?? '',
-createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       additionalInfo: Map<String, dynamic>.from(data['additionalInfo'] ?? {}),
       galleryImagesBase64: List<String>.from(data['galleryImagesBase64'] ?? []),
       licenseNumber: data['licenseNumber'],
@@ -386,9 +377,8 @@ updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       acceptedPaymentMethods: List<String>.from(data['acceptedPaymentMethods'] ?? []),
       totalLikes: data['totalLikes'] ?? 0,
       likedByUsers: List<String>.from(data['likedByUsers'] ?? []),
-
-latitude: data['latitude']?.toDouble(),
-longitude: data['longitude']?.toDouble(),
+      latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
     );
   }
 
@@ -396,9 +386,9 @@ longitude: data['longitude']?.toDouble(),
   ServiceProviderModel copyWith({
     String? id,
     String? fullName,
-    String? companyName,
+    String? companyName, // ✅ Made nullable
     String? phone,
-    String? email,
+    String? email, // ✅ Made nullable
     String? address,
     String? state,
     String? city,
@@ -436,9 +426,9 @@ longitude: data['longitude']?.toDouble(),
     return ServiceProviderModel(
       id: id ?? this.id,
       fullName: fullName ?? this.fullName,
-      companyName: companyName ?? this.companyName,
+      companyName: companyName ?? this.companyName, // ✅ Now nullable
       phone: phone ?? this.phone,
-      email: email ?? this.email,
+      email: email ?? this.email, // ✅ Now nullable
       address: address ?? this.address,
       state: state ?? this.state,
       city: city ?? this.city,
@@ -606,7 +596,7 @@ longitude: data['longitude']?.toDouble(),
           ),
         );
       } catch (e) {
-        return SizedBox.shrink();
+        return const SizedBox.shrink();
       }
     }).toList();
   }
@@ -631,7 +621,7 @@ longitude: data['longitude']?.toDouble(),
   Widget get statusBadge {
     if (isDeleted) {
       return Chip(
-        label: Text('Deleted'),
+        label: const Text('Deleted'),
         backgroundColor: Colors.red.shade100,
         labelStyle: TextStyle(color: Colors.red.shade800),
       );
@@ -639,7 +629,7 @@ longitude: data['longitude']?.toDouble(),
     
     if (!isAvailable) {
       return Chip(
-        label: Text('Not Available'),
+        label: const Text('Not Available'),
         backgroundColor: Colors.orange.shade100,
         labelStyle: TextStyle(color: Colors.orange.shade800),
       );
@@ -647,15 +637,15 @@ longitude: data['longitude']?.toDouble(),
     
     if (isVerified) {
       return Chip(
-        label: Text('Verified'),
+        label: const Text('Verified'),
         backgroundColor: Colors.green.shade100,
         labelStyle: TextStyle(color: Colors.green.shade800),
-        avatar: Icon(Icons.verified, size: 14),
+        avatar: const Icon(Icons.verified, size: 14),
       );
     }
     
     return Chip(
-      label: Text('Unverified'),
+      label: const Text('Unverified'),
       backgroundColor: Colors.grey.shade200,
       labelStyle: TextStyle(color: Colors.grey.shade700),
     );

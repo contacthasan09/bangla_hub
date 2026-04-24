@@ -28,7 +28,7 @@ class EventModel {
   final String title;
   final String organizer;
   final String contactPerson;
-  final String contactEmail;
+  final String? contactEmail;  // ✅ Made nullable
   final String contactPhone;
   final DateTime eventDate;
   final DateTime? endDate;
@@ -58,7 +58,7 @@ class EventModel {
     required this.title,
     required this.organizer,
     required this.contactPerson,
-    required this.contactEmail,
+    this.contactEmail,  // ✅ Made nullable
     required this.contactPhone,
     required this.eventDate,
     this.endDate,
@@ -368,6 +368,51 @@ class EventModel {
     }
   }
 
+
+  // Add this getter to your EventModel class (after the existing getters)
+
+// Check if event has an image (either Cloudinary, network, or base64)
+bool get isImageAvailable {
+  if (bannerImageUrl == null || bannerImageUrl!.isEmpty) {
+    return false;
+  }
+  
+  final url = bannerImageUrl!.trim();
+  
+  // Check if it's a valid Cloudinary URL
+  if (url.contains('cloudinary.com') && url.contains('/upload/')) {
+    return true;
+  }
+  
+  // Check if it's a valid network URL
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return true;
+  }
+  
+  // Check if it's a base64 image
+  if (url.startsWith('data:image/') || 
+      url.startsWith('/9j/') || 
+      url.startsWith('iVBORw0KGgo')) {
+    return true;
+  }
+  
+  return false;
+}
+
+// Get appropriate image URL for display
+String get displayImageUrl {
+  if (!isImageAvailable) return '';
+  
+  final url = bannerImageUrl!.trim();
+  
+  // Use optimized thumbnail for Cloudinary images
+  if (isCloudinaryUrl) {
+    return thumbnailUrl;
+  }
+  
+  return url;
+}
+
   // Image widget builder
   Widget get bannerImageWidget {
     try {
@@ -481,7 +526,7 @@ class EventModel {
               size: 80,
               color: Colors.white.withOpacity(0.3),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'Event Image',
               style: TextStyle(
@@ -502,7 +547,7 @@ class EventModel {
       'title': title,
       'organizer': organizer,
       'contactPerson': contactPerson,
-      'contactEmail': contactEmail,
+      'contactEmail': contactEmail,  // ✅ Now nullable, can be null
       'contactPhone': contactPhone,
       'eventDate': Timestamp.fromDate(eventDate),
       'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
@@ -552,7 +597,7 @@ class EventModel {
       title: map['title'] ?? '',
       organizer: map['organizer'] ?? '',
       contactPerson: map['contactPerson'] ?? '',
-      contactEmail: map['contactEmail'] ?? '',
+      contactEmail: map['contactEmail'],  // ✅ Can be null
       contactPhone: map['contactPhone'] ?? '',
       eventDate: (map['eventDate'] as Timestamp).toDate(),
       endDate: map['endDate'] != null ? (map['endDate'] as Timestamp).toDate() : null,
@@ -587,7 +632,7 @@ class EventModel {
     String? title,
     String? organizer,
     String? contactPerson,
-    String? contactEmail,
+    String? contactEmail,  // ✅ Made nullable
     String? contactPhone,
     DateTime? eventDate,
     DateTime? endDate,
@@ -615,7 +660,7 @@ class EventModel {
       title: title ?? this.title,
       organizer: organizer ?? this.organizer,
       contactPerson: contactPerson ?? this.contactPerson,
-      contactEmail: contactEmail ?? this.contactEmail,
+      contactEmail: contactEmail ?? this.contactEmail,  // ✅ Now nullable
       contactPhone: contactPhone ?? this.contactPhone,
       eventDate: eventDate ?? this.eventDate,
       endDate: endDate ?? this.endDate,

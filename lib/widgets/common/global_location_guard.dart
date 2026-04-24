@@ -407,8 +407,9 @@ class _LocationSelectionContentState extends State<_LocationSelectionContent> wi
     );
   }
   
-// ========== NEW: BanglaHub App Name Header (Brighter Gradient) ==========
-Widget _buildBanglaHubHeader() {
+
+// logo left aligned with app name
+/* Widget _buildBanglaHubHeader() {
   return Container(
     margin: EdgeInsets.only(bottom: widget.isTablet ? 16 : 12),
     padding: EdgeInsets.symmetric(
@@ -418,43 +419,52 @@ Widget _buildBanglaHubHeader() {
     child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Animated Logo/Icon with Brighter Gradient
-     /*   TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.8, end: 1.2),
-          duration: const Duration(milliseconds: 1500),
-          curve: Curves.easeInOut,
-          builder: (context, scale, child) {
-            return Transform.scale(
-              scale: scale,
-              child: Container(
-                padding: EdgeInsets.all(widget.isTablet ? 8 : 6),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFF6B35), Color(0xFFFFB300), Color(0xFFFF3D00)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFF6B35).withOpacity(0.5),
-                      blurRadius: 15,
-                      offset: const Offset(0, 6),
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.storefront_rounded,
-                  color: Colors.white,
-                  size: widget.isTablet ? 22 : 18,
-                ),
+        // ✅ Logo added on the left side
+        Container(
+          width: widget.isTablet ? 44 : 36,
+          height: widget.isTablet ? 44 : 36,
+          margin: EdgeInsets.only(right: widget.isTablet ? 12 : 8),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: const Color(0xFFFF6B35),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF6B35).withOpacity(0.4),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
-            );
-          },
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              'assets/logo/logo.png',
+              width: widget.isTablet ? 60 : 60,
+              height: widget.isTablet ? 60 : 60,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.white.withOpacity(0.2),
+                  child: Center(
+                    child: Icon(
+                      Icons.apps_rounded,
+                      color: const Color(0xFFFF6B35),
+                      size: widget.isTablet ? 24 : 20,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         ),
-        const SizedBox(width: 10),
-       */ 
+        
         // App Name with Brighter Gradient Text
         ShaderMask(
           shaderCallback: (bounds) => const LinearGradient(
@@ -501,6 +511,120 @@ Widget _buildBanglaHubHeader() {
               BoxShadow(
                 color: const Color(0xFFFF6B35).withOpacity(0.6),
                 blurRadius: 4,
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+*/
+
+
+Widget _buildBanglaHubHeader() {
+  return Container(
+    margin: EdgeInsets.only(bottom: widget.isTablet ? 16 : 12),
+    padding: EdgeInsets.symmetric(
+      horizontal: widget.isTablet ? 16 : 12,
+      vertical: widget.isTablet ? 8 : 6,
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // ✅ Fixed Logo - removed size constraints conflict
+        Container(
+          width: widget.isTablet ? 60 : 48,  // ✅ Increased size
+          height: widget.isTablet ? 60 : 48, // ✅ Increased size
+          margin: EdgeInsets.only(right: widget.isTablet ? 14 : 10),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: const Color(0xFFFF6B35),
+              width: 2.5, // Slightly thicker border
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF6B35).withOpacity(0.5),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              'assets/logo/logo.png',
+              width: widget.isTablet ? 60 : 48,  // ✅ Match parent container size
+              height: widget.isTablet ? 60 : 48, // ✅ Match parent container size
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.white.withOpacity(0.2),
+                  child: Center(
+                    child: Icon(
+                      Icons.apps_rounded,
+                      color: const Color(0xFFFF6B35),
+                      size: widget.isTablet ? 32 : 26, // ✅ Increased fallback icon size
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        
+        // App Name with Brighter Gradient Text
+        ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            colors: [
+              Color(0xFFFF6B35),  // Bright Orange
+              Color(0xFFFFB300),  // Bright Gold/Yellow
+              Color(0xFFE03C32),  // Bright Red
+              Color(0xFFFF6B35),  // Back to Orange
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ).createShader(bounds),
+          child: Text(
+            'BanglaHub',
+            style: GoogleFonts.poppins(
+              fontSize: widget.isTablet ? 28 : 24, // ✅ Slightly increased text size
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: 0.8,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 4,
+                  offset: const Offset(1, 1),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // Small decorative dot
+        Container(
+          width: 8, // ✅ Slightly larger
+          height: 8, // ✅ Slightly larger
+          margin: const EdgeInsets.only(left: 10, bottom: 8), // Adjusted position
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFF6B35), Color(0xFFFFB300)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF6B35).withOpacity(0.7),
+                blurRadius: 6,
               ),
             ],
           ),

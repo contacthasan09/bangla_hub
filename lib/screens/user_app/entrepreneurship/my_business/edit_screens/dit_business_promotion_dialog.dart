@@ -104,7 +104,7 @@ class _EditBusinessPromotionDialogState extends State<EditBusinessPromotionDialo
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
-          builder: (context) => OSMLocationPicker(
+          builder: (context) => GoogleMapsLocationPicker(
             initialLatitude: _businessLatitude,
             initialLongitude: _businessLongitude,
             initialAddress: _businessFullAddress,

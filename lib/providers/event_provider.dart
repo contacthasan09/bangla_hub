@@ -452,7 +452,7 @@ class EventProvider with ChangeNotifier {
   }
   
 // In EventProvider class
-Future<void> loadUserEvents(String userId) async {
+/* Future<void> loadUserEvents(String userId) async {
   if (_isDisposed) return;
   
   try {
@@ -491,14 +491,59 @@ Future<void> loadUserEvents(String userId) async {
   } finally {
     _safeSetLoading(false);
   }
+}   */
+
+
+// In event_provider.dart, update the loadUserEvents method:
+
+Future<void> loadUserEvents(String userId) async {
+  if (_isDisposed) return;
+  
+  try {
+    _safeSetLoading(true);
+    
+    _userEventsSubscription?.cancel();
+    
+    _userEventsSubscription = _firestoreService.getUserEvents(userId).listen((events) {
+      _safeUpdate(() {
+        // ✅ Filter events by createdBy to ensure only user's events are shown
+        final userEvents = events.where((event) => event.createdBy == userId).toList();
+        
+        // Separate into approved and pending
+        _myEvents = userEvents
+            .where((event) => event.status == 'approved')
+            .toList();
+        
+        _pendingEvents = userEvents
+            .where((event) => event.status == 'pending')
+            .toList();
+        
+        // Sort by creation date (newest first)
+        _myEvents.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        _pendingEvents.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        
+        print('📊 Loaded ${_myEvents.length} approved events and ${_pendingEvents.length} pending events for user $userId');
+        notifyListeners();
+      });
+    }, onError: (error) {
+      print('❌ Error loading user events: $error');
+      _safeSetError(error.toString());
+    });
+    
+  } catch (e) {
+    print('❌ Error in loadUserEvents: $e');
+    _safeSetError(e.toString());
+  } finally {
+    _safeSetLoading(false);
+  }
 }
  
- 
-  Future<void> createEvent({
+// Create event with nullable email ✅ Already updated
+Future<void> createEvent({
     required String title,
     required String organizer,
     required String contactPerson,
-    required String contactEmail,
+    String? contactEmail,  // ✅ Changed from 'required String' to 'String?'
     required String contactPhone,
     required DateTime startDate,
     DateTime? endDate,
@@ -526,13 +571,14 @@ Future<void> loadUserEvents(String userId) async {
       print('📝 Start date: $startDate, End date: $endDate');
       print('📍 Location: $location, State: $state, City: $city');
       print('🖼️ Banner image URL: ${bannerImageUrl != null ? "Yes" : "No"}');
+      print('📧 Contact email: ${contactEmail != null ? contactEmail : "Not provided"}'); // Optional debug print
       
       final event = EventModel(
         id: _uuid.v4(),
         title: title,
         organizer: organizer,
         contactPerson: contactPerson,
-        contactEmail: contactEmail,
+        contactEmail: contactEmail,  // ✅ Now accepts String? (nullable)
         contactPhone: contactPhone,
         eventDate: startDate,
         endDate: endDate,
@@ -601,8 +647,7 @@ Future<void> loadUserEvents(String userId) async {
     }
   }
 
-
-  Future<void> deleteUserEvent(String eventId) async {
+/*  Future<void> deleteUserEvent(String eventId) async {
   if (_isDisposed) return;
   
   try {
@@ -620,6 +665,42 @@ Future<void> loadUserEvents(String userId) async {
       _searchedEvents.removeWhere((event) => event.id == eventId);
       _interestedEvents.removeWhere((event) => event.id == eventId);
       _userInterestedEventIds.remove(eventId);
+      notifyListeners();
+    });
+    
+  } catch (e) {
+    print('❌ Error deleting event: $e');
+    _safeSetError(e.toString());
+    rethrow;
+  } finally {
+    _safeSetLoading(false);
+  }
+}   */
+
+
+// In event_provider.dart, update the deleteUserEvent method:
+
+Future<void> deleteUserEvent(String eventId) async {
+  if (_isDisposed) return;
+  
+  try {
+    _safeSetLoading(true);
+    
+    // Delete from Firestore
+    await _firestoreService.deleteEvent(eventId);
+    
+    // Immediately remove from local lists to prevent showing other users' events
+    _safeUpdate(() {
+      // Remove from all lists
+      _myEvents.removeWhere((event) => event.id == eventId);
+      _pendingEvents.removeWhere((event) => event.id == eventId);
+      _upcomingEvents.removeWhere((event) => event.id == eventId);
+      _pastEvents.removeWhere((event) => event.id == eventId);
+      _searchedEvents.removeWhere((event) => event.id == eventId);
+      _interestedEvents.removeWhere((event) => event.id == eventId);
+      _userInterestedEventIds.remove(eventId);
+      
+      // Force immediate notification
       notifyListeners();
     });
     

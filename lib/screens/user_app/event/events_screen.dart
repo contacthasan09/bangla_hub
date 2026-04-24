@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:ui';
 import 'package:bangla_hub/main.dart';
 import 'package:bangla_hub/providers/location_filter_provider.dart';
@@ -1101,259 +1102,299 @@ void _debugCheckEvents(EventProvider eventProvider) {
     );
   }
 
-  Widget _buildPremiumAppBar(bool isTablet, AuthProvider authProvider) {
-    final bool isLoggedIn = authProvider.isLoggedIn && authProvider.user != null;
-    final String userName = authProvider.user?.firstName ?? authProvider.user?.email?.split('@').first ?? 'User';
-    
-    return SliverToBoxAdapter(
-      child: Container(
-        padding: EdgeInsets.fromLTRB(isTablet ? 32 : 24, MediaQuery.of(context).padding.top + (isTablet ? 30 : 20), isTablet ? 32 : 24, isTablet ? 20 : 16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05), Colors.transparent], begin: Alignment.topCenter, end: Alignment.bottomCenter),
-          borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      if (isLoggedIn)
-                        IconButton(
-                          icon: Icon(Icons.menu_rounded, color: Colors.white, size: isTablet ? 28 : 24),
-                          onPressed: () {
-                            try {
-                              final ScaffoldState? scaffoldState = Scaffold.maybeOf(context);
-                              if (scaffoldState != null && scaffoldState.hasDrawer) {
-                                scaffoldState.openDrawer();
-                              } else {
-                                Scaffold.of(context).openDrawer();
-                              }
-                            } catch (e) {
-                              print('Could not open drawer: $e');
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Menu is available'),
-                                  duration: Duration(milliseconds: 800),
-                                  backgroundColor: _primaryGreen,
-                                ),
-                              );
-                            }
-                          },
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+
+
+Widget _buildPremiumAppBar(bool isTablet, AuthProvider authProvider) {
+  final bool isLoggedIn = authProvider.isLoggedIn && authProvider.user != null;
+  final String userName = authProvider.user?.firstName ?? authProvider.user?.email?.split('@').first ?? 'User';
+  
+  return SliverToBoxAdapter(
+    child: Container(
+      padding: EdgeInsets.fromLTRB(isTablet ? 32 : 24, MediaQuery.of(context).padding.top + (isTablet ? 30 : 20), isTablet ? 32 : 24, isTablet ? 20 : 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05), Colors.transparent], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // ✅ Menu Button on LEFT side
+              if (isLoggedIn)
+                IconButton(
+                  icon: Icon(Icons.menu_rounded, color: Colors.white, size: isTablet ? 28 : 24),
+                  onPressed: () {
+                    try {
+                      final ScaffoldState? scaffoldState = Scaffold.maybeOf(context);
+                      if (scaffoldState != null && scaffoldState.hasDrawer) {
+                        scaffoldState.openDrawer();
+                      } else {
+                        Scaffold.of(context).openDrawer();
+                      }
+                    } catch (e) {
+                      print('Could not open drawer: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Menu is available'),
+                          duration: Duration(milliseconds: 800),
+                          backgroundColor: _primaryGreen,
                         ),
-                      Expanded(
-                        child: ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [Color(0xFFFFD700), Color(0xFFF42A41), Color(0xFF006A4E), Color(0xFFFFD966)]
-                          ).createShader(bounds),
-                          child: Text(
-                            isLoggedIn ? 'Hello, $userName!' : (authProvider.isGuestMode ? 'Hello, Guest!' : 'Hello to BanglaHub!'),
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w800,
-                              fontSize: isTablet ? 18 : 15,
-                              height: 1.2, 
-                              color: Colors.white, 
-                              letterSpacing: -0.5, 
-                              shadows: const [
-                                Shadow(color: Color(0xFF004D38), blurRadius: 15, offset: Offset(0, 3))
-                              ],
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (authProvider.isGuestMode)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.orange, 
-                      borderRadius: BorderRadius.circular(20), 
-                      boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 3))]
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min, 
-                      children: const [
-                        Icon(Icons.person_outline, color: Colors.white, size: 16), 
-                        SizedBox(width: 4), 
-                        Text('Guest', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))
-                      ],
-                    ),
-                  )
-                else if (!isLoggedIn)
-                  const SizedBox(width: 40)
-                else
-                  const SizedBox(width: 40),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Welcome to BanglaHub', 
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600,
-                fontSize: isTablet ? 15 : 13, 
-                color: Colors.white.withOpacity(0.95), 
-                letterSpacing: 0.5, 
-                shadows: const [Shadow(color: Colors.black26, blurRadius: 5)]
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ShaderMask(
+                      );
+                    }
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                )
+              else
+                const SizedBox(width: 40),
+              
+              // Greeting Text (Centered)
+              Expanded(
+                child: ShaderMask(
                   shaderCallback: (bounds) => const LinearGradient(
                     colors: [Color(0xFFFFD700), Color(0xFFF42A41), Color(0xFF006A4E), Color(0xFFFFD966)]
                   ).createShader(bounds),
                   child: Text(
-                    'Events', 
+                    isLoggedIn ? 'Hello, $userName!' : (authProvider.isGuestMode ? 'Hello, Guest!' : 'Hello to BanglaHub!'),
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w900, 
-                      fontSize: isTablet ? 32 : 24, 
-                      height: 1.1, 
+                      fontWeight: FontWeight.w800,
+                      fontSize: isTablet ? 18 : 15,
+                      height: 1.2, 
                       color: Colors.white, 
-                      letterSpacing: -2, 
+                      letterSpacing: -0.5, 
                       shadows: const [
-                        Shadow(color: Color(0xFF004D38), blurRadius: 20, offset: Offset(0, 5)), 
-                        Shadow(color: Color(0xFFF42A41), blurRadius: 15, offset: Offset(0, 2))
+                        Shadow(color: Color(0xFF004D38), blurRadius: 15, offset: Offset(0, 3))
                       ],
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Consumer<LocationFilterProvider>(
-                  builder: (context, filterProvider, child) {
-                    final hasFilter = filterProvider.isFilterActive;
-                    final selectedState = filterProvider.selectedState ?? '';
-                    
-                    return GestureDetector(
-                      onTap: () => _showLocationFilterDialog(context),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 10, vertical: isTablet ? 8 : 6),
-                        decoration: BoxDecoration(
-                          gradient: hasFilter
-                              ? const LinearGradient(
-                                  colors: [Color(0xFF006A4E), Color(0xFF004D38)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )
-                              : LinearGradient(
-                                  colors: [
-                                    Colors.white.withOpacity(0.2),
-                                    Colors.white.withOpacity(0.1),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                          borderRadius: BorderRadius.circular(25),
-                          border: Border.all(
-                            color: hasFilter 
-                                ? const Color(0xFFFFD700).withOpacity(0.6)
-                                : _goldAccent.withOpacity(0.4),
-                            width: 1,
+              ),
+              
+              // ✅ Logo as Circle Avatar on RIGHT side
+              if (isLoggedIn)
+                Container(
+                  width: isTablet ? 44 : 36,
+                  height: isTablet ? 44 : 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _goldAccent, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/logo/logo.png',
+                      width: isTablet ? 40 : 32,
+                      height: isTablet ? 40 : 32,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.white.withOpacity(0.2),
+                          child: Center(
+                            child: Icon(
+                              Icons.person_rounded,
+                              color: Colors.white,
+                              size: isTablet ? 24 : 20,
+                            ),
                           ),
-                          boxShadow: hasFilter
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(0xFFFFD700).withOpacity(0.25),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              hasFilter ? Icons.edit_location_rounded : Icons.location_on_rounded,
-                              size: isTablet ? 16 : 14,
-                              color: hasFilter ? const Color(0xFFFFD700) : _goldAccent,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              hasFilter ? "Change Location" : "Select Location",
-                              style: GoogleFonts.poppins(
-                                fontSize: isTablet ? 12 : 11,
-                                fontWeight: hasFilter ? FontWeight.w600 : FontWeight.w500,
-                                color: Colors.white,
-                              ),
-                            ),
-                            if (!hasFilter) ...[
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.arrow_drop_down_rounded,
-                                size: isTablet ? 18 : 16,
-                                color: _goldAccent,
-                              ),
-                            ],
-                            if (hasFilter) ...[
-                              const SizedBox(width: 4),
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFFFD700),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 1200),
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(offset: Offset(0, 15 * (1 - value)), child: child),
-                );
-              },
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: isTablet ? 18 : 14, vertical: isTablet ? 10 : 8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [_primaryGreen.withOpacity(0.2), _primaryRed.withOpacity(0.1)]),
-                  borderRadius: BorderRadius.circular(25),
-                  border: Border.all(color: _goldAccent.withOpacity(0.3), width: 1),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.auto_awesome_rounded, color: _goldAccent, size: isTablet ? 22 : 20),
-                    SizedBox(width: isTablet ? 10 : 8),
-                    Text(
-                      authProvider.isGuestMode ? 'Browse events as guest' : 'Discover and manage events seamlessly', 
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withOpacity(0.95), 
-                        fontSize: isTablet ? 13 : 11, 
-                        fontWeight: FontWeight.w600, 
-                        shadows: const [Shadow(color: Colors.black26, blurRadius: 3)]
-                      ),
+                        );
+                      },
                     ),
-                  ],
+                  ),
+                )
+              else if (authProvider.isGuestMode)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.orange, 
+                    borderRadius: BorderRadius.circular(20), 
+                    boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 3))]
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min, 
+                    children: const [
+                      Icon(Icons.person_outline, color: Colors.white, size: 16), 
+                      SizedBox(width: 4), 
+                      Text('Guest', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))
+                    ],
+                  ),
+                )
+              else
+                const SizedBox(width: 40),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Welcome to BanglaHub', 
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              fontSize: isTablet ? 15 : 13, 
+              color: Colors.white.withOpacity(0.95), 
+              letterSpacing: 0.5, 
+              shadows: const [Shadow(color: Colors.black26, blurRadius: 5)]
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFF42A41), Color(0xFF006A4E), Color(0xFFFFD966)]
+                ).createShader(bounds),
+                child: Text(
+                  'Events', 
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w900, 
+                    fontSize: isTablet ? 32 : 24, 
+                    height: 1.1, 
+                    color: Colors.white, 
+                    letterSpacing: -2, 
+                    shadows: const [
+                      Shadow(color: Color(0xFF004D38), blurRadius: 20, offset: Offset(0, 5)), 
+                      Shadow(color: Color(0xFFF42A41), blurRadius: 15, offset: Offset(0, 2))
+                    ],
+                  ),
                 ),
               ),
+              Consumer<LocationFilterProvider>(
+                builder: (context, filterProvider, child) {
+                  final hasFilter = filterProvider.isFilterActive;
+                  final selectedState = filterProvider.selectedState ?? '';
+                  
+                  return GestureDetector(
+                    onTap: () => _showLocationFilterDialog(context),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: isTablet ? 14 : 10, vertical: isTablet ? 8 : 6),
+                      decoration: BoxDecoration(
+                        gradient: hasFilter
+                            ? const LinearGradient(
+                                colors: [Color(0xFF006A4E), Color(0xFF004D38)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : LinearGradient(
+                                colors: [
+                                  Colors.white.withOpacity(0.2),
+                                  Colors.white.withOpacity(0.1),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                          color: hasFilter 
+                              ? const Color(0xFFFFD700).withOpacity(0.6)
+                              : _goldAccent.withOpacity(0.4),
+                          width: 1,
+                        ),
+                        boxShadow: hasFilter
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFFFFD700).withOpacity(0.25),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            hasFilter ? Icons.edit_location_rounded : Icons.location_on_rounded,
+                            size: isTablet ? 16 : 14,
+                            color: hasFilter ? const Color(0xFFFFD700) : _goldAccent,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            hasFilter ? "Change Location" : "Select Location",
+                            style: GoogleFonts.poppins(
+                              fontSize: isTablet ? 12 : 11,
+                              fontWeight: hasFilter ? FontWeight.w600 : FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (!hasFilter) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_drop_down_rounded,
+                              size: isTablet ? 18 : 16,
+                              color: _goldAccent,
+                            ),
+                          ],
+                          if (hasFilter) ...[
+                            const SizedBox(width: 4),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFFD700),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 1200),
+            builder: (context, value, child) {
+              return Opacity(
+                opacity: value,
+                child: Transform.translate(offset: Offset(0, 15 * (1 - value)), child: child),
+              );
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: isTablet ? 18 : 14, vertical: isTablet ? 10 : 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [_primaryGreen.withOpacity(0.2), _primaryRed.withOpacity(0.1)]),
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(color: _goldAccent.withOpacity(0.3), width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.auto_awesome_rounded, color: _goldAccent, size: isTablet ? 22 : 20),
+                  SizedBox(width: isTablet ? 10 : 8),
+                  Text(
+                    authProvider.isGuestMode ? 'Browse events as guest' : 'Discover and manage events seamlessly', 
+                    style: GoogleFonts.inter(
+                      color: Colors.white.withOpacity(0.95), 
+                      fontSize: isTablet ? 13 : 11, 
+                      fontWeight: FontWeight.w600, 
+                      shadows: const [Shadow(color: Colors.black26, blurRadius: 3)]
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildPremiumFloatingActionButton(bool isTablet) {
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;
@@ -1525,7 +1566,8 @@ void _debugCheckEvents(EventProvider eventProvider) {
           // Events Carousel
           if (hasUpcomingEvents)
             SizedBox(
-              height: isTablet ? 380 : 320,
+            //  height: isTablet ? 380 : 320,
+            height: isTablet ? 350 : 290,
               child: PageView.builder(
                 controller: _sliderController,
                 itemCount: carouselEvents.length,
@@ -1714,7 +1756,7 @@ void _debugCheckEvents(EventProvider eventProvider) {
     );
   }
 
-  // Empty past events card
+
 
 Widget _buildEmptyPastCard(bool isTablet, LocationFilterProvider locationProvider) {
   final String stateName = locationProvider.selectedState ?? '';
@@ -2099,7 +2141,9 @@ Widget _buildEmptyPastCard(bool isTablet, LocationFilterProvider locationProvide
     );
   }
 
-  Widget _buildPremiumEventCard(EventModel event, bool isSmallScreen, bool isTablet, bool isActive) {
+
+
+/*  Widget _buildPremiumEventCard(EventModel event, bool isSmallScreen, bool isTablet, bool isActive) {
     final categoryGradient = _getCategoryGradient(event.category);
     
     return AnimatedContainer(
@@ -2377,6 +2421,364 @@ Widget _buildEmptyPastCard(bool isTablet, LocationFilterProvider locationProvide
       ),
     );
   }
+
+*/
+
+ Widget _buildPremiumEventCard(EventModel event, bool isSmallScreen, bool isTablet, bool isActive) {
+  final categoryGradient = _getCategoryGradient(event.category);
+  final screenWidth = MediaQuery.of(context).size.width;
+  final isVerySmallScreen = screenWidth < 360;
+  
+  // Responsive size calculations - MUCH SMALLER
+  final double cardHeight = isTablet ? 380 : (isSmallScreen ? 320 : 340);
+  final double cardBorderRadius = isTablet ? 28 : (isVerySmallScreen ? 16 : 22);
+  final double padding = isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16);
+  final double smallIconSize = isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16);
+  final double mediumIconSize = isVerySmallScreen ? 14 : (isSmallScreen ? 16 : 18);
+  final double fontSizeSmall = isVerySmallScreen ? 9 : (isSmallScreen ? 10 : 11);
+  final double fontSizeMedium = isVerySmallScreen ? 10 : (isSmallScreen ? 11 : 12);
+  final double fontSizeLarge = isVerySmallScreen ? 14 : (isSmallScreen ? 16 : 18);
+  
+  return SizedBox(
+    height: cardHeight,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: EdgeInsets.symmetric(
+        horizontal: isTablet ? 10 : (isVerySmallScreen ? 4 : 6), 
+        vertical: isTablet ? 8 : (isVerySmallScreen ? 4 : 6),
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(cardBorderRadius),
+        boxShadow: isActive
+            ? const [
+                BoxShadow(color: Color(0xFFF42A41), blurRadius: 20, offset: Offset(0, 10), spreadRadius: 2),
+                BoxShadow(color: Color(0xFF006A4E), blurRadius: 15, offset: Offset(0, 6))
+              ]
+            : [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 15, offset: const Offset(0, 8))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(cardBorderRadius),
+        child: Stack(
+          children: [
+            // Background Image
+            SizedBox(
+              width: double.infinity,
+              height: double.infinity,
+              child: _buildCachedEventImage(event, isTablet, thumbnail: false),
+            ),
+            
+            // Gradient Overlay
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.4),
+                    Colors.black.withOpacity(0.7),
+                    Colors.black.withOpacity(0.9)
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.0, 0.2, 0.5, 1.0],
+                ),
+              ),
+            ),
+            
+            // Content
+            Positioned.fill(
+              child: Padding(
+                padding: EdgeInsets.all(padding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top Row - Multi-Day & Distance side by side
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Multi-Day Badge
+                        if (event.isMultiDay) 
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: padding * 0.6,
+                              vertical: padding * 0.3,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.date_range_rounded, color: Colors.white, size: smallIconSize),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Multi-Day',
+                                  style: GoogleFonts.inter(
+                                    fontSize: fontSizeSmall,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )  ,
+                         
+                        
+                        // Distance Badge
+                        if (event.latitude != null && event.longitude != null)
+                          FutureBuilder<double?>(
+                            future: _calculateDistance(event.latitude!, event.longitude!),
+                            builder: (context, snapshot) {
+                              final distance = snapshot.data;
+                              if (distance == null) return const SizedBox.shrink();
+                              
+                              return Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: padding * 0.6,
+                                  vertical: padding * 0.3,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF006A4E), Color(0xFF004D38)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.location_on_rounded, color: Colors.white, size: smallIconSize),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      distance < 1 
+                                          ? '${(distance * 1000).round()}m'
+                                          : '${distance.toStringAsFixed(1)}km',
+                                      style: GoogleFonts.inter(
+                                        fontSize: fontSizeSmall,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+                    
+                    const Spacer(),
+                    
+                    // Category Badge
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: padding * 0.7,
+                        vertical: padding * 0.3,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: categoryGradient,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            EventCategoryExtension.fromString(event.category).iconData,
+                            color: Colors.white,
+                            size: mediumIconSize,
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            event.categoryText,
+                            style: GoogleFonts.inter(
+                              fontSize: fontSizeMedium,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    SizedBox(height: padding * 0.5),
+                    
+                    // Title
+                    Text(
+                      event.title,
+                      style: GoogleFonts.poppins(
+                        fontSize: fontSizeLarge,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    
+                    SizedBox(height: padding * 0.8),
+                    
+                    // Date & Location Row - Compact
+                    Container(
+                      padding: EdgeInsets.all(padding * 0.6),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF4D4D), Color(0xFF00B36B), Color(0xFF00E676)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          stops: [0.0, 0.5, 1.0],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          // Date Row
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_today_rounded, color: Colors.white, size: smallIconSize),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  event.compactFormattedDateTime,
+                                  style: GoogleFonts.inter(
+                                    fontSize: fontSizeSmall,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 6),
+                          // Location Row
+                          Row(
+                            children: [
+                              Icon(Icons.location_on_rounded, color: Colors.white, size: smallIconSize),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  event.location,
+                                  style: GoogleFonts.inter(
+                                    fontSize: fontSizeSmall,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    SizedBox(height: padding * 0.6),
+                    
+                    // Footer - Interested count & Arrow
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Interested count
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: padding * 0.5,
+                            vertical: padding * 0.25,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.favorite_rounded, color: _goldAccent, size: smallIconSize),
+                              SizedBox(width: 4),
+                              Text(
+                                '${event.totalInterested}',
+                                style: GoogleFonts.inter(
+                                  fontSize: fontSizeMedium,
+                                  fontWeight: FontWeight.w700,
+                                  color: _goldAccent,
+                                ),
+                              ),
+                              if (!isVerySmallScreen)
+                                Padding(
+                                  padding: EdgeInsets.only(left: 4),
+                                  child: Text(
+                                    'interested',
+                                    style: GoogleFonts.inter(
+                                      fontSize: fontSizeSmall - 1,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Arrow button - Smaller
+                        Container(
+                          width: isVerySmallScreen ? 28 : (isSmallScreen ? 32 : 36),
+                          height: isVerySmallScreen ? 28 : (isSmallScreen ? 32 : 36),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFF42A41), Color(0xFF006A4E)],
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: smallIconSize + 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+
+
+
+// Helper method for distance calculation
+Future<double?> _calculateDistance(double lat, double lng) async {
+  try {
+    final locationProvider = Provider.of<LocationFilterProvider>(
+      navigatorKey.currentContext!,
+      listen: false,
+    );
+    final userLocation = locationProvider.currentUserLocation;
+    
+    if (userLocation != null) {
+      const double earthRadius = 6371;
+      final double lat1 = userLocation.latitude * 3.14159 / 180;
+      final double lat2 = lat * 3.14159 / 180;
+      final double deltaLat = (lat - userLocation.latitude) * 3.14159 / 180;
+      final double deltaLng = (lng - userLocation.longitude) * 3.14159 / 180;
+      
+      final double a = sin(deltaLat / 2) * sin(deltaLat / 2) +
+          cos(lat1) * cos(lat2) *
+          sin(deltaLng / 2) * sin(deltaLng / 2);
+      final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+      
+      return earthRadius * c;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+
 
   Widget _buildCachedEventImage(EventModel event, bool isTablet, {bool thumbnail = false}) {
     final cacheKey = event.id + (thumbnail ? '_thumb' : '') + (isTablet ? '_tablet' : '');
@@ -3032,6 +3434,7 @@ Widget _buildEmptyPastCard(bool isTablet, LocationFilterProvider locationProvide
     );
   }
 
+
   void _showPremiumAddEventDialog(BuildContext context, bool isTablet) {
     HapticFeedback.mediumImpact();
     
@@ -3061,6 +3464,9 @@ Widget _buildEmptyPastCard(bool isTablet, LocationFilterProvider locationProvide
       ),
     );
   }
+
+
+
 }
 
 // ====================== PREMIUM ADD EVENT DIALOG ======================
@@ -3199,7 +3605,7 @@ class _PremiumAddEventDialogState extends State<PremiumAddEventDialog>
             _titleController.text.isNotEmpty &&
             _organizerController.text.isNotEmpty &&
             _contactPersonController.text.isNotEmpty &&
-            _contactEmailController.text.isNotEmpty &&
+        //    _contactEmailController.text.isNotEmpty &&
             _contactPhoneController.text.isNotEmpty &&
             _locationController.text.isNotEmpty &&
             (_eventLatitude != null && _eventLongitude != null) &&
@@ -3657,7 +4063,7 @@ Widget _buildPremiumSubmitButton() {
 }
 
 
-  Widget _buildBasicInfoTab() {
+/*   Widget _buildBasicInfoTab() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     
@@ -3710,6 +4116,68 @@ Widget _buildPremiumSubmitButton() {
           
           _buildSectionHeader('Location', Icons.location_on_rounded),
           SizedBox(height: 16),
+          _buildLocationPickerField(isTablet),
+        ],
+      ),
+    );
+  }
+*/
+
+
+// nullable 
+
+Widget _buildBasicInfoTab() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('Event Information', Icons.event_rounded),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: _titleController,
+            label: 'Event Title *',
+            icon: Icons.title_rounded,
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            controller: _organizerController,
+            label: 'Organizer *',
+            icon: Icons.business_rounded,
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            controller: _contactPersonController,
+            label: 'Contact Person *',
+            icon: Icons.person_rounded,
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            controller: _contactEmailController,
+            label: 'Contact Email (Optional)',  // ✅ Removed asterisk, added "(Optional)"
+            icon: Icons.email_rounded,
+            keyboardType: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            controller: _contactPhoneController,
+            label: 'Enter a valid US number *',
+            icon: Icons.phone_rounded,
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 20),
+          
+          _buildSectionHeader('Date & Time', Icons.calendar_today_rounded),
+          const SizedBox(height: 16),
+          _buildDateTimePickerField(isTablet),
+          const SizedBox(height: 20),
+          
+          _buildSectionHeader('Location', Icons.location_on_rounded),
+          const SizedBox(height: 16),
           _buildLocationPickerField(isTablet),
         ],
       ),
@@ -4643,6 +5111,7 @@ Widget _buildPremiumSubmitButton() {
       ),
     );
   }
+  
 
   Widget _buildLocationPickerField(bool isTablet) {
     return GestureDetector(
@@ -4651,7 +5120,7 @@ Widget _buildPremiumSubmitButton() {
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
-          builder: (context) => OSMLocationPicker(
+          builder: (context) => GoogleMapsLocationPicker(
             initialLatitude: _eventLatitude,
             initialLongitude: _eventLongitude,
             initialAddress: _locationController.text,
@@ -4784,6 +5253,8 @@ Widget _buildPremiumSubmitButton() {
     );
   }
 
+ 
+ 
   // Helper methods
   String _formatDate(DateTime date) {
     return DateFormat('MMM d, y').format(date);
@@ -4999,34 +5470,7 @@ Widget _buildPremiumSubmitButton() {
     }
   }
 
-/*  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery, 
-      maxWidth: 1200, 
-      maxHeight: 600, 
-      imageQuality: 70,
-    );
-    
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = pickedFile;
-        _isImageLoading = true;
-      });
-      
-      final bytes = await File(pickedFile.path).readAsBytes();
-      final base64String = base64Encode(bytes);
-      final mimeType = _getMimeType(pickedFile.path);
-      final dataUrl = 'data:$mimeType;base64,$base64String';
-      
-      setState(() {
-        _base64Image = dataUrl;
-        _isImageLoading = false;
-      });
-    }
-  }
 
- */ 
 
 
 Future<String?> compressAndConvertImage(XFile imageFile) async {
@@ -5144,7 +5588,9 @@ Future<void> _pickImage() async {
     }
   }
 // In PremiumAddEventDialog class
-Future<void> _submitForm() async {
+
+
+/* Future<void> _submitForm() async {
   if (!_formKey.currentState!.validate()) return;
 
   if (_eventLatitude == null || _eventLongitude == null) {
@@ -5225,6 +5671,130 @@ Future<void> _submitForm() async {
       organizer: _organizerController.text,
       contactPerson: _contactPersonController.text,
       contactEmail: _contactEmailController.text,
+      contactPhone: _contactPhoneController.text,
+      startDate: eventDateTime,
+      endDate: endDateTime,
+      startTime: _startTime,
+      endTime: _endTime,
+      location: _locationController.text,
+      description: _descriptionController.text,
+      category: _selectedEventCategory!,
+      bannerImageUrl: bannerImageUrl, // Cloudinary URL instead of base64
+      isFree: _isFree,
+      ticketPrices: _ticketPrices.isEmpty ? null : _ticketPrices,
+      paymentInfo: null,
+      createdBy: currentUser.id,
+      latitude: _eventLatitude,
+      longitude: _eventLongitude,
+      state: _eventState,
+      city: _eventCity,
+    );
+
+    _clearForm();
+    
+    if (mounted) {
+      Navigator.pop(context);
+      _showSuccessSnackBar('Event created successfully! Pending admin approval.');
+    }
+  } catch (e) {
+    print('❌ Error creating event: $e');
+    _showErrorSnackBar('Failed to create event: ${e.toString()}');
+  } finally {
+    if (mounted) {
+      setState(() => _isSaving = false);
+    }
+  }
+}
+
+*/
+
+//nullable 
+Future<void> _submitForm() async {
+  if (!_formKey.currentState!.validate()) return;
+
+  if (_eventLatitude == null || _eventLongitude == null) {
+    _showErrorSnackBar('Please select location on map');
+    return;
+  }
+
+  if (_startDate == null) {
+    _showErrorSnackBar('Please select event start date and time');
+    return;
+  }
+  
+  if (_isMultiDay && _endDate == null) {
+    _showErrorSnackBar('Please select event end date and time for multi-day event');
+    return;
+  }
+
+  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  final currentUser = authProvider.user;
+  
+  if (currentUser == null) {
+    _showErrorSnackBar('You must be logged in to create an event');
+    return;
+  }
+
+  setState(() => _isSaving = true);
+
+  try {
+    final eventProvider = Provider.of<EventProvider>(context, listen: false);
+    
+    // Generate event ID first for Cloudinary folder
+    final eventId = DateTime.now().millisecondsSinceEpoch.toString();
+    
+    String? bannerImageUrl;
+    
+    // Upload image to Cloudinary if selected
+    if (_selectedImage != null) {
+      setState(() {
+        _isSaving = true;
+      });
+      
+      print('📸 Uploading event banner to Cloudinary...');
+      final imageFile = File(_selectedImage!.path);
+      bannerImageUrl = await CloudinaryService.uploadEventBanner(imageFile, eventId);
+      
+      if (bannerImageUrl == null) {
+        _showErrorSnackBar('Failed to upload banner image. Please try again.');
+        setState(() => _isSaving = false);
+        return;
+      }
+      
+      print('✅ Banner uploaded to Cloudinary: $bannerImageUrl');
+    }
+
+    // Create event date/time
+    DateTime eventDateTime = DateTime(
+      _startDate!.year,
+      _startDate!.month,
+      _startDate!.day,
+      _startTime?.hour ?? 0,
+      _startTime?.minute ?? 0,
+    );
+    
+    DateTime? endDateTime;
+    if (_isMultiDay && _endDate != null) {
+      endDateTime = DateTime(
+        _endDate!.year,
+        _endDate!.month,
+        _endDate!.day,
+        _endTime?.hour ?? 23,
+        _endTime?.minute ?? 59,
+      );
+    }
+
+    // ✅ Handle nullable email - convert empty string to null
+    final String? contactEmail = _contactEmailController.text.trim().isEmpty
+        ? null
+        : _contactEmailController.text.trim();
+
+    // Create event with Cloudinary URL
+    await eventProvider.createEvent(
+      title: _titleController.text,
+      organizer: _organizerController.text,
+      contactPerson: _contactPersonController.text,
+      contactEmail: contactEmail,  // ✅ Pass nullable email
       contactPhone: _contactPhoneController.text,
       startDate: eventDateTime,
       endDate: endDateTime,

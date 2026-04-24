@@ -457,7 +457,9 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
     );
   }
 
-  SliverAppBar _buildPremiumAppBar(bool isTablet) {
+
+
+/*  SliverAppBar _buildPremiumAppBar(bool isTablet) {
     return SliverAppBar(
       expandedHeight: isTablet ? 260 : 200,
       floating: false,
@@ -597,6 +599,201 @@ class _AdmissionsGuidanceScreenState extends State<AdmissionsGuidanceScreen>
       ),
     );
   }
+
+*/
+
+
+SliverAppBar _buildPremiumAppBar(bool isTablet) {
+  return SliverAppBar(
+    expandedHeight: isTablet ? 260 : 200,
+    floating: false,
+    pinned: true,
+    snap: false,
+    elevation: 0,
+    backgroundColor: Colors.transparent,
+    flexibleSpace: FlexibleSpaceBar(
+      background: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_primaryGreen, _darkGreen, _royalPurple],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 32 : 20,
+              vertical: isTablet ? 20 : 12,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  height: 3,
+                  width: 60,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_goldAccent, _orangeAccent, _goldAccent],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(height: isTablet ? 12 : 8),
+                
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [Colors.white, _goldAccent],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds),
+                  child: Text(
+                    'Admissions Guidance',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 32 : 24,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                
+                SizedBox(height: isTablet ? 12 : 8),
+                
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '🌟 Expert guidance for educational admissions worldwide',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 14 : 12,
+                          color: Colors.white.withOpacity(0.9),
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    
+                    SizedBox(width: isTablet ? 12 : 8),
+                    
+                    Align(
+                      alignment: Alignment.topCenter,
+                      child: _buildChangeLocationButton(isTablet),
+                    ),
+                  ],
+                ),
+                
+                SizedBox(height: isTablet ? 12 : 8),
+                
+                Consumer<EducationProvider>(
+                  builder: (context, provider, child) {
+                    final verifiedCount = provider.admissionsGuidance
+                        .where((s) => s.isVerified && s.isActive)
+                        .length;
+                    
+                    return Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 12 : 8,
+                            vertical: isTablet ? 6 : 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.verified_rounded, color: _goldAccent, size: isTablet ? 14 : 12),
+                              SizedBox(width: isTablet ? 6 : 4),
+                              Text(
+                                '$verifiedCount Verified Consultants',
+                                style: GoogleFonts.inter(
+                                  fontSize: isTablet ? 12 : 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+    // ✅ Back button on LEFT side
+    leading: IconButton(
+      icon: Icon(
+        Icons.arrow_back_rounded, 
+        color: Colors.white, 
+        size: isTablet ? 28 : 24,
+      ),
+      onPressed: () => Navigator.pop(context),
+      padding: EdgeInsets.only(left: isTablet ? 16 : 12),
+    ),
+    // ✅ Logo as Circle Avatar on RIGHT side with controlled spacing
+    actions: [
+      Padding(
+        padding: EdgeInsets.only(right: isTablet ? 40 : 24), // Controlled right spacing
+        child: Container(
+          width: isTablet ? 44 : 36,
+          height: isTablet ? 44 : 36,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              'assets/logo/logo.png',
+              width: isTablet ? 40 : 32,
+              height: isTablet ? 40 : 32,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.white.withOpacity(0.2),
+                  child: Center(
+                    child: Icon(
+                      Icons.school_rounded,
+                      color: Colors.white,
+                      size: isTablet ? 24 : 20,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    ],
+    title: null,
+    centerTitle: false,
+    automaticallyImplyLeading: true,
+  );
+}
+
 
   Widget _buildFilterChips(bool isTablet) {
     return Container(
@@ -2322,7 +2519,7 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog>
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
-          builder: (context) => OSMLocationPicker(
+          builder: (context) => GoogleMapsLocationPicker(
             initialLatitude: _latitude,
             initialLongitude: _longitude,
             initialAddress: _fullAddress,
@@ -2595,7 +2792,8 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog>
     );
   }
 
-  Widget _buildPremiumTextField({
+
+/*  Widget _buildPremiumTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
@@ -2649,6 +2847,71 @@ class _PremiumAddGuidanceDialogState extends State<PremiumAddGuidanceDialog>
       },
     );
   }
+
+*/
+
+
+Widget _buildPremiumTextField({
+  required TextEditingController controller,
+  required String label,
+  required IconData icon,
+  TextInputType keyboardType = TextInputType.text,
+  int maxLines = 1,
+  required bool isRequired,
+  required bool isTablet,
+}) {
+  // ✅ Fix: For multiline fields, use multiline keyboard type
+  final bool isMultiline = maxLines > 1;
+  final TextInputType effectiveKeyboardType = isMultiline 
+      ? TextInputType.multiline 
+      : keyboardType;
+  
+  return TextFormField(
+    controller: controller,
+    keyboardType: effectiveKeyboardType, // ✅ Fixed: Use multiline for multiline fields
+    maxLines: maxLines,
+    textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
+    style: GoogleFonts.inter(
+      fontSize: isTablet ? 16 : 14,
+      color: Colors.grey[800],
+      fontWeight: FontWeight.w500,
+    ),
+    decoration: InputDecoration(
+      labelText: label,
+      labelStyle: GoogleFonts.poppins(
+        fontSize: isTablet ? 14 : 12,
+        color: widget.primaryGreen,
+        fontWeight: FontWeight.w600,
+      ),
+      prefixIcon: Icon(icon, color: widget.primaryGreen, size: isTablet ? 22 : 18),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: widget.primaryGreen, width: 2),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 20 : 16,
+        vertical: maxLines > 1 ? (isTablet ? 20 : 16) : (isTablet ? 18 : 14),
+      ),
+    ),
+    validator: (value) {
+      if (isRequired && (value == null || value.isEmpty)) {
+        return 'This field is required';
+      }
+      return null;
+    },
+  );
+}
+
 
   Widget _buildPremiumTagInput({
     required TextEditingController controller,

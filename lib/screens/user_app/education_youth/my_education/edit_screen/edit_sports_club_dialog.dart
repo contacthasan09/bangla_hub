@@ -124,7 +124,7 @@ class _EditSportsClubDialogState extends State<EditSportsClubDialog> {
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
-          builder: (context) => OSMLocationPicker(
+          builder: (context) => GoogleMapsLocationPicker(
             initialLatitude: _latitude,
             initialLongitude: _longitude,
             initialAddress: _fullAddress,

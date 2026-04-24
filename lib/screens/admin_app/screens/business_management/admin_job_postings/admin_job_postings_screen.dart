@@ -676,7 +676,7 @@ class _AdminJobPostingsScreenState extends State<AdminJobPostingsScreen> with Si
 Widget _buildJobCard(JobPosting job, {required String type}) {
   final screenSize = MediaQuery.of(context).size;
   final isSmallScreen = screenSize.width < 360;
-  final imageBytes = _base64ToImage(job.companyLogoBase64);
+  final imageBytes = _base64ToImage(job.logoImageBase64);
 
   return Card(
     margin: EdgeInsets.only(bottom: 16),
@@ -1354,7 +1354,7 @@ Uint8List _base64ToImageForProfile(String base64String) {
       postedBy: job.postedBy,
       createdAt: job.createdAt,
       updatedAt: DateTime.now(),
-      companyLogoBase64: job.companyLogoBase64,
+      logoImageBase64: job.logoImageBase64,
       additionalDocumentsBase64: job.additionalDocumentsBase64,
       additionalInfo: {
         ...?job.additionalInfo,
@@ -1474,7 +1474,7 @@ Uint8List _base64ToImageForProfile(String base64String) {
       postedBy: job.postedBy,
       createdAt: job.createdAt,
       updatedAt: DateTime.now(),
-      companyLogoBase64: job.companyLogoBase64,
+      logoImageBase64: job.logoImageBase64,
       additionalDocumentsBase64: job.additionalDocumentsBase64,
       additionalInfo: {
         ...?job.additionalInfo,
@@ -1548,7 +1548,7 @@ Uint8List _base64ToImageForProfile(String base64String) {
       postedBy: job.postedBy,
       createdAt: job.createdAt,
       updatedAt: DateTime.now(),
-      companyLogoBase64: job.companyLogoBase64,
+      logoImageBase64: job.logoImageBase64,
       additionalDocumentsBase64: job.additionalDocumentsBase64,
       additionalInfo: {
         ...?job.additionalInfo,
@@ -1621,7 +1621,7 @@ Uint8List _base64ToImageForProfile(String base64String) {
       postedBy: job.postedBy,
       createdAt: job.createdAt,
       updatedAt: DateTime.now(),
-      companyLogoBase64: job.companyLogoBase64,
+      logoImageBase64: job.logoImageBase64,
       additionalDocumentsBase64: job.additionalDocumentsBase64,
       additionalInfo: {
         ...?job.additionalInfo,
@@ -1694,7 +1694,7 @@ Uint8List _base64ToImageForProfile(String base64String) {
       postedBy: job.postedBy,
       createdAt: job.createdAt,
       updatedAt: DateTime.now(),
-      companyLogoBase64: job.companyLogoBase64,
+      logoImageBase64: job.logoImageBase64,
       additionalDocumentsBase64: job.additionalDocumentsBase64,
       additionalInfo: {
         ...?job.additionalInfo,
@@ -1881,11 +1881,11 @@ class AdminJobDetailsSheet extends StatelessWidget {
                             color: primaryGreen.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: job.companyLogoBase64 != null && job.companyLogoBase64!.isNotEmpty
+                          child: job.logoImageBase64 != null && job.logoImageBase64!.isNotEmpty
                               ? ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
                                   child: Image.memory(
-                                    _base64ToImage(job.companyLogoBase64!),
+                                    _base64ToImage(job.logoImageBase64!),
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Icon(

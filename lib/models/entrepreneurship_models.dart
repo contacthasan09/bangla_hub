@@ -710,7 +710,7 @@ class JobPosting {
   DateTime createdAt;
   DateTime updatedAt;
   
-  String? companyLogoBase64;
+  String? logoImageBase64;
   List<String>? additionalDocumentsBase64;
   Map<String, dynamic>? additionalInfo;
   List<String> preferredQualifications;
@@ -751,7 +751,7 @@ class JobPosting {
     required this.postedBy,
     required this.createdAt,
     required this.updatedAt,
-    this.companyLogoBase64,
+    this.logoImageBase64,
     this.additionalDocumentsBase64,
     this.additionalInfo,
     this.preferredQualifications = const [],
@@ -796,7 +796,7 @@ class JobPosting {
       'postedBy': postedBy,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
-      'companyLogoBase64': companyLogoBase64 ?? '',
+      'logoImageBase64': logoImageBase64 ?? '',
       'additionalDocumentsBase64': additionalDocumentsBase64 ?? [],
       'additionalInfo': additionalInfo ?? {},
       'preferredQualifications': preferredQualifications,
@@ -875,7 +875,7 @@ class JobPosting {
       postedBy: data['postedBy'] ?? '',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
-      companyLogoBase64: data['companyLogoBase64'],
+      logoImageBase64: data['logoImageBase64'] ?? '',
       additionalDocumentsBase64: List<String>.from(data['additionalDocumentsBase64'] ?? []),
       additionalInfo: Map<String, dynamic>.from(data['additionalInfo'] ?? {}),
       preferredQualifications: List<String>.from(data['preferredQualifications'] ?? []),
@@ -992,7 +992,7 @@ class JobPosting {
     String? postedBy,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String? companyLogoBase64,
+    String? logoImageBase64,
     List<String>? additionalDocumentsBase64,
     Map<String, dynamic>? additionalInfo,
     List<String>? preferredQualifications,
@@ -1033,7 +1033,7 @@ class JobPosting {
       postedBy: postedBy ?? this.postedBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      companyLogoBase64: companyLogoBase64 ?? this.companyLogoBase64,
+      logoImageBase64: logoImageBase64 ?? this.logoImageBase64,
       additionalDocumentsBase64: additionalDocumentsBase64 ?? this.additionalDocumentsBase64,
       additionalInfo: additionalInfo ?? this.additionalInfo,
       preferredQualifications: preferredQualifications ?? this.preferredQualifications,

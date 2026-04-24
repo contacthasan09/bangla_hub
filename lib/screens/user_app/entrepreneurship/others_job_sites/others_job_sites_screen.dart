@@ -495,7 +495,9 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
     );
   }
 
-  SliverAppBar _buildPremiumAppBar(bool isTablet, JobSitesBrowseProvider provider) {
+
+
+/*  SliverAppBar _buildPremiumAppBar(bool isTablet, JobSitesBrowseProvider provider) {
     return SliverAppBar(
       expandedHeight: isTablet ? 280 : 220,
       floating: false,
@@ -611,6 +613,176 @@ class _OthersJobSitesScreenState extends State<OthersJobSitesScreen>
       ),
     );
   }
+
+*/
+
+
+SliverAppBar _buildPremiumAppBar(bool isTablet, JobSitesBrowseProvider provider) {
+  return SliverAppBar(
+    expandedHeight: isTablet ? 280 : 220,
+    floating: false,
+    pinned: true,
+    snap: false,
+    elevation: 0,
+    backgroundColor: Colors.transparent,
+    flexibleSpace: FlexibleSpaceBar(
+      background: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_charcoal, _darkCharcoal, _lightCharcoal],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 40 : 24,
+              vertical: isTablet ? 30 : 20,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Premium Pattern Line
+                Container(
+                  height: 4,
+                  width: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_secondaryGold, _softGold, _secondaryGold],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(height: isTablet ? 20 : 16),
+                
+                // Title with Gradient
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [Colors.white, _secondaryGold],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds),
+                  child: Text(
+                    'Job Sites',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 32 : 24,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                SizedBox(height: isTablet ? 12 : 8),
+                
+                // Subtitle
+                Text(
+                  '🌐 Discover Opportunities Worldwide',
+                  style: GoogleFonts.inter(
+                    fontSize: isTablet ? 14 : 12,
+                    color: Colors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                
+                SizedBox(height: isTablet ? 20 : 16),
+                
+                // Stats Row
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isTablet ? 16 : 12,
+                        vertical: isTablet ? 8 : 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.work_rounded, color: _secondaryGold, size: isTablet ? 18 : 16),
+                          SizedBox(width: isTablet ? 8 : 6),
+                          Text(
+                            '${provider.jobSites.length} Sites Available',
+                            style: GoogleFonts.inter(
+                              fontSize: isTablet ? 12 : 10,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+    // ✅ Back button on LEFT side
+    leading: IconButton(
+      icon: Icon(
+        Icons.arrow_back_rounded, 
+        color: Colors.white, 
+        size: isTablet ? 28 : 24,
+      ),
+      onPressed: () => Navigator.pop(context),
+      padding: EdgeInsets.only(left: isTablet ? 16 : 12),
+    ),
+    // ✅ Logo as Circle Avatar on RIGHT side with controlled spacing
+    actions: [
+      Padding(
+        padding: EdgeInsets.only(right: isTablet ? 40 : 24), // Controlled right spacing
+        child: Container(
+          width: isTablet ? 44 : 36,
+          height: isTablet ? 44 : 36,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              'assets/logo/logo.png',
+              width: isTablet ? 40 : 32,
+              height: isTablet ? 40 : 32,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.white.withOpacity(0.2),
+                  child: Center(
+                    child: Icon(
+                      Icons.work_rounded,
+                      color: Colors.white,
+                      size: isTablet ? 24 : 20,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    ],
+    title: null,
+    centerTitle: false,
+    automaticallyImplyLeading: true,
+  );
+}
+
 
   Widget _buildLoadingState(bool isTablet) {
     final bool shouldAnimate = _appLifecycleState == AppLifecycleState.resumed;

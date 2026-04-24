@@ -116,7 +116,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
     super.dispose();
   }
 
-  void _loadDataForEditing(ServiceProviderModel provider) {
+/*  void _loadDataForEditing(ServiceProviderModel provider) {
     // Basic Information
     _fullNameController.text = provider.fullName;
     _companyNameController.text = provider.companyName;
@@ -160,7 +160,59 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
     
     // Image
     _base64Image = provider.profileImageBase64;
+  }   */
+
+
+ //nullable 
+
+ void _loadDataForEditing(ServiceProviderModel provider) {
+    // Basic Information
+    _fullNameController.text = provider.fullName;
+  //  _companyNameController.text = provider.companyName;
+  _companyNameController.text = provider.companyName ?? '';
+    _phoneController.text = provider.phone;
+    _emailController.text = provider.email ?? ''; // ✅ Handle nullable email - empty string if null
+    _addressController.text = provider.address;
+    _cityController.text = provider.city;
+    _selectedState = provider.state;
+    
+    // Service Details
+    _selectedCategory = provider.serviceCategory;
+    _selectedServiceProvider = provider.serviceProvider;
+    _selectedSubServiceProvider = provider.subServiceProvider;
+    
+    // Update available options
+    _updateServiceProviders();
+    if (_selectedServiceProvider != null) {
+      _updateSubServiceProviders();
+    }
+    
+    // Description
+    _descriptionController.text = provider.description ?? '';
+    _websiteController.text = provider.website ?? '';
+    _businessHoursController.text = provider.businessHours ?? '';
+    
+    // Professional Information
+    _yearsOfExperienceController.text = provider.yearsOfExperience ?? '';
+    _licenseNumberController.text = provider.licenseNumber ?? '';
+    _specialtiesController.text = provider.specialties ?? '';
+    _consultationFeeController.text = provider.consultationFee?.toString() ?? '';
+    
+    // Multi-select values
+    _languagesSpoken = List.from(provider.languagesSpoken);
+    _serviceTags = List.from(provider.serviceTags);
+    _serviceAreas = List.from(provider.serviceAreas);
+    
+    // Other fields
+    _isAvailable = provider.isAvailable;
+    _acceptsInsurance = provider.acceptsInsurance ?? false;
+    _acceptedPaymentMethods = List.from(provider.acceptedPaymentMethods ?? []);
+    
+    // Image
+    _base64Image = provider.profileImageBase64;
   }
+
+
 
   void _updateServiceProviders() {
     if (_selectedCategory == null) {
@@ -2594,7 +2646,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             overflow: TextOverflow.ellipsis,
                           ),
                           SizedBox(height: isTablet ? 8 : 6),
-                          Text(
+                       /*   Text(
                             serviceProvider.companyName,
                             style: GoogleFonts.inter(
                               fontSize: isTablet ? 16 : 14,
@@ -2602,7 +2654,17 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                               fontWeight: FontWeight.w600,
                             ),
                             textAlign: TextAlign.center,
-                          ),
+                          ), */
+
+                          Text(
+  serviceProvider.companyName ?? 'Not Provided',
+  style: GoogleFonts.inter(
+    fontSize: isTablet ? 16 : 14,
+    color: Colors.white.withOpacity(0.9),
+    fontWeight: FontWeight.w600,
+  ),
+  textAlign: TextAlign.center,
+),
                           SizedBox(height: isTablet ? 12 : 10),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -2828,7 +2890,7 @@ class _ServiceProviderAdminDetailScreenState extends State<ServiceProviderAdminD
                             _buildPremiumContactItem(
                               icon: Icons.email_rounded,
                               title: 'Email',
-                              value: serviceProvider.email,
+                              value: serviceProvider.email ?? 'Not provided',
                               isTablet: isTablet,
                             ),
                             SizedBox(height: isTablet ? 12 : 10),

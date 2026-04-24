@@ -1,19 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    
     <!-- Permissions -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.CALL_PHONE" />
     
-    <!-- For Android 11+ (API 30+) we need to declare package visibility -->
+    <!-- For Android 11+ (API 30+) package visibility -->
     <queries>
-        <!-- For phone calls -->
+        <!-- For phone calls (using DIAL intent - no permission needed) -->
         <intent>
             <action android:name="android.intent.action.DIAL" />
-            <data android:scheme="tel" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.CALL" />
             <data android:scheme="tel" />
         </intent>
         
@@ -37,13 +34,13 @@
             <data android:scheme="http" />
         </intent>
         
-        <!-- For text sharing (whatsapp, messenger, etc.) -->
+        <!-- For text sharing -->
         <intent>
             <action android:name="android.intent.action.SEND" />
             <data android:mimeType="text/*" />
         </intent>
         
-        <!-- For Flutter text processing (keep this) -->
+        <!-- For Flutter text processing -->
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
@@ -61,21 +58,25 @@
             <data android:mimeType="image/*" />
         </intent>
         
-        <!-- For WhatsApp specifically -->
+        <!-- For WhatsApp, Facebook, etc. -->
         <package android:name="com.whatsapp" />
-        <package android:name="com.facebook.katana" /> <!-- Facebook -->
-        <package android:name="com.facebook.orca" /> <!-- Messenger -->
-        <package android:name="com.google.android.gm" /> <!-- Gmail -->
-        <package android:name="com.android.email" /> <!-- Email clients -->
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.facebook.orca" />
+        <package android:name="com.google.android.gm" />
+        <package android:name="com.android.email" />
     </queries>
 
     <application
         android:label="bangla_hub"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:requestLegacyExternalStorage="true" 
         android:enableOnBackInvokedCallback="true">
+        <!-- ✅ android:requestLegacyExternalStorage removed (deprecated) -->
 
+        <!-- Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyBxJfMon9tMNqAH_xKBC8JMLS5o9zS1WYU" />
         
         <activity
             android:name=".MainActivity"
@@ -87,10 +88,6 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
             
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
@@ -100,7 +97,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             
-            <!-- For deep linking (if needed) -->
+            <!-- Deep linking -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -109,8 +106,7 @@
             </intent-filter>
         </activity>
         
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <!-- Flutter embedding -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

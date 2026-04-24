@@ -1,6 +1,7 @@
 // lib/screens/user_app/community_services/my_services/widgets/edit_service_dialog.dart
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -72,7 +73,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
     _fullNameController = TextEditingController(text: widget.service.fullName);
     _companyNameController = TextEditingController(text: widget.service.companyName);
     _phoneController = TextEditingController(text: widget.service.phone);
-    _emailController = TextEditingController(text: widget.service.email);
+    _emailController = TextEditingController(text: widget.service.email ?? '');
     _addressController = TextEditingController(text: widget.service.address);
     _cityController = TextEditingController(text: widget.service.city);
     
@@ -109,6 +110,35 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
     super.dispose();
   }
 
+  // Helper method to decode base64 image safely
+  Uint8List _decodeBase64Image(String? base64String) {
+    if (base64String == null || base64String.isEmpty) {
+      return Uint8List(0);
+    }
+    
+    String cleaned = base64String.trim();
+    
+    // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+    if (cleaned.contains(',')) {
+      cleaned = cleaned.split(',').last;
+    }
+    
+    // Remove any whitespace
+    cleaned = cleaned.replaceAll(RegExp(r'\s'), '');
+    
+    // Fix padding if needed
+    if (cleaned.length % 4 != 0) {
+      cleaned = cleaned.padRight(cleaned.length + (4 - cleaned.length % 4), '=');
+    }
+    
+    try {
+      return base64Decode(cleaned);
+    } catch (e) {
+      print('Error decoding base64: $e');
+      return Uint8List(0);
+    }
+  }
+
   // Helper method to remove duplicate dropdown items
   List<DropdownMenuItem<T>> _getUniqueDropdownItems<T>(List<DropdownMenuItem<T>> items) {
     final seenValues = <T>{};
@@ -141,7 +171,12 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
   Future<void> _pickProfileImage() async {
     try {
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800);
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery, 
+        maxWidth: 800, 
+        maxHeight: 800,
+        imageQuality: 70,
+      );
       
       if (pickedFile != null) {
         setState(() => _isImageProcessing = true);
@@ -151,7 +186,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
         
         setState(() {
           _profileImage = File(pickedFile.path);
-          _profileImageBase64 = base64String;
+          _profileImageBase64 = base64String; // Store pure base64 without prefix
           _isImageProcessing = false;
         });
         
@@ -172,7 +207,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
-          builder: (context) => OSMLocationPicker(
+          builder: (context) => GoogleMapsLocationPicker(
             initialLatitude: _latitude,
             initialLongitude: _longitude,
             initialAddress: _fullAddress,
@@ -192,7 +227,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
         );
       },
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(10),
@@ -247,11 +282,12 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
                   : _profileImageBase64 != null && _profileImageBase64!.isNotEmpty
                       ? ClipOval(
                           child: Image.memory(
-                            base64Decode(_profileImageBase64!),
+                            _decodeBase64Image(_profileImageBase64),
                             fit: BoxFit.cover,
                             width: 100,
                             height: 100,
-                            errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 40, color: _primaryGreen),
+                            errorBuilder: (context, error, stackTrace) => 
+                                Icon(Icons.person, size: 40, color: _primaryGreen),
                           ),
                         )
                       : Column(
@@ -411,7 +447,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'For urgent inquiries, contact: support@banglahub.com',
+                    'For urgent inquiries, contact: info@banglahub.us',
                     style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade600),
                   ),
                 ),
@@ -449,7 +485,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
 
   Widget _buildReadOnlyField(String value, IconData icon) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300), 
         borderRadius: BorderRadius.circular(10), 
@@ -473,7 +509,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
 
   Widget _buildNonEditableDescription() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(10),
@@ -492,7 +528,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
               ),
               const Spacer(),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: _warningYellow.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(4),
@@ -510,7 +546,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
             style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
           ),
           const SizedBox(height: 8),
-          Divider(height: 1, color: Colors.grey.shade200),
+          const Divider(height: 1),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -552,7 +588,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
           borderRadius: BorderRadius.circular(10), 
           borderSide: BorderSide(color: _primaryGreen, width: 1.5)
         ),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         filled: true,
         fillColor: Colors.white,
       ),
@@ -579,15 +615,15 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
           children: [
             // Header
             Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [_primaryGreen, _primaryRed]),
+                gradient: const LinearGradient(colors: [Color(0xFF006A4E), Color(0xFFF42A41)]),
                 borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: EdgeInsets.all(8), 
+                    padding: const EdgeInsets.all(8), 
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2), 
                       borderRadius: BorderRadius.circular(10)
@@ -607,7 +643,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
             // Form
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -624,7 +660,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
                         children: [
                           Expanded(child: _buildTextField(_phoneController, 'Enter a valid US number *', Icons.phone_rounded, keyboardType: TextInputType.phone)),
                           const SizedBox(width: 10),
-                          Expanded(child: _buildTextField(_emailController, 'Email *', Icons.email_rounded, keyboardType: TextInputType.emailAddress)),
+                          Expanded(child: _buildTextField(_emailController, 'Email (Optional)', Icons.email_rounded, keyboardType: TextInputType.emailAddress, isRequired: false)),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -743,7 +779,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
             
             // Actions
             Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.shade200))),
               child: Row(
                 children: [
@@ -751,7 +787,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 10), 
+                        padding: const EdgeInsets.symmetric(vertical: 10), 
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
                       ),
                       child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade700)),
@@ -763,7 +799,7 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
                       onPressed: _isLoading ? null : _saveChanges,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _primaryGreen, 
-                        padding: EdgeInsets.symmetric(vertical: 10), 
+                        padding: const EdgeInsets.symmetric(vertical: 10), 
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
                       ),
                       child: _isLoading 
@@ -802,16 +838,24 @@ class _EditServiceDialogState extends State<EditServiceDialog> {
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUser = authProvider.user;
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    // Handle email - convert empty string to null
+    final String? email = _emailController.text.trim().isEmpty 
+        ? null 
+        : _emailController.text.trim();
 
     final updatedService = widget.service.copyWith(
-      fullName: _fullNameController.text,
-      companyName: _companyNameController.text,
-      phone: _phoneController.text,
-      email: _emailController.text,
-      address: _fullAddress ?? _addressController.text,
+      fullName: _fullNameController.text.trim(),
+      companyName: _companyNameController.text.trim(),
+      phone: _phoneController.text.trim(),
+      email: email, // ✅ Pass nullable email
+      address: _fullAddress ?? _addressController.text.trim(),
       state: _selectedState ?? '',
-      city: _cityController.text,
+      city: _cityController.text.trim(),
       serviceCategory: _selectedCategory!,
       serviceProvider: _selectedServiceProvider!,
       subServiceProvider: _selectedSubServiceProvider,

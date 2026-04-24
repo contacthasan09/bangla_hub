@@ -28,17 +28,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   
   // Color scheme
-  final Color _primaryRed = Color(0xFFF42A41);
-  final Color _primaryGreen = Color(0xFF006A4E);
-  final Color _darkGreen = Color(0xFF004D38);
-  final Color _goldAccent = Color(0xFFFFD700);
-  final Color _offWhite = Color(0xFFF8F8F8);
+  final Color _primaryRed = const Color(0xFFF42A41);
+  final Color _primaryGreen = const Color(0xFF006A4E);
+  final Color _darkGreen = const Color(0xFF004D38);
+  final Color _goldAccent = const Color(0xFFFFD700);
+  final Color _offWhite = const Color(0xFFF8F8F8);
 
   @override
   void initState() {
     super.initState();
     
-    // ✅ Add WidgetsBindingObserver
+    // Add WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     
     // Initialize animations
@@ -94,16 +94,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
   void dispose() {
     print('🗑️ ResetPasswordScreen disposing...');
     
-    // ✅ Remove observer
+    // Remove observer
     WidgetsBinding.instance.removeObserver(this);
     
-    // ✅ Dispose animation controller
+    // Dispose animation controller
     _animationController.dispose();
     
-    // ✅ Dispose focus node
+    // Dispose focus node
     _emailFocus.dispose();
     
-    // ✅ Dispose text controller
+    // Dispose text controller
     _emailController.dispose();
     
     super.dispose();
@@ -113,7 +113,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenHeight < 700;
+    final isVerySmallScreen = screenWidth < 350;
 
     return Scaffold(
       body: AnimatedBuilder(
@@ -125,7 +127,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  _gradientAnimation.value!,
+                  _gradientAnimation.value ?? _primaryGreen,
                   _primaryGreen,
                   _darkGreen,
                 ],
@@ -136,7 +138,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                 physics: const BouncingScrollPhysics(),
                 child: Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: isSmallScreen ? 16 : 24,
+                    horizontal: isVerySmallScreen ? 12 : (isSmallScreen ? 16 : 24),
                     vertical: 16,
                   ),
                   constraints: BoxConstraints(
@@ -152,15 +154,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Back Button
-                          _buildBackButton(isSmallScreen),
+                          _buildBackButton(isSmallScreen, isVerySmallScreen),
                           SizedBox(height: isSmallScreen ? 15 : 20),
                           
                           // Header Section
-                          _buildHeaderSection(isSmallScreen),
+                          _buildHeaderSection(isSmallScreen, isVerySmallScreen),
                           SizedBox(height: isSmallScreen ? 25 : 30),
 
                           // Reset Form
-                          _buildResetForm(isSmallScreen, authProvider),
+                          _buildResetForm(isSmallScreen, isVerySmallScreen, authProvider),
                           SizedBox(height: isSmallScreen ? 20 : 30),
                         ],
                       ),
@@ -175,26 +177,30 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
     );
   }
 
-  Widget _buildBackButton(bool isSmallScreen) {
+  Widget _buildBackButton(bool isSmallScreen, bool isVerySmallScreen) {
     return GestureDetector(
       onTap: () => Navigator.pop(context),
       child: Icon(
         Icons.arrow_back_ios_new_rounded,
         color: Colors.white,
-        size: isSmallScreen ? 18 : 22,
+        size: isVerySmallScreen ? 16 : (isSmallScreen ? 18 : 22),
       ),
     );
   }
 
-  Widget _buildHeaderSection(bool isSmallScreen) {
+  Widget _buildHeaderSection(bool isSmallScreen, bool isVerySmallScreen) {
+    final double logoSize = isVerySmallScreen ? 70.0 : (isSmallScreen ? 80.0 : 100.0);
+    final double innerSize = isVerySmallScreen ? 32.0 : (isSmallScreen ? 38.0 : 48.0);
+    final double iconSize = isVerySmallScreen ? 18.0 : (isSmallScreen ? 22.0 : 26.0);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Logo Circle
+        // Logo Circle with actual logo image
         Center(
           child: Container(
-            width: isSmallScreen ? 70 : 90,
-            height: isSmallScreen ? 70 : 90,
+            width: logoSize,
+            height: logoSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
@@ -214,26 +220,23 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                 ),
               ],
             ),
-            child: Center(
-              child: Container(
-                width: isSmallScreen ? 36 : 44,
-                height: isSmallScreen ? 36 : 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withOpacity(0.5),
-                      blurRadius: 15,
-                      spreadRadius: 2,
+            child: ClipOval(
+              child: Image.asset(
+                'assets/logo/logo.png',
+                fit: BoxFit.cover,
+                width: logoSize,
+                height: logoSize,
+                errorBuilder: (context, error, stackTrace) {
+                  print('Error loading logo: $error');
+                  // Fallback with lock reset icon
+                  return Center(
+                    child: Icon(
+                      Icons.lock_reset_rounded,
+                      size: logoSize * 0.5,
+                      color: Colors.white,
                     ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.lock_reset_rounded,
-                  size: isSmallScreen ? 22 : 26,
-                  color: _primaryRed,
-                ),
+                  );
+                },
               ),
             ),
           ),
@@ -244,7 +247,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
         Text(
           'Reset Password',
           style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 28 : 35,
+            fontSize: isVerySmallScreen ? 24 : (isSmallScreen ? 28 : 35),
             fontWeight: FontWeight.w800,
             color: Colors.white,
             height: 1.1,
@@ -266,7 +269,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
         Text(
           'Enter your email to receive a password reset link',
           style: GoogleFonts.inter(
-            fontSize: isSmallScreen ? 12 : 14,
+            fontSize: isVerySmallScreen ? 11 : (isSmallScreen ? 12 : 14),
             color: Colors.white.withOpacity(0.9),
             fontWeight: FontWeight.w400,
             letterSpacing: 0.3,
@@ -276,12 +279,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
     );
   }
 
-  Widget _buildResetForm(bool isSmallScreen, AuthProvider authProvider) {
+  Widget _buildResetForm(bool isSmallScreen, bool isVerySmallScreen, AuthProvider authProvider) {
     return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 22 : 28),
+      padding: EdgeInsets.all(isVerySmallScreen ? 16 : (isSmallScreen ? 22 : 28)),
       decoration: BoxDecoration(
         color: _offWhite,
-        borderRadius: BorderRadius.circular(isSmallScreen ? 22 : 28),
+        borderRadius: BorderRadius.circular(isVerySmallScreen ? 18 : (isSmallScreen ? 22 : 28)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
@@ -308,7 +311,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
             // Email Field
             Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(isSmallScreen ? 14 : 16),
+                borderRadius: BorderRadius.circular(isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16)),
                 boxShadow: _emailFocus.hasFocus
                     ? [
                         BoxShadow(
@@ -331,7 +334,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                 keyboardType: TextInputType.emailAddress,
                 style: GoogleFonts.inter(
                   color: Colors.black87,
-                  fontSize: isSmallScreen ? 15 : 16,
+                  fontSize: isVerySmallScreen ? 13 : (isSmallScreen ? 15 : 16),
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.3,
                 ),
@@ -340,34 +343,34 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                   labelStyle: GoogleFonts.inter(
                     color: _emailFocus.hasFocus ? _primaryGreen : Colors.grey[600],
                     fontWeight: FontWeight.w500,
-                    fontSize: isSmallScreen ? 14 : 15,
+                    fontSize: isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 15),
                   ),
                   hintText: 'Enter your email',
                   hintStyle: GoogleFonts.inter(
                     color: Colors.grey[500],
-                    fontSize: isSmallScreen ? 15 : 16,
+                    fontSize: isVerySmallScreen ? 13 : (isSmallScreen ? 15 : 16),
                   ),
                   prefixIcon: Padding(
                     padding: const EdgeInsets.only(left: 16, right: 12),
                     child: Icon(
                       Icons.email_outlined,
                       color: _emailFocus.hasFocus ? _primaryGreen : Colors.grey[600],
-                      size: isSmallScreen ? 22 : 24,
+                      size: isVerySmallScreen ? 18 : (isSmallScreen ? 22 : 24),
                     ),
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 14 : 16),
+                    borderRadius: BorderRadius.circular(isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16)),
                     borderSide: BorderSide.none,
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 14 : 16),
+                    borderRadius: BorderRadius.circular(isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16)),
                     borderSide: BorderSide(
                       color: Colors.grey[300]!,
                       width: 1.5,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 14 : 16),
+                    borderRadius: BorderRadius.circular(isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16)),
                     borderSide: BorderSide(
                       color: _primaryGreen,
                       width: 2.5,
@@ -377,7 +380,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                   fillColor: Colors.white,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 20,
-                    vertical: isSmallScreen ? 18 : 22,
+                    vertical: isVerySmallScreen ? 14 : (isSmallScreen ? 18 : 22),
                   ),
                 ),
                 validator: (value) {
@@ -391,14 +394,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                 },
               ),
             ),
-            SizedBox(height: isSmallScreen ? 14 : 18),
+            SizedBox(height: isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 18)),
 
             // Instruction Text
             Container(
-              padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+              padding: EdgeInsets.all(isVerySmallScreen ? 12 : (isSmallScreen ? 16 : 20)),
               decoration: BoxDecoration(
                 color: _primaryGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16)),
                 border: Border.all(
                   color: _primaryGreen.withOpacity(0.2),
                   width: 1.5,
@@ -410,14 +413,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                   Icon(
                     Icons.info_outline_rounded,
                     color: _primaryGreen,
-                    size: isSmallScreen ? 18 : 20,
+                    size: isVerySmallScreen ? 14 : (isSmallScreen ? 18 : 20),
                   ),
-                  SizedBox(width: isSmallScreen ? 12 : 16),
+                  SizedBox(width: isVerySmallScreen ? 8 : (isSmallScreen ? 12 : 16)),
                   Expanded(
                     child: Text(
                       'We will send you a link to reset your password. Please check your inbox and spam folder.',
                       style: GoogleFonts.inter(
-                        fontSize: isSmallScreen ? 13 : 14,
+                        fontSize: isVerySmallScreen ? 11 : (isSmallScreen ? 13 : 14),
                         color: Colors.grey[700],
                         fontWeight: FontWeight.w500,
                         height: 1.5,
@@ -427,17 +430,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                 ],
               ),
             ),
-            SizedBox(height: isSmallScreen ? 28 : 36),
+            SizedBox(height: isVerySmallScreen ? 20 : (isSmallScreen ? 28 : 36)),
 
             // Reset Button
-            _buildResetButton(isSmallScreen, authProvider),
-            SizedBox(height: isSmallScreen ? 16 : 20),
+            _buildResetButton(isSmallScreen, isVerySmallScreen, authProvider),
+            SizedBox(height: isVerySmallScreen ? 12 : (isSmallScreen ? 16 : 20)),
 
             // Back to Login
             TextButton(
               onPressed: () => Navigator.pop(context),
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isVerySmallScreen ? 12 : 20,
+                  vertical: isVerySmallScreen ? 8 : 12,
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -445,13 +451,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                   Icon(
                     Icons.arrow_back_rounded,
                     color: _primaryGreen,
-                    size: isSmallScreen ? 16 : 18,
+                    size: isVerySmallScreen ? 14 : (isSmallScreen ? 16 : 18),
                   ),
-                  SizedBox(width: isSmallScreen ? 8 : 12),
+                  SizedBox(width: isVerySmallScreen ? 6 : (isSmallScreen ? 8 : 12)),
                   Text(
                     'Back to Login',
                     style: GoogleFonts.inter(
-                      fontSize: isSmallScreen ? 15 : 16,
+                      fontSize: isVerySmallScreen ? 13 : (isSmallScreen ? 15 : 16),
                       fontWeight: FontWeight.w600,
                       color: _primaryGreen,
                     ),
@@ -465,11 +471,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
     );
   }
 
-  Widget _buildResetButton(bool isSmallScreen, AuthProvider authProvider) {
+  Widget _buildResetButton(bool isSmallScreen, bool isVerySmallScreen, AuthProvider authProvider) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 500),
       width: double.infinity,
-      height: isSmallScreen ? 56 : 64,
+      height: isVerySmallScreen ? 44 : (isSmallScreen ? 56 : 64),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [_primaryRed, _primaryGreen],
@@ -477,7 +483,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
           end: Alignment.centerRight,
           stops: const [0.0, 1.0],
         ),
-        borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+        borderRadius: BorderRadius.circular(isVerySmallScreen ? 12 : (isSmallScreen ? 16 : 20)),
         boxShadow: [
           BoxShadow(
             color: _primaryRed.withOpacity(0.3),
@@ -489,21 +495,21 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+        borderRadius: BorderRadius.circular(isVerySmallScreen ? 12 : (isSmallScreen ? 16 : 20)),
         child: InkWell(
           onTap: authProvider.isLoading ? null : () => _resetPassword(context, authProvider),
-          borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+          borderRadius: BorderRadius.circular(isVerySmallScreen ? 12 : (isSmallScreen ? 16 : 20)),
           splashColor: Colors.white.withOpacity(0.2),
           highlightColor: Colors.white.withOpacity(0.1),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: isVerySmallScreen ? 12 : 24),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
               child: authProvider.isLoading
                   ? Center(
                       child: SizedBox(
-                        width: isSmallScreen ? 24 : 28,
-                        height: isSmallScreen ? 24 : 28,
+                        width: isVerySmallScreen ? 18 : (isSmallScreen ? 24 : 28),
+                        height: isVerySmallScreen ? 18 : (isSmallScreen ? 24 : 28),
                         child: const CircularProgressIndicator(
                           strokeWidth: 3,
                           valueColor: AlwaysStoppedAnimation(Colors.white),
@@ -516,17 +522,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                         Text(
                           'Send Reset Link',
                           style: GoogleFonts.poppins(
-                            fontSize: isSmallScreen ? 16 : 18,
+                            fontSize: isVerySmallScreen ? 13 : (isSmallScreen ? 16 : 18),
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                             letterSpacing: 0.8,
                           ),
                         ),
-                        SizedBox(width: isSmallScreen ? 15 : 18),
+                        SizedBox(width: isVerySmallScreen ? 10 : (isSmallScreen ? 15 : 18)),
                         Icon(
                           Icons.send_rounded,
                           color: Colors.white,
-                          size: isSmallScreen ? 18 : 20,
+                          size: isVerySmallScreen ? 14 : (isSmallScreen ? 18 : 20),
                         ),
                       ],
                     ),
@@ -561,6 +567,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
   }
 
   void _showSuccessDialog(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isVerySmallScreen = screenWidth < 350;
+    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -573,8 +582,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: isVerySmallScreen ? 60 : 80,
+              height: isVerySmallScreen ? 60 : 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
@@ -583,9 +592,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                   end: Alignment.bottomRight,
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.check_rounded,
-                size: 40,
+                size: isVerySmallScreen ? 30 : 40,
                 color: Colors.white,
               ),
             ),
@@ -593,7 +602,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
             Text(
               'Email Sent!',
               style: GoogleFonts.poppins(
-                fontSize: 24,
+                fontSize: isVerySmallScreen ? 20 : 24,
                 fontWeight: FontWeight.w700,
                 color: _primaryGreen,
               ),
@@ -603,7 +612,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
               'Password reset link has been sent to:',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                fontSize: 16,
+                fontSize: isVerySmallScreen ? 13 : 16,
                 color: Colors.grey[700],
               ),
             ),
@@ -622,6 +631,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w600,
                   color: _primaryGreen,
+                  fontSize: isVerySmallScreen ? 12 : 14,
                 ),
               ),
             ),
@@ -630,7 +640,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
               'Please check your inbox and follow the instructions.',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                fontSize: 14,
+                fontSize: isVerySmallScreen ? 12 : 14,
                 color: Colors.grey[600],
               ),
             ),
@@ -648,16 +658,19 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primaryGreen,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isVerySmallScreen ? 24 : 32,
+                  vertical: isVerySmallScreen ? 10 : 14,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'Back to Login',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  fontSize: 16,
+                  fontSize: isVerySmallScreen ? 13 : 16,
                 ),
               ),
             ),

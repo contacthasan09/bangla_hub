@@ -5,6 +5,7 @@ import 'package:bangla_hub/screens/user_app/entrepreneurship/job_posting/job_det
 import 'package:bangla_hub/screens/user_app/entrepreneurship/my_business/edit_screens/dit_business_promotion_dialog.dart';
 import 'package:bangla_hub/screens/user_app/entrepreneurship/my_business/edit_screens/edit_business_partner_dialog.dart';
 import 'package:bangla_hub/screens/user_app/entrepreneurship/my_business/edit_screens/edit_job_posting_dialog.dart';
+import 'package:bangla_hub/screens/user_app/entrepreneurship/my_business/edit_screens/edit_networing_partner.dart';
 import 'package:bangla_hub/screens/user_app/entrepreneurship/networing_partner/premium_partner_details_screen.dart';
 import 'package:bangla_hub/screens/user_app/entrepreneurship/small_business_promotion/business_promotion_details_screen.dart';
 import 'package:flutter/material.dart';
@@ -86,6 +87,8 @@ class _MyBusinessScreenState extends State<MyBusinessScreen> with TickerProvider
           onPressed: () {
             if (widget.onBack != null) {
               widget.onBack!();
+            } else {
+              Navigator.pop(context);
             }
           },
         ),
@@ -122,27 +125,28 @@ class _MyBusinessScreenState extends State<MyBusinessScreen> with TickerProvider
   }
 }
 
-// Helper function to decode Base64 image
+// ====================== BASE64 IMAGE HELPER ======================
+/// Helper function to decode Base64 image with default placeholder
 Widget _buildImageFromBase64(String? base64String, {double size = 70}) {
   if (base64String == null || base64String.isEmpty) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(Icons.image_outlined, color: Colors.grey[400], size: size * 0.4),
-    );
+    return _buildDefaultLogo(size);
   }
 
   try {
-    String cleaned = base64String;
+    String cleaned = base64String.trim();
+    // Remove data URL prefix if present
+    if (cleaned.contains(',')) {
+      cleaned = cleaned.split(',').last;
+    }
     if (cleaned.contains('base64,')) {
       cleaned = cleaned.split('base64,').last;
     }
+    // Remove whitespace
     cleaned = cleaned.replaceAll(RegExp(r'\s'), '');
-    while (cleaned.length % 4 != 0) cleaned += '=';
+    // Fix padding
+    while (cleaned.length % 4 != 0) {
+      cleaned += '=';
+    }
     
     final bytes = base64Decode(cleaned);
     return ClipRRect(
@@ -153,29 +157,37 @@ Widget _buildImageFromBase64(String? base64String, {double size = 70}) {
         height: size,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.broken_image, color: Colors.grey[400], size: size * 0.4),
-          );
+          return _buildDefaultLogo(size);
         },
       ),
     );
   } catch (e) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(Icons.broken_image, color: Colors.grey[400], size: size * 0.4),
-    );
+    print('Error decoding base64 image: $e');
+    return _buildDefaultLogo(size);
   }
+}
+
+/// Default logo widget when no image is available
+Widget _buildDefaultLogo(double size) {
+  return Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [const Color(0xFF006A4E), const Color(0xFF004D38)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Center(
+      child: Icon(
+        Icons.business_rounded,
+        size: size * 0.5,
+        color: Colors.white,
+      ),
+    ),
+  );
 }
 
 // ====================== APPROVED BUSINESS LIST ======================
@@ -301,7 +313,7 @@ class _ApprovedBusinessList extends StatelessWidget {
         subtitle: '${item.companyName} • ${item.location}',
         type: MyBusinessType.jobPosting,
         status: 'approved',
-        imageUrl: item.companyLogoBase64,
+        imageUrl: item.logoImageBase64,
         rawItem: item,
       )),
       ...approvedBusinessPromotions.map((item) => MyBusinessItem(
@@ -344,7 +356,7 @@ class _ApprovedBusinessList extends StatelessWidget {
         ]);
       },
       child: ListView.builder(
-        padding: EdgeInsets.all(12),
+        padding: const EdgeInsets.all(12),
         itemCount: allApprovedItems.length,
         itemBuilder: (context, index) {
           return _buildBusinessCard(
@@ -482,7 +494,7 @@ class _PendingBusinessList extends StatelessWidget {
         subtitle: '${item.companyName} • ${item.location}',
         type: MyBusinessType.jobPosting,
         status: 'pending',
-        imageUrl: item.companyLogoBase64,
+        imageUrl: item.logoImageBase64,
         rawItem: item,
       )),
       ...pendingBusinessPromotions.map((item) => MyBusinessItem(
@@ -525,7 +537,7 @@ class _PendingBusinessList extends StatelessWidget {
         ]);
       },
       child: ListView.builder(
-        padding: EdgeInsets.all(12),
+        padding: const EdgeInsets.all(12),
         itemCount: allPendingItems.length,
         itemBuilder: (context, index) {
           return _buildBusinessCard(
@@ -542,7 +554,6 @@ class _PendingBusinessList extends StatelessWidget {
 
 // ====================== EDIT DIALOGS ======================
 
-// Add this inside _MyBusinessScreenState class
 Future<void> _refreshData(BuildContext context) async {
   final authProvider = Provider.of<AuthProvider>(context, listen: false);
   final userId = authProvider.user?.id;
@@ -562,12 +573,13 @@ void _showEditDialog(BuildContext context, MyBusinessItem item) {
     case MyBusinessType.networkingPartner:
       showDialog(
         context: context,
-        builder: (context) => EditBusinessPartnerDialog(
+        builder: (context) => EditNetworkingPartnerDialog(
           partner: item.rawItem as NetworkingBusinessPartner,
           onUpdate: () => _refreshData(context),
         ),
       );
       break;
+      
     case MyBusinessType.jobPosting:
       showDialog(
         context: context,
@@ -577,6 +589,7 @@ void _showEditDialog(BuildContext context, MyBusinessItem item) {
         ),
       );
       break;
+      
     case MyBusinessType.businessPromotion:
       showDialog(
         context: context,
@@ -586,89 +599,21 @@ void _showEditDialog(BuildContext context, MyBusinessItem item) {
         ),
       );
       break;
+      
     case MyBusinessType.partnerRequest:
-      // Show edit dialog for partner request (implement similarly)
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Edit for Partner Request coming soon'), duration: Duration(seconds: 2)),
+      showDialog(
+        context: context,
+        builder: (context) => EditPartnerRequestDialog(
+          request: item.rawItem as BusinessPartnerRequest,
+          onUpdate: () => _refreshData(context),
+        ),
       );
       break;
   }
 }
 
-void _showEditBusinessPartnerDialog(BuildContext context, MyBusinessItem item) {
-  final partner = item.rawItem as NetworkingBusinessPartner;
-  
-  // Show a simple edit dialog or navigate to edit screen
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text('Edit Business Partner', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-      content: Text('Edit functionality for ${partner.businessName} will be available soon.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('Close'),
-        ),
-      ],
-    ),
-  );
-}
-
-void _showEditJobPostingDialog(BuildContext context, MyBusinessItem item) {
-  final job = item.rawItem as JobPosting;
-  
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text('Edit Job Posting', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-      content: Text('Edit functionality for ${job.jobTitle} will be available soon.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('Close'),
-        ),
-      ],
-    ),
-  );
-}
-
-void _showEditBusinessPromotionDialog(BuildContext context, MyBusinessItem item) {
-  final promotion = item.rawItem as SmallBusinessPromotion;
-  
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text('Edit Business Promotion', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-      content: Text('Edit functionality for ${promotion.businessName} will be available soon.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('Close'),
-        ),
-      ],
-    ),
-  );
-}
-
-void _showEditPartnerRequestDialog(BuildContext context, MyBusinessItem item) {
-  final request = item.rawItem as BusinessPartnerRequest;
-  
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text('Edit Partner Request', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-      content: Text('Edit functionality for ${request.title} will be available soon.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('Close'),
-        ),
-      ],
-    ),
-  );
-}
-
 // ====================== BUSINESS CARD WIDGET ======================
+
 Widget _buildBusinessCard(BuildContext context, MyBusinessItem item, {VoidCallback? onEdit, VoidCallback? onDelete}) {
   final isTablet = MediaQuery.of(context).size.width >= 600;
   
@@ -803,7 +748,7 @@ Widget _buildBusinessCard(BuildContext context, MyBusinessItem item, {VoidCallba
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Image (Logo/Banner)
+                  // Image (Logo/Banner) - Now with proper default logo
                   _buildImageFromBase64(item.imageUrl, size: isTablet ? 80 : 70),
                   
                   const SizedBox(width: 12),

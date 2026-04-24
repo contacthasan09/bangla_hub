@@ -1312,7 +1312,9 @@ void _showLocationFilterDialog(BuildContext context) {
     );
   }
 
-SliverAppBar _buildPremiumAppBar(bool isTablet) {
+
+
+/* SliverAppBar _buildPremiumAppBar(bool isTablet) {
   return SliverAppBar(
     expandedHeight: isTablet ? 260 : 200,
     floating: false,
@@ -1457,6 +1459,408 @@ SliverAppBar _buildPremiumAppBar(bool isTablet) {
     ),
   );
 }
+
+*/
+
+/* SliverAppBar _buildPremiumAppBar(bool isTablet) {
+  return SliverAppBar(
+    expandedHeight: isTablet ? 260 : 200,
+    floating: false,
+    pinned: true,
+    snap: false,
+    elevation: 0,
+    backgroundColor: Colors.transparent,
+    flexibleSpace: FlexibleSpaceBar(
+      background: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_primaryGreen, _darkGreen, _primaryRed],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 40 : 24,
+              vertical: isTablet ? 20 : 16,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Premium Pattern Line
+                Container(
+                  height: 4,
+                  width: 60,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_secondaryGold, _softGold, _secondaryGold],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(height: isTablet ? 16 : 12),
+                
+                // Title - Single line only
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [Colors.white, _secondaryGold],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds),
+                  child: Text(
+                    'Networking Partners',
+                    style: GoogleFonts.poppins(
+                      fontSize: isTablet ? 32 : 24,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                
+                SizedBox(height: isTablet ? 12 : 8),
+                
+                // Subtitle and Change Location Button in same row - Subtitle can wrap
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Subtitle - Can wrap to multiple lines
+                    Expanded(
+                      child: Text(
+                        '🤝 Connect & Grow Together',
+                        style: GoogleFonts.inter(
+                          fontSize: isTablet ? 14 : 12,
+                          color: Colors.white.withOpacity(0.9),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    
+                    SizedBox(width: isTablet ? 12 : 8),
+                    
+                    // Change Location Button
+                    _buildChangeLocationButton(isTablet),
+                  ],
+                ),
+                
+                SizedBox(height: isTablet ? 16 : 12),
+                
+                // Stats Row
+                Consumer<EntrepreneurshipProvider>(
+                  builder: (context, provider, child) {
+                    final verifiedCount = provider.businessPartners
+                        .where((s) => s.isVerified && s.isActive)
+                        .length;
+                    
+                    return Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 12 : 10,
+                            vertical: isTablet ? 6 : 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.verified_rounded, color: _secondaryGold, size: isTablet ? 14 : 12),
+                              SizedBox(width: isTablet ? 6 : 4),
+                              Text(
+                                '$verifiedCount Verified Partners',
+                                style: GoogleFonts.inter(
+                                  fontSize: isTablet ? 12 : 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+    // ✅ Back button on LEFT side
+    leading: Padding(
+      padding: EdgeInsets.only(left: isTablet ? 16 : 12),
+      child: Container(
+        width: isTablet ? 44 : 40,
+        height: isTablet ? 44 : 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
+        ),
+        child: IconButton(
+          icon: Icon(
+            Icons.arrow_back_rounded, 
+            color: Colors.white, 
+            size: isTablet ? 24 : 20,
+          ),
+          onPressed: () => Navigator.pop(context),
+          padding: EdgeInsets.zero,
+          splashRadius: isTablet ? 22 : 18,
+        ),
+      ),
+    ),
+    // ✅ Logo on RIGHT side (tappable)
+    actions: [
+      Padding(
+        padding: EdgeInsets.only(right: isTablet ? 16 : 12),
+        child: GestureDetector(
+          onTap: () {
+            // Optional: Navigate to home or show app info
+            // Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+            // Or show a dialog with app info
+         //   _showAppInfoDialog(context, isTablet);
+          },
+          child: Container(
+            width: isTablet ? 44 : 40,
+            height: isTablet ? 44 : 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+              child: Image.asset(
+                'assets/logo/logo.png',
+                width: isTablet ? 32 : 28,
+                height: isTablet ? 32 : 28,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.transparent,
+                    child: Center(
+                      child: Icon(
+                        Icons.business_center_rounded,
+                        color: Colors.white,
+                        size: isTablet ? 24 : 20,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+*/
+
+
+SliverAppBar _buildPremiumAppBar(bool isTablet) {
+  return SliverAppBar(
+    expandedHeight: isTablet ? 260 : 200,
+    floating: false,
+    pinned: true,
+    snap: false,
+    elevation: 0,
+    backgroundColor: Colors.transparent,
+    // ✅ Only ONE flexibleSpace - using Stack for custom positioned logo
+    flexibleSpace: Stack(
+      children: [
+        // Background Container with Gradient
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_primaryGreen, _darkGreen, _primaryRed],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 40 : 24,
+                vertical: isTablet ? 20 : 16,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Premium Pattern Line
+                  Container(
+                    height: 4,
+                    width: 60,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_secondaryGold, _softGold, _secondaryGold],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  SizedBox(height: isTablet ? 16 : 12),
+                  
+                  // Title - Single line only
+                  ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: [Colors.white, _secondaryGold],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ).createShader(bounds),
+                    child: Text(
+                      'Networking Partners',
+                      style: GoogleFonts.poppins(
+                        fontSize: isTablet ? 32 : 24,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  
+                  SizedBox(height: isTablet ? 12 : 8),
+                  
+                  // Subtitle and Change Location Button in same row - Subtitle can wrap
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Subtitle - Can wrap to multiple lines
+                      Expanded(
+                        child: Text(
+                          '🤝 Connect & Grow Together',
+                          style: GoogleFonts.inter(
+                            fontSize: isTablet ? 14 : 12,
+                            color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(width: isTablet ? 12 : 8),
+                      
+                      // Change Location Button
+                      _buildChangeLocationButton(isTablet),
+                    ],
+                  ),
+                  
+                  SizedBox(height: isTablet ? 16 : 12),
+                  
+                  // Stats Row
+                  Consumer<EntrepreneurshipProvider>(
+                    builder: (context, provider, child) {
+                      final verifiedCount = provider.businessPartners
+                          .where((s) => s.isVerified && s.isActive)
+                          .length;
+                      
+                      return Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isTablet ? 12 : 10,
+                              vertical: isTablet ? 6 : 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.verified_rounded, color: _secondaryGold, size: isTablet ? 14 : 12),
+                                SizedBox(width: isTablet ? 6 : 4),
+                                Text(
+                                  '$verifiedCount Verified Partners',
+                                  style: GoogleFonts.inter(
+                                    fontSize: isTablet ? 12 : 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // ✅ Logo positioned absolutely (custom position) - Right side
+        Positioned(
+          top: MediaQuery.of(context).padding.top + (isTablet ? 12 : 8),
+          right: isTablet ? 40 : 24, // Adjust this value to move logo left/right
+          child: Container(
+            width: isTablet ? 44 : 36,
+            height: isTablet ? 44 : 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/logo/logo.png',
+                width: isTablet ? 40 : 32,
+                height: isTablet ? 40 : 32,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.white.withOpacity(0.2),
+                    child: Center(
+                      child: Icon(
+                        Icons.business_center_rounded,
+                        color: Colors.white,
+                        size: isTablet ? 24 : 20,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+    // ✅ Back button on LEFT side
+    leading: IconButton(
+      icon: Icon(
+        Icons.arrow_back_rounded, 
+        color: Colors.white, 
+        size: isTablet ? 28 : 24,
+      ),
+      onPressed: () => Navigator.pop(context),
+      padding: EdgeInsets.only(left: isTablet ? 16 : 12),
+    ),
+    title: null,
+    centerTitle: false,
+    automaticallyImplyLeading: true,
+  );
+}
+
 
   Widget _buildAnimatedParticle(int index) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -3325,6 +3729,9 @@ Widget _buildPremiumPartnerCard(NetworkingBusinessPartner partner, int index) {
   return cardContent;
 }
 
+
+
+
 Widget _buildCompactPartnerTag(String text, IconData icon, [bool isTablet = false]) {
   return Container(
     padding: EdgeInsets.symmetric(
@@ -3429,6 +3836,8 @@ Widget _buildCompactPartnerTag(String text, IconData icon, [bool isTablet = fals
   
   return _buildDefaultProfileImage();
 }
+
+
 
 Widget _buildDefaultProfileImage() {
   return Container(
@@ -4367,7 +4776,7 @@ class _PremiumAddPartnerDialogState extends State<PremiumAddPartnerDialog>
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
-          builder: (context) => OSMLocationPicker(
+          builder: (context) => GoogleMapsLocationPicker(
             initialLatitude: _partnerLatitude,
             initialLongitude: _partnerLongitude,
             initialAddress: _partnerAddress,
@@ -4834,7 +5243,8 @@ Widget _buildPremiumMediaTab() {
     );
   }
 
-  Widget _buildPremiumTextField({
+
+/*  Widget _buildPremiumTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
@@ -4885,6 +5295,70 @@ Widget _buildPremiumMediaTab() {
       ),
     );
   }
+
+*/
+
+
+Widget _buildPremiumTextField({
+  required TextEditingController controller,
+  required String label,
+  required IconData icon,
+  TextInputType keyboardType = TextInputType.text,
+  int maxLines = 1,
+}) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  
+  // ✅ Fix: For multiline fields, use multiline keyboard type
+  final bool isMultiline = maxLines > 1;
+  final TextInputType effectiveKeyboardType = isMultiline 
+      ? TextInputType.multiline 
+      : keyboardType;
+  
+  return Container(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.02),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    ),
+    child: TextFormField(
+      controller: controller,
+      keyboardType: effectiveKeyboardType, // ✅ Fixed: Use multiline for multiline fields
+      maxLines: maxLines,
+      style: GoogleFonts.inter(fontSize: screenWidth > 600 ? 15 : 13),
+      textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey[600], fontSize: screenWidth > 600 ? 13 : 12),
+        prefixIcon: Icon(icon, color: widget.primaryGreen, size: screenWidth > 600 ? 20 : 18),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: widget.primaryGreen, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: maxLines > 1 ? 14 : 12),
+      ),
+      validator: (value) {
+        if (label.contains('*') && (value == null || value.isEmpty)) {
+          return 'Required';
+        }
+        return null;
+      },
+    ),
+  );
+}
+
+
+
 
   Widget _buildPremiumDropdown<T>({
     required T? value,
